@@ -11,6 +11,7 @@ import prReview from "../../../../../../../messages/en/prReview.json";
 import common from "../../../../../../../messages/en/common.json";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock("@/lib/hooks", () => ({ usePrReviews: () => ({ data: undefined, isLoading: false, isError: false }) }));
 
 import { PRRow } from "./PRRow";
 
@@ -33,6 +34,8 @@ function pr(o: Partial<PrMeta>): PrMeta {
     updated_at: "2026-09-16T09:00:00.000Z",
     score: 61,
     cost_usd: null,
+    // one critical finding, so the FINDINGS cell renders icons rather than a second "—"
+    latest_findings: { review_id: "rev-1", counts: { CRITICAL: 1, WARNING: 0, SUGGESTION: 0 } },
     ...o,
   };
 }
@@ -55,5 +58,13 @@ describe("PRRow — cost cell", () => {
     renderRow(pr({ score: 61, cost_usd: null }));
     expect(screen.getByText("—")).toBeInTheDocument();
     expect(screen.queryByText(/\$0\.00/)).not.toBeInTheDocument();
+  });
+});
+
+describe("PRRow — findings cell", () => {
+  it("renders the latest review's findings between score and status", () => {
+    renderRow(pr({}));
+    expect(screen.getByRole("button", { name: "1 finding in the latest run" })).toBeInTheDocument();
+    expect(screen.getByLabelText("1 critical")).toBeInTheDocument();
   });
 });

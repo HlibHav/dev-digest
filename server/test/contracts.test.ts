@@ -260,3 +260,28 @@ describe('platform DTOs', () => {
     ).not.toThrow();
   });
 });
+
+describe('PR list findings contracts', () => {
+  const pr = {
+    number: 482,
+    title: 't',
+    author: 'a',
+    branch: 'b',
+    base: 'main',
+    head_sha: 'sha',
+    additions: 1,
+    deletions: 1,
+    files_count: 1,
+    status: 'reviewed',
+  };
+
+  it('PrMeta carries the latest review id with per-severity counts', () => {
+    const latest = { review_id: 'rev-1', counts: { CRITICAL: 1, WARNING: 0, SUGGESTION: 2 } };
+    expect(PrMeta.parse({ ...pr, latest_findings: latest }).latest_findings).toEqual(latest);
+  });
+
+  it('PrMeta latest_findings is null for an unreviewed PR and optional for other endpoints', () => {
+    expect(PrMeta.parse({ ...pr, latest_findings: null }).latest_findings).toBeNull();
+    expect(PrMeta.parse(pr).latest_findings).toBeUndefined();
+  });
+});

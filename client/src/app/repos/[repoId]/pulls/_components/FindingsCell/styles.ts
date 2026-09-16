@@ -1,0 +1,65 @@
+import type { CSSProperties } from "react";
+
+export const POPOVER_WIDTH = 380;
+
+export const s = {
+  wrap: { display: "inline-flex" } satisfies CSSProperties,
+  trigger: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 10,
+    padding: "2px 4px",
+    margin: "-2px -4px",
+    borderRadius: 5,
+    cursor: "default",
+  } satisfies CSSProperties,
+  count: (color: string): CSSProperties => ({
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 4,
+    color,
+    fontSize: 12,
+    fontWeight: 600,
+  }),
+  popover: (pos: { top?: number; bottom?: number; left: number }): CSSProperties => ({
+    position: "fixed",
+    ...pos,
+    width: POPOVER_WIDTH,
+    maxHeight: 340,
+    overflowY: "auto",
+    zIndex: 50,
+    background: "var(--bg-elevated)",
+    border: "1px solid var(--border)",
+    borderRadius: 10,
+    boxShadow: "0 12px 32px rgba(0,0,0,.35)",
+    cursor: "default",
+  }),
+  title: {
+    padding: "10px 14px",
+    borderBottom: "1px solid var(--border)",
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: "0.06em",
+    color: "var(--text-muted)",
+  } satisfies CSSProperties,
+  note: { padding: "12px 14px", fontSize: 12, color: "var(--text-muted)" } satisfies CSSProperties,
+  item: {
+    padding: "10px 14px",
+    borderBottom: "1px solid var(--border)",
+    display: "flex",
+    flexDirection: "column",
+    gap: 5,
+  } satisfies CSSProperties,
+  itemHead: { display: "flex", alignItems: "center", gap: 8, minWidth: 0 } satisfies CSSProperties,
+  itemTitle: {
+    fontSize: 13,
+    fontWeight: 600,
+    color: "var(--text-primary)",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  } satisfies CSSProperties,
+  itemMeta: { display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" } satisfies CSSProperties,
+  itemFile: { fontSize: 12, color: "var(--text-secondary)" } satisfies CSSProperties,
+  itemDesc: { fontSize: 12, lineHeight: 1.45, color: "var(--text-secondary)" } satisfies CSSProperties,
+};

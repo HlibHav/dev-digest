@@ -357,6 +357,40 @@ d('A2 reviews + agents (Testcontainers pg)', () => {
     await app.close();
   });
 
+  it('PR list: latest_findings counts the latest review\'s findings by severity', async () => {
+    const app = await appWith(REVIEW_FIXTURE);
+    const { repo, pr } = await setupRepoAndPr(pg.handle.db, workspaceId);
+    const listed = async () => {
+      const pulls = (await app.inject({ method: 'GET', url: `/repos/${repo.id}/pulls` })).json();
+      return pulls.find((p: { id: string }) => p.id === pr.id).latest_findings;
+    };
+    expect(await listed()).toBeNull();
+
+    const agent = (
+      await app.inject({
+        method: 'POST',
+        url: '/agents',
+        payload: { name: 'Findings', provider: 'openai', model: 'gpt-4.1', system_prompt: 'f' },
+      })
+    ).json();
+    const review = () =>
+      app.inject({ method: 'POST', url: `/pulls/${pr.id}/review`, payload: { agentId: agent.id } });
+    expect((await review()).statusCode).toBe(200);
+    await waitForPrRuns(pg.handle.db, pr.id, { expected: 1 });
+    expect((await review()).statusCode).toBe(200);
+    await waitForPrRuns(pg.handle.db, pr.id, { expected: 2 });
+
+    // newest review first; grounding keeps one CRITICAL finding per review
+    const reviews = (await app.inject({ method: 'GET', url: `/pulls/${pr.id}/reviews` })).json();
+    expect(reviews).toHaveLength(2);
+    expect(await listed()).toEqual({
+      review_id: reviews[0].id,
+      counts: { CRITICAL: 1, WARNING: 0, SUGGESTION: 0 },
+    });
+
+    await app.close();
+  });
+
   it('run cost: a PR with no runs, or only unpriced runs, lists a null cost (never 0)', async () => {
     const app = await appWith(REVIEW_FIXTURE);
     const { repo, pr } = await setupRepoAndPr(pg.handle.db, workspaceId);
