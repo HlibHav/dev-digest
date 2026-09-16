@@ -45,18 +45,47 @@ Claim first, evidence last. Backtick every path and identifier; quote the actual
 Evidence is a `path:line`, a runnable command, or a quoted error — whichever proves the claim.
 Copy every identifier and line number from the file as it is now, not from memory.
 
-A stale or wrong entry is never edited or deleted. Correct it beneath:
+Existing entries are never edited or deleted. Comment beneath one only when this session adds
+something to it, as the last sub-bullet of that entry:
 
 ```markdown
 - **YYYY-MM-DD** — <original claim>. Evidence: `path:line`
+  - **YYYY-MM-DD** — Refined: <the sharper or narrower claim>. Evidence: `path:line`
   - **YYYY-MM-DD** — No longer true: <what changed>. Evidence: `path:line` or commit
+  - **YYYY-MM-DD** — Confirmed: <the new case or place where it held>. Evidence: `path:line`
 ```
+
+"Still true", "confirmed again", or a restatement with no new evidence is noise. Don't write it.
 
 `Session Notes` takes one line:
 
 ```markdown
-- **YYYY-MM-DD** — <task in a few words> → <sections that got an entry>
+- **YYYY-MM-DD** — <task in a few words> → <sections that got an entry or comment>
 ```
+
+## Writing safely
+
+Every write is a pure insertion. Nothing already in the file changes, moves, or disappears.
+
+1. **Snapshot** right after the fresh re-read:
+   `f=$(mktemp) && cp <pkg>/INSIGHTS.md "$f" && echo "$f"` — keep the printed path.
+2. **Insert with the Edit tool, anchored on one existing line.** `new_string` must start with
+   `old_string` unchanged, then add your lines after it:
+   - new entry, including a `Session Notes` line → `old_string` is the heading line alone
+     (`## What Doesn't Work`), even when the section already has entries. Never include an
+     existing entry in `old_string`. `new_string` is that heading, a blank line, and the entry,
+     so the newest lands first.
+   - comment → `old_string` is the last line of that entry (its last sub-bullet, if it has any),
+     `new_string` is that line plus the indented dated sub-bullet.
+   Headings are unique. If a comment anchor is not, extend it by one neighbouring line; the
+   `new_string` still starts with the whole `old_string`.
+3. **Never** use the Write tool on an `INSIGHTS.md`, and never write to it from the shell
+   (`>`, `sed -i`, `tee`, `mv`, `cp`, scripts). If the Edit tool reports the file changed since
+   it was read, re-read and redo the insertion; don't fall back to Write.
+4. **Prove nothing was lost:**
+   `diff "<snapshot>" <pkg>/INSIGHTS.md | grep '^<' || echo "no existing line changed"`.
+   Any `<` line is an existing line you removed or altered. Put it back exactly with Edit
+   before doing anything else, rerun the check, and say so in the report.
 
 ## The bar
 
@@ -86,7 +115,7 @@ failure.
 
 ## Keeping the files lean
 
-- The agent only appends. Pruning is a human job, roughly monthly: remove entries about code
+- The agent only inserts. Pruning is a human job, roughly monthly: remove entries about code
   that no longer exists, merge near-duplicates, resolve contradictions, move stable material
   into the package's `docs/`.
 - Past ~200 entries a file stops helping — prune before adding more.
