@@ -10,5 +10,5 @@ description: Reads and records module-local engineering insights in DevDigest's 
 3. **Gate at the end.** Drop a candidate that is obvious to anyone reading the code, too generic to act on cold, or already in `CLAUDE.md`, `.claude/rules/`, or `docs/`. Nothing left → say "nothing worth recording" and stop.
 4. **Re-read, then compare.** Read the file again right before writing — it may have changed since step 1. A candidate already covered adds nothing, unless this session refined that entry, contradicted it, or confirmed it with new evidence: then comment under it with a dated sub-bullet. "Still true" alone is not a comment.
 5. **Insert, never overwrite.** Existing text stays byte-for-byte: no edit, delete, reorder, or new heading. Follow *Writing safely* in [reference.md](reference.md) — one-line Edit anchors, never Write or a shell command on the file, and a before/after diff that proves no line was lost.
-6. **Cap:** at most 3 entries or comments per session, plus one `Session Notes` line when you added any.
+6. **Cap:** at most 3 entries or comments per session, plus one `Session Notes` line when you added any. Every line you write, the `Session Notes` line included, carries a date and `Evidence: path:line`.
 7. **Report** one line per entry written or skipped, then stop.

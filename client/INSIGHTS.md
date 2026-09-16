@@ -21,5 +21,6 @@ fixed — add to the one that fits.
 ## Session Notes
 
 - **2026-09-16** — Severity counter pills with filter in the findings panel → Tool & Library Notes
+  - **2026-09-16** — Refined: the session's main code change, the pill row rendered for present severities. Evidence: `client/src/app/repos/[repoId]/pulls/[number]/_components/FindingsPanel/FindingsPanel.tsx:75`
 
 ## Open Questions

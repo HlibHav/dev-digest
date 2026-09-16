@@ -31,7 +31,7 @@ Fixed, in this order. Never add a heading.
 | `Codebase Patterns` | A convention or design choice you only learn by reading the code |
 | `Tool & Library Notes` | A quirk of a dependency, CLI, or config file |
 | `Recurring Errors & Fixes` | A symptom you will hit again (quote the error), its cause, and the fix |
-| `Session Notes` | One dated line per session that added an entry: the task and what was added |
+| `Session Notes` | One dated line per session that added an entry: the task, what was added, and evidence |
 | `Open Questions` | Something left unresolved or unconfirmed, so the next session knows |
 
 ## Entry format
@@ -57,11 +57,14 @@ something to it, as the last sub-bullet of that entry:
 
 "Still true", "confirmed again", or a restatement with no new evidence is noise. Don't write it.
 
-`Session Notes` takes one line:
+`Session Notes` takes one line, and like every entry it ends with evidence:
 
 ```markdown
-- **YYYY-MM-DD** — <task in a few words> → <sections that got an entry or comment>
+- **YYYY-MM-DD** — <task in a few words> → <sections that got an entry or comment>. Evidence: `path:line`
 ```
+
+The evidence is the `path:line` of the session's main code change, the place a reader opens to
+see what the task did (not a line inside `INSIGHTS.md`, whose numbers shift with every insert).
 
 ## Writing safely
 

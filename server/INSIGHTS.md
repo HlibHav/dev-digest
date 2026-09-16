@@ -26,6 +26,8 @@ fixed — add to the one that fits.
 ## Session Notes
 
 - **2026-09-16** — Run Cost Badge (persist `agent_runs.cost_usd` + `batch_id`, surface cost on PR list / timeline / trace) → What Doesn't Work, Codebase Patterns; e2e → Recurring Errors & Fixes
+  - **2026-09-16** — Refined: the session's main code change, the run cost persisted when a run completes. Evidence: `server/src/modules/reviews/run-executor.ts:253`
 - **2026-09-16** — PR-list cost switched to the sum of all completed runs (SQL `SUM … GROUP BY pr_id`), docs/specs written per package → Codebase Patterns, Tool & Library Notes
+  - **2026-09-16** — Refined: the session's main code change, the per-PR `sum(cost_usd)` query. Evidence: `server/src/modules/pulls/routes.ts:155`
 
 ## Open Questions
