@@ -7,8 +7,9 @@ Local-first AI PR reviewer. Course starter: Part-0 works end to end; each lesson
 
 ## Before answering
 
-Search the relevant package's `docs/`, `specs/`, and `INSIGHTS.md` first — they are curated
-and may already answer it. Then read code.
+A task that concerns a package starts with the `engineering-insights` skill: read that
+package's `INSIGHTS.md` before any other work. Don't skip it. Then its `docs/` and `specs/` —
+they are curated and may already answer it. Then read code.
 
 ## Conventions (not obvious from code)
 
@@ -30,4 +31,5 @@ and may already answer it. Then read code.
 - Working inside a package → that package's CLAUDE.md: `server/CLAUDE.md`, `client/CLAUDE.md`,
   `reviewer-core/CLAUDE.md`, `e2e/CLAUDE.md` (auto-load is unreliable, VS Code #24987)
 - Agent prompt templates, model choice → `docs/agent-prompts/`
-- Recording a finding → the touched package's `INSIGHTS.md`; cross-package → the most affected package
+- Finishing a non-trivial task → `engineering-insights` to record what was learned in the touched
+  package's `INSIGHTS.md`. Don't skip it; "nothing worth recording" is a valid outcome.
