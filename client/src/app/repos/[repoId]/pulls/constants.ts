@@ -49,6 +49,9 @@ export const COLUMN_KEYS: string[] = [
   "updated",
 ];
 
+/** Columns whose header has a tooltip (i18n key under `list.columnHints`). */
+export const COLUMN_HINT_KEYS: ReadonlySet<string> = new Set(["cost"]);
+
 /** Number of skeleton rows shown while loading. */
 export const SKELETON_ROWS = 4;
 

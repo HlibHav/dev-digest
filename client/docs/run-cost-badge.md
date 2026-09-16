@@ -28,6 +28,10 @@ The PR list grid gained a 7th track. `src/app/repos/[repoId]/pulls/constants.ts`
 keeps `GRID` and `COLUMN_KEYS` in step: `"cost"` sits between `"status"` and
 `"updated"`, so Updated stays last and right-aligned.
 
+The header row itself is `_components/PRListHeader/`. Columns listed in
+`COLUMN_HINT_KEYS` get a native `title` from `list.columnHints.<key>`; today only
+Cost has one, so the column explains that it sums every completed run.
+
 The timeline renders the badge only when the run has settled as `done`. Other
 statuses keep the original single-line layout from the design's error row.
 

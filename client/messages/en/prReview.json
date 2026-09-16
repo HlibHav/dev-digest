@@ -95,6 +95,9 @@
       "cost": "Cost",
       "updated": "Updated"
     },
+    "columnHints": {
+      "cost": "Total cost of all completed runs of this PR"
+    },
     "filesCount": "{count} files",
     "errorTitle": "Couldn’t load pull requests",
     "errorBody": "The engine returned an error.",

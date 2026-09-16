@@ -34,7 +34,9 @@ detailed. The trace tile reuses the drawer's existing `Stat` atom.
 
 ## i18n keys
 
-`common.runCost.tokens`, `prReview.list.columns.cost`, `runs.trace.stat.cost`.
+`common.runCost.tokens`, `prReview.list.columns.cost`, `prReview.list.columnHints.cost`
+(the Cost header's native `title`: "Total cost of all completed runs of this PR"),
+`runs.trace.stat.cost`.
 
 ## Acceptance criteria
 

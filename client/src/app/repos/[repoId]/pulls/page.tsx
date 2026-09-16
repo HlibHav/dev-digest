@@ -16,10 +16,11 @@ import { RepoNotFound } from "@/components/repo-not-found";
 import { usePulls, useRefreshRepo } from "@/lib/hooks";
 import { useActiveRepo, useRepoNotFound } from "@/lib/repo-context";
 import { ApiError } from "@/lib/api";
-import { COLUMN_KEYS, SKELETON_ROWS } from "./constants";
+import { SKELETON_ROWS } from "./constants";
 import { s } from "./styles";
 import { PRRow } from "./_components/PRRow";
 import { FilterBar } from "./_components/FilterBar";
+import { PRListHeader } from "./_components/PRListHeader";
 
 /** Open PRs carry a derived review status; everything else is merged/closed. */
 const OPEN_STATUSES = new Set(["needs_review", "reviewed", "stale"]);
@@ -96,13 +97,7 @@ export default function PullsPage() {
           onRefresh={() => refresh.mutate(repoId)}
           refreshing={refresh.isPending}
         />
-        <div style={s.headRow}>
-          {COLUMN_KEYS.map((key, i) => (
-            <div key={key} style={s.headCell(i === COLUMN_KEYS.length - 1)}>
-              {t(`list.columns.${key}`)}
-            </div>
-          ))}
-        </div>
+        <PRListHeader />
 
         {isLoading ? (
           <div style={s.loadingStack}>
