@@ -64,6 +64,7 @@ export async function listRunsForPull(
     ran_at: run.ranAt ? run.ranAt.toISOString() : null,
     score: run.score,
     blockers: run.blockers,
+    cost_usd: run.costUsd,
   }));
 }
 
@@ -121,6 +122,8 @@ export async function createAgentRun(
     prId: string;
     provider: string | null;
     model: string | null;
+    /** Shared by every run of one review request. */
+    batchId: string;
   },
 ): Promise<string> {
   const [row] = await db
@@ -131,6 +134,7 @@ export async function createAgentRun(
       prId: values.prId,
       provider: values.provider,
       model: values.model,
+      batchId: values.batchId,
       status: 'running',
       source: 'local',
     })
@@ -154,6 +158,8 @@ export async function completeAgentRun(
     blockers?: number | null;
     /** Failure reason (status='failed') / cancellation note. Null clears it. */
     error?: string | null;
+    /** USD cost of the run; null when unpriced or the run did not finish. */
+    costUsd?: number | null;
   },
 ): Promise<void> {
   await db
@@ -168,6 +174,7 @@ export async function completeAgentRun(
       score: values.score ?? null,
       blockers: values.blockers ?? null,
       error: values.error ?? null,
+      costUsd: values.costUsd ?? null,
     })
     .where(eq(t.agentRuns.id, runId));
 }

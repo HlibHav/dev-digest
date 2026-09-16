@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, integer, jsonb, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, integer, jsonb, timestamp, doublePrecision } from 'drizzle-orm/pg-core';
 import { workspaces } from './core';
 import { agents } from './agents';
 import { pullRequests } from './pulls';
@@ -28,6 +28,10 @@ export const agentRuns = pgTable('agent_runs', {
   score: integer('score'),
   /** Findings that tripped the agent's gate (severity ≥ ciFailOn). */
   blockers: integer('blockers'),
+  /** USD cost summed over the run's LLM calls; null = no price data (never 0 by default). */
+  costUsd: doublePrecision('cost_usd'),
+  /** Groups the runs created by one review request (POST /pulls/:id/review). */
+  batchId: uuid('batch_id'),
 });
 
 /** Whole trace of one run as a SINGLE jsonb document. */

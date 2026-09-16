@@ -9,6 +9,7 @@ import { render, screen, cleanup } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import type { RunSummary } from "@devdigest/shared";
 import messages from "../../../../../../../../messages/en/prReview.json";
+import common from "../../../../../../../../messages/en/common.json";
 import { RunHistory } from "./RunHistory";
 
 afterEach(cleanup);
@@ -30,13 +31,14 @@ function run(o: Partial<RunSummary>): RunSummary {
     ran_at: "2026-06-11T18:44:34.000Z",
     score: null,
     blockers: null,
+    cost_usd: null,
     ...o,
   };
 }
 
 function renderRuns(runs: RunSummary[]) {
   return render(
-    <NextIntlClientProvider locale="en" messages={{ prReview: messages }}>
+    <NextIntlClientProvider locale="en" messages={{ prReview: messages, common }}>
       <RunHistory runs={runs} onOpenTrace={() => {}} />
     </NextIntlClientProvider>,
   );
@@ -71,5 +73,22 @@ describe("RunHistory — outcome badge", () => {
   it("a running run reads 'running'", () => {
     renderRuns([run({ status: "running", score: null, blockers: null })]);
     expect(screen.getByText("running")).toBeInTheDocument();
+  });
+});
+
+describe("RunHistory — tokens and cost under the time", () => {
+  it("a done run shows total tokens and its precise cost", () => {
+    renderRuns([run({ status: "done", score: 38, tokens_in: 8457, tokens_out: 662, cost_usd: 0.0013 })]);
+    expect(screen.getByText("9,119 tok · $0.0013")).toBeInTheDocument();
+  });
+
+  it("a done run without cost data shows — instead of $0.00", () => {
+    renderRuns([run({ status: "done", score: 64, tokens_in: 12000, tokens_out: 11, cost_usd: null })]);
+    expect(screen.getByText("12,011 tok · —")).toBeInTheDocument();
+  });
+
+  it("a failed run shows no tokens/cost line", () => {
+    renderRuns([run({ status: "failed", error: "429 quota", tokens_in: 0, tokens_out: 0, cost_usd: null })]);
+    expect(screen.queryByText(/tok ·/)).not.toBeInTheDocument();
   });
 });
