@@ -312,6 +312,14 @@ d('A2 reviews + agents (Testcontainers pg)', () => {
     await app.close();
   });
 
+  it('run cost: agent_runs is indexed for the PR-list cost lookup (pr_id IN …, status, newest first)', async () => {
+    const rows = await pg.handle.sql<{ indexdef: string }[]>`
+      select indexdef from pg_indexes where tablename = 'agent_runs'`;
+    expect(rows.map((r) => r.indexdef)).toContainEqual(
+      expect.stringMatching(/USING btree \(pr_id, status, ran_at DESC/),
+    );
+  });
+
   it('run cost: each review request is its own batch; the PR list shows the latest batch cost', async () => {
     const app = await appWith(REVIEW_FIXTURE);
     const { repo, pr } = await setupRepoAndPr(pg.handle.db, workspaceId);
