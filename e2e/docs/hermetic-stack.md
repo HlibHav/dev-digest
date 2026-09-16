@@ -49,14 +49,17 @@ sequenceDiagram
 
 ## What the seed shows for the Run Cost lab
 
-The seed (`server/src/db/seed.ts`) creates a review but no `agent_runs` rows,
-and flows must never trigger an LLM call. So in the hermetic stack:
+The seed (`server/src/db/seed.ts`) inserts a review but no `agent_runs` rows,
+and flows must never trigger an LLM call. From that, and from the server and
+client tests rather than an e2e run:
 
-- the PR list Cost column shows `—` for every PR;
+- `GET /repos/:id/pulls` returns `cost_usd: null` for every seeded PR, which the
+  Cost column renders as `—` (`server/test/reviews.it.test.ts`,
+  `client/src/app/repos/[repoId]/pulls/_components/PRRow/PRRow.test.tsx`);
 - the PR detail timeline has no completed runs, so there is no `tok · $` line;
-- no trace exists to open a COST tile.
+- there is no run trace to open a COST tile on.
 
-Assert only the stable parts, such as the `Cost` column header or the `—`
-placeholder. A real dollar value needs a completed run, which needs a model
-call, so it is checked by server integration tests and client component tests
-instead, not by e2e.
+No flow asserts on cost yet. If one is added, assert only the stable parts, such
+as the `Cost` column header or the `—` placeholder. A real dollar value needs a
+completed run, which needs a model call, so it belongs in server integration
+tests and client component tests instead.
