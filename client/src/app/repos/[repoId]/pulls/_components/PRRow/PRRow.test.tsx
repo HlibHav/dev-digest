@@ -1,5 +1,5 @@
 /**
- * PRRow — the COST cell shows the latest review request's cost, and "—" for a
+ * PRRow — the COST cell shows the PR's summed run cost, and "—" for a
  * PR whose runs carry no cost data (never reviewed, or reviewed before cost
  * was persisted).
  */
@@ -46,7 +46,7 @@ function renderRow(p: PrMeta) {
 }
 
 describe("PRRow — cost cell", () => {
-  it("shows the compact cost of the latest review request", () => {
+  it("shows the compact summed run cost of the PR", () => {
     renderRow(pr({ cost_usd: 0.014 }));
     expect(screen.getByText("$0.014")).toBeInTheDocument();
   });

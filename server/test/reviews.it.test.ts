@@ -312,7 +312,7 @@ d('A2 reviews + agents (Testcontainers pg)', () => {
     await app.close();
   });
 
-  it('run cost: agent_runs is indexed for the PR-list cost lookup (pr_id IN …, status, newest first)', async () => {
+  it('run cost: agent_runs is indexed for the PR-list cost lookup (pr_id IN …, status)', async () => {
     const rows = await pg.handle.sql<{ indexdef: string }[]>`
       select indexdef from pg_indexes where tablename = 'agent_runs'`;
     expect(rows.map((r) => r.indexdef)).toContainEqual(
@@ -320,7 +320,7 @@ d('A2 reviews + agents (Testcontainers pg)', () => {
     );
   });
 
-  it('run cost: each review request is its own batch; the PR list shows the latest batch cost', async () => {
+  it('run cost: the PR list sums every completed run of the PR; failed and unpriced runs add nothing', async () => {
     const app = await appWith(REVIEW_FIXTURE);
     const { repo, pr } = await setupRepoAndPr(pg.handle.db, workspaceId);
     const agent = (
@@ -340,13 +340,34 @@ d('A2 reviews + agents (Testcontainers pg)', () => {
 
     expect(runs).toHaveLength(2);
     expect(runs.every((r) => r.status === 'done' && (r.costUsd ?? 0) > 0)).toBe(true);
+    // each request still gets its own batch, even though the list no longer groups by it
     expect(runs[0]!.batchId).not.toBe(runs[1]!.batchId);
 
-    const latest = [...runs].sort((a, b) => b.ranAt.getTime() - a.ranAt.getTime())[0]!;
+    // a failed run's cost and a done run without price data must not change the sum
+    await pg.handle.db.insert(t.agentRuns).values([
+      { workspaceId, prId: pr.id, status: 'failed', costUsd: 5 },
+      { workspaceId, prId: pr.id, status: 'done', costUsd: null },
+    ]);
+
     const pulls = (await app.inject({ method: 'GET', url: `/repos/${repo.id}/pulls` })).json();
     const listed = pulls.find((p: { id: string }) => p.id === pr.id);
-    // only the latest request counts, not both requests summed
-    expect(listed.cost_usd).toBeCloseTo(latest.costUsd!, 10);
+    // both requests summed, not only the latest one
+    expect(listed.cost_usd).toBeCloseTo(runs[0]!.costUsd! + runs[1]!.costUsd!, 10);
+
+    await app.close();
+  });
+
+  it('run cost: a PR with no runs, or only unpriced runs, lists a null cost (never 0)', async () => {
+    const app = await appWith(REVIEW_FIXTURE);
+    const { repo, pr } = await setupRepoAndPr(pg.handle.db, workspaceId);
+    const listedCost = async () => {
+      const pulls = (await app.inject({ method: 'GET', url: `/repos/${repo.id}/pulls` })).json();
+      return pulls.find((p: { id: string }) => p.id === pr.id).cost_usd;
+    };
+
+    expect(await listedCost()).toBeNull();
+    await pg.handle.db.insert(t.agentRuns).values({ workspaceId, prId: pr.id, status: 'done', costUsd: null });
+    expect(await listedCost()).toBeNull();
 
     await app.close();
   });

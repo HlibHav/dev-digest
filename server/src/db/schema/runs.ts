@@ -32,11 +32,11 @@ export const agentRuns = pgTable(
     blockers: integer('blockers'),
     /** USD cost summed over the run's LLM calls; null = no price data (never 0 by default). */
     costUsd: doublePrecision('cost_usd'),
-    /** Groups the runs created by one review request (POST /pulls/:id/review). */
+    /** Groups the runs created by one review request (POST /pulls/:id/review). The PR-list COST sums all done runs and does not read it. */
     batchId: uuid('batch_id'),
   },
   (t) => ({
-    // PR-list COST lookup: pr_id IN (…) AND status = 'done' ORDER BY ran_at DESC.
+    // PR-list COST (pr_id IN (…) AND status = 'done', summed per PR) and the newest-first run history.
     prStatusRanIdx: index('agent_runs_pr_status_ran_idx').on(t.prId, t.status, t.ranAt.desc()),
   }),
 );

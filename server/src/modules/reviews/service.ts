@@ -117,7 +117,7 @@ export class ReviewService {
     // stream. The actual (slow) review runs in the background below.
     const runs: { run_id: string; agent_id: string; agent_name: string }[] = [];
     const jobs: { agent: AgentRow; runId: string }[] = [];
-    // One batch per request: the PR list's COST column sums the latest batch.
+    // One batch per request: marks which runs one review request created.
     const batchId = randomUUID();
     for (const agent of targets) {
       const runId = await this.repo.createAgentRun({

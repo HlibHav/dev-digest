@@ -203,7 +203,7 @@ describe('run cost contracts', () => {
     expect(() => RunSummary.parse(run)).toThrow();
   });
 
-  it('PrMeta carries the latest review request cost', () => {
+  it('PrMeta carries the summed run cost', () => {
     const pr = {
       number: 482,
       title: 't',
