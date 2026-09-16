@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(/server/clones/**)",
+      "Edit(/server/clones/**)",
+      "Edit(/server/src/db/migrations/meta/**)",
+      "Bash(docker compose down -v *)",
+      "Bash(docker compose down --volumes *)"
+    ]
+  }
+}

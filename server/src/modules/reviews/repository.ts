@@ -144,6 +144,7 @@ export class ReviewRepository {
     prId: string;
     provider: string | null;
     model: string | null;
+    batchId: string;
   }): Promise<string> {
     return runRepo.createAgentRun(this.db, values);
   }
@@ -163,6 +164,8 @@ export class ReviewRepository {
       blockers?: number | null;
       /** Failure reason (status='failed') / cancellation note. Null clears it. */
       error?: string | null;
+      /** USD cost of the run; null when unpriced or the run did not finish. */
+      costUsd?: number | null;
     },
   ): Promise<void> {
     return runRepo.completeAgentRun(this.db, runId, values);

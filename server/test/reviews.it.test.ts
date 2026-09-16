@@ -209,6 +209,13 @@ d('A2 reviews + agents (Testcontainers pg)', () => {
     expect(run!.findingsCount).toBe(1);
     expect(run!.grounding).toBe('1/2 passed');
 
+    // run cost: persisted on the row, copied into the trace stats, and on the run history
+    expect(run!.costUsd).toBeGreaterThan(0);
+    expect(run!.batchId).toEqual(expect.any(String));
+    expect(trace.stats.cost_usd).toBeCloseTo(run!.costUsd!, 10);
+    const history = (await app.inject({ method: 'GET', url: `/pulls/${pr.id}/runs` })).json();
+    expect(history[0].cost_usd).toBeCloseTo(run!.costUsd!, 10);
+
     await app.close();
   });
 
@@ -297,6 +304,105 @@ d('A2 reviews + agents (Testcontainers pg)', () => {
     ).json();
     // seed has 2 enabled agents; we may have created more above in this PR's ws.
     expect(body.runs.length).toBeGreaterThanOrEqual(2);
+    // every run of one request shares a single batch
+    const rows = await pg.handle.db.select().from(t.agentRuns).where(eq(t.agentRuns.prId, pr.id));
+    const batches = new Set(rows.map((r) => r.batchId));
+    expect(batches.size).toBe(1);
+    expect([...batches][0]).toEqual(expect.any(String));
+    await app.close();
+  });
+
+  it('run cost: agent_runs is indexed for the PR-list cost lookup (pr_id IN …, status)', async () => {
+    const rows = await pg.handle.sql<{ indexdef: string }[]>`
+      select indexdef from pg_indexes where tablename = 'agent_runs'`;
+    expect(rows.map((r) => r.indexdef)).toContainEqual(
+      expect.stringMatching(/USING btree \(pr_id, status, ran_at DESC/),
+    );
+  });
+
+  it('run cost: the PR list sums every completed run of the PR; failed and unpriced runs add nothing', async () => {
+    const app = await appWith(REVIEW_FIXTURE);
+    const { repo, pr } = await setupRepoAndPr(pg.handle.db, workspaceId);
+    const agent = (
+      await app.inject({
+        method: 'POST',
+        url: '/agents',
+        payload: { name: 'Cost', provider: 'openai', model: 'gpt-4.1', system_prompt: 'cost' },
+      })
+    ).json();
+
+    const review = () =>
+      app.inject({ method: 'POST', url: `/pulls/${pr.id}/review`, payload: { agentId: agent.id } });
+    expect((await review()).statusCode).toBe(200);
+    await waitForPrRuns(pg.handle.db, pr.id, { expected: 1 });
+    expect((await review()).statusCode).toBe(200);
+    const runs = await waitForPrRuns(pg.handle.db, pr.id, { expected: 2 });
+
+    expect(runs).toHaveLength(2);
+    expect(runs.every((r) => r.status === 'done' && (r.costUsd ?? 0) > 0)).toBe(true);
+    // each request still gets its own batch, even though the list no longer groups by it
+    expect(runs[0]!.batchId).not.toBe(runs[1]!.batchId);
+
+    // a failed run's cost and a done run without price data must not change the sum
+    await pg.handle.db.insert(t.agentRuns).values([
+      { workspaceId, prId: pr.id, status: 'failed', costUsd: 5 },
+      { workspaceId, prId: pr.id, status: 'done', costUsd: null },
+    ]);
+
+    const pulls = (await app.inject({ method: 'GET', url: `/repos/${repo.id}/pulls` })).json();
+    const listed = pulls.find((p: { id: string }) => p.id === pr.id);
+    // both requests summed, not only the latest one
+    expect(listed.cost_usd).toBeCloseTo(runs[0]!.costUsd! + runs[1]!.costUsd!, 10);
+
+    await app.close();
+  });
+
+  it('PR list: latest_findings counts the latest review\'s findings by severity', async () => {
+    const app = await appWith(REVIEW_FIXTURE);
+    const { repo, pr } = await setupRepoAndPr(pg.handle.db, workspaceId);
+    const listed = async () => {
+      const pulls = (await app.inject({ method: 'GET', url: `/repos/${repo.id}/pulls` })).json();
+      return pulls.find((p: { id: string }) => p.id === pr.id).latest_findings;
+    };
+    expect(await listed()).toBeNull();
+
+    const agent = (
+      await app.inject({
+        method: 'POST',
+        url: '/agents',
+        payload: { name: 'Findings', provider: 'openai', model: 'gpt-4.1', system_prompt: 'f' },
+      })
+    ).json();
+    const review = () =>
+      app.inject({ method: 'POST', url: `/pulls/${pr.id}/review`, payload: { agentId: agent.id } });
+    expect((await review()).statusCode).toBe(200);
+    await waitForPrRuns(pg.handle.db, pr.id, { expected: 1 });
+    expect((await review()).statusCode).toBe(200);
+    await waitForPrRuns(pg.handle.db, pr.id, { expected: 2 });
+
+    // newest review first; grounding keeps one CRITICAL finding per review
+    const reviews = (await app.inject({ method: 'GET', url: `/pulls/${pr.id}/reviews` })).json();
+    expect(reviews).toHaveLength(2);
+    expect(await listed()).toEqual({
+      review_id: reviews[0].id,
+      counts: { CRITICAL: 1, WARNING: 0, SUGGESTION: 0 },
+    });
+
+    await app.close();
+  });
+
+  it('run cost: a PR with no runs, or only unpriced runs, lists a null cost (never 0)', async () => {
+    const app = await appWith(REVIEW_FIXTURE);
+    const { repo, pr } = await setupRepoAndPr(pg.handle.db, workspaceId);
+    const listedCost = async () => {
+      const pulls = (await app.inject({ method: 'GET', url: `/repos/${repo.id}/pulls` })).json();
+      return pulls.find((p: { id: string }) => p.id === pr.id).cost_usd;
+    };
+
+    expect(await listedCost()).toBeNull();
+    await pg.handle.db.insert(t.agentRuns).values({ workspaceId, prId: pr.id, status: 'done', costUsd: null });
+    expect(await listedCost()).toBeNull();
+
     await app.close();
   });
 });

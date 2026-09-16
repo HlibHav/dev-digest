@@ -12,8 +12,11 @@ import {
   EvalRun,
   MemoryItem,
   RunTrace,
+  RunStats,
+  RunSummary,
   Settings,
   Repo,
+  PrMeta,
   PrDetail,
 } from '@devdigest/shared';
 
@@ -169,6 +172,55 @@ describe('AI contracts parse fixtures', () => {
   });
 });
 
+describe('run cost contracts', () => {
+  const stats = { duration_ms: 8200, tokens_in: 8457, tokens_out: 662, findings: 3, grounding: '3/3 passed' };
+  const run = {
+    run_id: 'run-1',
+    agent_id: 'agent-1',
+    agent_name: 'Security Reviewer',
+    provider: 'openrouter',
+    model: 'deepseek/deepseek-v4-flash',
+    status: 'done',
+    error: null,
+    duration_ms: 8200,
+    tokens_in: 8457,
+    tokens_out: 662,
+    findings_count: 3,
+    grounding: '3/3 passed',
+    ran_at: '2026-09-16T10:00:00.000Z',
+    score: 38,
+    blockers: 2,
+  };
+
+  it('RunStats carries cost_usd, and a legacy trace without it still parses', () => {
+    expect(RunStats.parse({ ...stats, cost_usd: 0.0013 }).cost_usd).toBe(0.0013);
+    expect(RunStats.parse(stats).cost_usd).toBeUndefined();
+  });
+
+  it('RunSummary requires cost_usd, null when the run has no cost data', () => {
+    expect(RunSummary.parse({ ...run, cost_usd: 0.0013 }).cost_usd).toBe(0.0013);
+    expect(RunSummary.parse({ ...run, cost_usd: null }).cost_usd).toBeNull();
+    expect(() => RunSummary.parse(run)).toThrow();
+  });
+
+  it('PrMeta carries the summed run cost', () => {
+    const pr = {
+      number: 482,
+      title: 't',
+      author: 'a',
+      branch: 'b',
+      base: 'main',
+      head_sha: 'sha',
+      additions: 1,
+      deletions: 1,
+      files_count: 1,
+      status: 'needs_review',
+    };
+    expect(PrMeta.parse({ ...pr, cost_usd: 0.014 }).cost_usd).toBe(0.014);
+    expect(PrMeta.parse({ ...pr, cost_usd: null }).cost_usd).toBeNull();
+  });
+});
+
 describe('platform DTOs', () => {
   it('Settings defaults + passthrough', () => {
     const s = Settings.parse({ extra_key: 'x' });
@@ -206,5 +258,30 @@ describe('platform DTOs', () => {
         commits: [],
       }),
     ).not.toThrow();
+  });
+});
+
+describe('PR list findings contracts', () => {
+  const pr = {
+    number: 482,
+    title: 't',
+    author: 'a',
+    branch: 'b',
+    base: 'main',
+    head_sha: 'sha',
+    additions: 1,
+    deletions: 1,
+    files_count: 1,
+    status: 'reviewed',
+  };
+
+  it('PrMeta carries the latest review id with per-severity counts', () => {
+    const latest = { review_id: 'rev-1', counts: { CRITICAL: 1, WARNING: 0, SUGGESTION: 2 } };
+    expect(PrMeta.parse({ ...pr, latest_findings: latest }).latest_findings).toEqual(latest);
+  });
+
+  it('PrMeta latest_findings is null for an unreviewed PR and optional for other endpoints', () => {
+    expect(PrMeta.parse({ ...pr, latest_findings: null }).latest_findings).toBeNull();
+    expect(PrMeta.parse(pr).latest_findings).toBeUndefined();
   });
 });

@@ -1,0 +1,1 @@
+CREATE INDEX "agent_runs_pr_status_ran_idx" ON "agent_runs" USING btree ("pr_id","status","ran_at" DESC NULLS LAST);
