@@ -16,8 +16,6 @@ rewritten by `tsc`. Run the API through `tsx` (`pnpm dev`) everywhere.
 
 ## Map
 
-- Feature = `src/modules/<name>/routes.ts` plugin, registered by hand in
-  `src/modules/index.ts`.
 - `src/platform/container.ts` is the composition root. External I/O goes only
   through the adapters it exposes; test doubles live in `src/adapters/mocks.ts`.
 - `src/modules/repo-intel/` is the codebase indexer. Read its own README
@@ -46,6 +44,8 @@ Two different mechanisms, don't conflate them:
   writes it, shared by every checkout on this machine.
 - Seeded agents use `openrouter` — reviews fail without `OPENROUTER_API_KEY`
   even with OpenAI/Anthropic keys set.
+- Integration tests (`*.it.test.ts`) skip silently without Docker. Skipped is not
+  passed — say so instead of reporting green.
 - Migrations never run on boot — `relation ... does not exist` means you
   skipped `pnpm db:migrate`.
 - `GET /repos/:id/pulls` and `GET /pulls/:id` write to the DB (GitHub sync) —

@@ -1,64 +1,33 @@
 > **Priority.** This is a course repo. Where course conventions conflict with
 > global rules (`~/.claude`), course conventions win inside this repo.
 
-# DevDigest — agent map
+# DevDigest — agent guide
+
+Local-first AI PR reviewer. Course starter: Part-0 works end to end; each lesson adds one feature.
 
 ## Before answering
 
-Search the touched package's `docs/`, `specs/`, and `INSIGHTS.md` first — they
-may already answer the question. Read code only after that.
+Search the relevant package's `docs/`, `specs/`, and `INSIGHTS.md` first — they are curated
+and may already answer it. Then read code.
 
-## What this repo is
+## Conventions (not obvious from code)
 
-Local-first AI pull-request review. Course starter: Part-0 works end to end;
-each lesson adds one feature. Unused DB tables, platform modules, and prompt
-slots are intentional scaffolding for later lessons — don't delete them as
-dead code, don't wire them up unless the task asks for it.
+- Not a monorepo workspace: each package has its own `package.json` and lockfile.
+  Cross-package code is shared as raw TypeScript through tsconfig path aliases.
+- `server` cannot boot, typecheck, or test until `reviewer-core/node_modules` exists.
+- Modules are registered statically in `server/src/modules/index.ts` (no filesystem autoload).
+- ESM: relative imports carry the `.js` extension. Exception: `server/src/db/schema*`
+  imports are extensionless.
 
-## Packages
+## Do-not-touch
 
-No workspace — 4 independent packages, each with its own lockfile. Run
-commands from inside the package directory. Node >= 22.
+- `server/src/vendor/shared/` and `server/src/db/migrations/` — never hand-edit without coordination.
+- `server/clones/` — cloned repos, possibly a copy of this one. Don't read or search it.
 
+## Use when
 
-| Dir              | Manager | Role                             | Verify                          |
-| ---------------- | ------- | -------------------------------- | ------------------------------- |
-| `server/`        | pnpm    | Fastify API, Drizzle, repo-intel | `pnpm typecheck && pnpm test`   |
-| `reviewer-core/` | npm     | Pure review engine, TS source    | `npm run typecheck && npm test` |
-| `client/`        | pnpm    | Next.js 15 studio                | `pnpm typecheck && pnpm test`   |
-| `e2e/`           | npm     | Browser flows, seeded data       | `npm run e2e:hermetic`          |
-
-
-## Cross-package wiring
-
-- Packages import each other as raw TypeScript through tsconfig path aliases,
-not as published modules.
-- `server` cannot boot, typecheck, or test until `reviewer-core` has
-`node_modules` (`cd reviewer-core && npm ci`).
-- A change in `reviewer-core/` must also pass `server`'s checks.
-- `@devdigest/shared` exists twice: `server/src/vendor/shared` is canonical,  
-`client/src/vendor/shared` is a hand copy — see  
-`.claude/rules/shared-contracts.md`.
-
-## Definition of done
-
-- Run the Verify command (above) for every package you touched.
-- `server` integration tests (`*.it.test.ts`) skip silently without Docker. A
-run with skipped tests has not verified DB behaviour — say so, don't call it green.
-
-## Never
-
-- Read, grep, or glob `server/clones/` — cloned user repos, possibly a full
-copy of this repo. Matches there point you at the wrong files.
-
-## Read when
-
-- The package `CLAUDE.md` for the area you're touching — `server/CLAUDE.md`,
-`client/CLAUDE.md`, `reviewer-core/CLAUDE.md`, `e2e/CLAUDE.md`. These load
-on their own when you open a matching file, but auto-load has a known bug
-(VS Code extension #24987) — open the file yourself if in doubt.
-- `<package>/INSIGHTS.md` for that package's past findings. Add a line after
-a non-trivial task; skip routine changes. A finding spanning 2+ packages
-goes in the INSIGHTS.md of the most-affected package (e.g. `vendor/shared`
-→ `server`).
-
+- Stack, commands, architecture, how to run → `README.md`
+- Working inside a package → that package's CLAUDE.md: `server/CLAUDE.md`, `client/CLAUDE.md`,
+  `reviewer-core/CLAUDE.md`, `e2e/CLAUDE.md` (auto-load is unreliable, VS Code #24987)
+- Agent prompt templates, model choice → `docs/agent-prompts/`
+- Recording a finding → the touched package's `INSIGHTS.md`; cross-package → the most affected package
