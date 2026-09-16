@@ -14,8 +14,12 @@ fixed — add to the one that fits.
 
 ## Tool & Library Notes
 
+- **2026-09-16** — Vendored `Chip` renders a plain `<button>` with no `aria-pressed` prop, and `Toggle` renders `role="switch"`, not `button`. In tests, query the toggle with `getByRole("switch")` and assert a chip filter's active state through what it renders (the filtered cards), not an ARIA attribute; add the prop upstream rather than patching `src/vendor/ui` locally. Evidence: `client/src/vendor/ui/primitives/Chip.tsx:4`, `client/src/vendor/ui/primitives/Toggle.tsx:15`
+
 ## Recurring Errors & Fixes
 
 ## Session Notes
+
+- **2026-09-16** — Severity counter pills with filter in the findings panel → Tool & Library Notes
 
 ## Open Questions

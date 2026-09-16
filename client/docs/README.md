@@ -9,3 +9,4 @@ targets.
 ## Contents
 
 - `run-cost-badge.md` — where the badge is wired, which hook and endpoint feed each surface, tests.
+- `severity-counters.md` — the severity pill row in the findings panel: the two derived lists, helpers, tests.
