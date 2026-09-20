@@ -110,9 +110,5 @@ No linter or formatter is configured in any package: typecheck + tests are the g
   valid outcome. The always-on guardrail is `.claude/rules/onion-boundaries.md`.
 - Placing a new file under `client/src` — which folder, when to promote to shared, import
   directions → `frontend-ui-architecture`
-- Before calling a change done, and before any commit or PR → `pr-self-review`: a second pass over
-  the **uncommitted** diff that routes each changed surface to the skills that own it (`client/**` →
-  `frontend-ui-architecture` + React skills; `server/**`, `reviewer-core/**` → `onion-architecture` +
-  Fastify/Drizzle). It routes and reports; it is not the typecheck/test gate above.
 - Finishing a non-trivial task → `engineering-insights` to record what was learned in the touched
   package's `INSIGHTS.md`. Don't skip it; "nothing worth recording" is a valid outcome.
