@@ -88,7 +88,7 @@ Static by design: auditable, and it avoids parsing every skill's frontmatter on 
 
 | Changed paths | Load |
 |---|---|
-| `client/**` | `frontend-ui-architecture`, `react-best-practices`, `react-testing-library`, `security`, `zod` |
+| `client/**` | `frontend-ui-architecture`, `next-best-practices`, `react-best-practices`, `react-testing-library`, `security`, `zod` |
 | `server/**`, `reviewer-core/**` | `onion-architecture`, `fastify-best-practices`, `drizzle-orm-patterns`, `security`, `zod` |
 | `server/src/db/**` | the above **plus** `postgresql-table-design` |
 | `e2e/**` | `e2e/CLAUDE.md` conventions — no skill owns this surface yet |
