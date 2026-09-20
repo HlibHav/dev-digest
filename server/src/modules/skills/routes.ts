@@ -48,14 +48,26 @@ const UpdateSkillBody = z.object({
   enabled: z.boolean().optional(),
 });
 
+/**
+ * Base64 payload, validated at the edge.
+ *
+ * `Buffer.from(x, 'base64')` never throws — it silently skips anything that is
+ * not an alphabet character — so garbage would otherwise decode to junk bytes
+ * and reach the parser as "not a zip, not markdown". The length cap is derived
+ * from the byte cap (4 base64 chars per 3 bytes, plus padding and newlines).
+ */
 const ImportPreviewBody = z.object({
   filename: z.string().min(1),
-  content_base64: z.string().min(1),
+  content_base64: z
+    .string()
+    .min(1)
+    .max(Math.ceil((IMPORT_MAX_UPLOAD_BYTES / 3) * 4) + 1024)
+    .regex(/^[A-Za-z0-9+/\s]*={0,2}$/, 'content_base64 must be base64'),
 });
 
 export default async function skillsRoutes(appBase: FastifyInstance) {
   const app = appBase.withTypeProvider<ZodTypeProvider>();
-  const service = new SkillsService(app.container);
+  const service = new SkillsService(app.container.skillsRepo);
 
   app.get('/skills', async (req) => {
     const { workspaceId } = await getContext(app.container, req);

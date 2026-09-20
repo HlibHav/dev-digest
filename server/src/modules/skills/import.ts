@@ -157,11 +157,34 @@ export function parseSkillUpload(filename: string, bytes: Uint8Array): SkillImpo
   return previewFromMarkdown(text, filename, []);
 }
 
+/**
+ * `unzipSync`, with fflate's failures turned into a 422 instead of a 500.
+ *
+ * The bytes are an upload, so "this is not a valid archive" is an ordinary
+ * client mistake, not a server fault — and fflate signals it by throwing a
+ * plain `Error` (`invalid zip data`, `unexpected EOF`, …) from deep inside.
+ */
+function readArchive(
+  bytes: Uint8Array,
+  options: Parameters<typeof unzipSync>[1],
+): Record<string, Uint8Array> {
+  try {
+    return unzipSync(bytes, options);
+  } catch (err) {
+    throw new ValidationError(`Could not read the archive: ${(err as Error).message}`);
+  }
+}
+
 function parseArchive(filename: string, bytes: Uint8Array): SkillImportPreview {
   // Pass 1: read the central directory only. The filter returns false for every
   // entry, so nothing is inflated — we just learn what is in there.
+  //
+  // fflate throws a plain Error on a truncated or malformed archive ("invalid
+  // zip data"). Uncaught, that surfaces as a 500 on what is simply a bad
+  // upload, so every call into fflate is translated to a ValidationError (422),
+  // the same answer every other rejected upload gets.
   const sizes = new Map<string, number>();
-  unzipSync(bytes, {
+  readArchive(bytes, {
     filter: (file) => {
       if (sizes.size < IMPORT_MAX_ENTRIES) sizes.set(file.name, file.originalSize ?? 0);
       return false;
@@ -194,7 +217,7 @@ function parseArchive(filename: string, bytes: Uint8Array): SkillImportPreview {
     }));
 
   // Pass 2: inflate exactly one entry.
-  const unzipped = unzipSync(bytes, { filter: (file) => file.name === chosen });
+  const unzipped = readArchive(bytes, { filter: (file) => file.name === chosen });
   const raw = unzipped[chosen];
   if (!raw) throw new ValidationError(`Could not read ${chosen} from the archive`);
 

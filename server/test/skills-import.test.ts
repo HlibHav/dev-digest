@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { zipSync, unzipSync, strToU8 } from 'fflate';
+import { ValidationError } from '../src/platform/errors.js';
 import {
   chooseSkillEntry,
   parseFrontMatter,
@@ -157,6 +158,14 @@ describe('skill import — archive', () => {
 
   it('prefers the shallowest SKILL.md over a shallower plain markdown file', () => {
     expect(chooseSkillEntry(['readme.md', 'a/b/SKILL.md'])).toBe('a/b/SKILL.md');
+  });
+
+  it('turns a truncated archive into a ValidationError, not a raw fflate throw', () => {
+    // fflate throws a plain Error from deep inside; uncaught that is a 500 on
+    // what is only a bad upload.
+    const truncated = archive().slice(0, 40);
+    expect(() => parseSkillUpload('broken.zip', truncated)).toThrow(ValidationError);
+    expect(() => parseSkillUpload('broken.zip', truncated)).toThrow(/could not read the archive/i);
   });
 
   it('rejects an archive with no markdown at all', () => {

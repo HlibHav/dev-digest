@@ -67,6 +67,20 @@ describe('assemblePrompt — ## Skills / rules', () => {
   });
 });
 
+describe('safeSkillName edge cases', () => {
+  it('truncates a very long name to 120 characters', () => {
+    const block = renderSkillsBlock([{ name: 'x'.repeat(400), body: 'b' }])!;
+    const heading = block.split('\n')[0]!;
+
+    expect(heading).toBe(`### ${'x'.repeat(120)}`);
+  });
+
+  it('falls back to "skill" when the name is empty or only whitespace', () => {
+    expect(renderSkillsBlock([{ name: '', body: 'b' }])!.split('\n')[0]).toBe('### skill');
+    expect(renderSkillsBlock([{ name: '   \n\t ', body: 'b' }])!.split('\n')[0]).toBe('### skill');
+  });
+});
+
 describe('a skill name cannot break out of its block', () => {
   it('a quote in the name cannot terminate the untrusted source attribute', () => {
     const user = userOf({

@@ -11,10 +11,3 @@ export const SKILL_TYPES: readonly SkillType[] = ["rubric", "convention", "secur
 /** Accepted uploads. The parser checks the magic number too, so this is a hint. */
 export const IMPORT_ACCEPT = ".md,.markdown,.zip";
 
-/** Colour per skill type, mirroring the severity/category token palette. */
-export const TYPE_COLOR: Record<SkillType, string> = {
-  rubric: "var(--accent)",
-  convention: "var(--ok)",
-  security: "var(--crit)",
-  custom: "var(--text-secondary)",
-};

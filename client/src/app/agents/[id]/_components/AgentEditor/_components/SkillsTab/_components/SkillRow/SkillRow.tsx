@@ -9,7 +9,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { Badge, Icon, Toggle } from "@devdigest/ui";
 import type { Skill } from "@devdigest/shared";
 import { isSkillUntrusted } from "@devdigest/shared/contracts/knowledge";
-import { TYPE_COLOR } from "../../../../../../../../skills/_components/SkillsListView/constants";
+import { SkillTypeBadge } from "../../../../../../../../../components/skill-type-badge";
 import { s } from "./styles";
 
 export function SkillRow({
@@ -61,9 +61,7 @@ export function SkillRow({
         <span style={s.description}>{skill.description}</span>
       </div>
 
-      <Badge color={TYPE_COLOR[skill.type]} dot>
-        {tSkills(`listItem.type.${skill.type}`)}
-      </Badge>
+      <SkillTypeBadge type={skill.type} />
 
       {inert && (
         <Badge color="var(--warn)" icon="AlertTriangle">

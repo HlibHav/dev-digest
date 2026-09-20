@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import type { Skill } from "@devdigest/shared";
 import messages from "../../../../../../../messages/en/skills.json";
@@ -64,7 +64,7 @@ describe("SkillCard (smoke)", () => {
     renderWithIntl(<SkillCard skill={SKILL} onToggle={onToggle} />);
 
     // The vendored Toggle renders role="switch", not a button (client/INSIGHTS.md).
-    screen.getByRole("switch").click();
+    fireEvent.click(screen.getByRole("switch"));
     expect(onToggle).toHaveBeenCalledWith(false);
   });
 });

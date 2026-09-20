@@ -5,14 +5,15 @@
 
 import React from "react";
 import { useTranslations } from "next-intl";
-import { Badge, Button, Drawer, Icon, Markdown } from "@devdigest/ui";
+import { Button, Drawer, Icon, Markdown } from "@devdigest/ui";
 import type { Skill } from "@devdigest/shared";
 import {
   useCreateSkill,
   usePreviewSkillImport,
   type SkillImportPreview,
 } from "../../../../../../lib/hooks/skills";
-import { IMPORT_ACCEPT, TYPE_COLOR } from "../../constants";
+import { SkillTypeBadge } from "../../../../../../components/skill-type-badge";
+import { IMPORT_ACCEPT } from "../../constants";
 import { fileToBase64, formatBytes } from "../../helpers";
 import { s } from "./styles";
 
@@ -124,9 +125,7 @@ export function ImportSkillDrawer({
           <div style={s.previewTitle}>{t("importer.previewTitle")}</div>
           <div style={s.row}>
             <span style={s.name}>{parsed.name}</span>
-            <Badge color={TYPE_COLOR[parsed.type]} dot>
-              {t(`listItem.type.${parsed.type}`)}
-            </Badge>
+            <SkillTypeBadge type={parsed.type} />
           </div>
           {parsed.description && <p style={s.description}>{parsed.description}</p>}
           <p style={s.sourceFile}>{t("importer.sourceFile", { path: parsed.source_file })}</p>

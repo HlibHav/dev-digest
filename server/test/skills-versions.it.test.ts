@@ -186,6 +186,46 @@ d('skills CRUD + /skills/:id/versions', () => {
     await app.close();
   });
 
+  it('answers 422, not 500, for a malformed or non-base64 upload', async () => {
+    const app = await makeApp();
+
+    // A truncated archive: fflate throws from deep inside, and the route must
+    // still treat it as a bad upload.
+    const truncated = Buffer.from(
+      Uint8Array.from([0x50, 0x4b, 0x03, 0x04, 0x14, 0x00, 0x00, 0x00, 0x08, 0x00]),
+    ).toString('base64');
+    const bad = await app.inject({
+      method: 'POST',
+      url: '/skills/import/preview',
+      payload: { filename: 'broken.zip', content_base64: truncated },
+    });
+    expect(bad.statusCode).toBe(422);
+
+    // Not base64 at all — rejected by the schema at the edge, because
+    // Buffer.from never throws on garbage.
+    const garbage = await app.inject({
+      method: 'POST',
+      url: '/skills/import/preview',
+      payload: { filename: 'x.md', content_base64: '!!! not base64 @@@' },
+    });
+    expect(garbage.statusCode).toBe(422);
+
+    // A real markdown upload still previews, and still writes nothing.
+    const ok = await app.inject({
+      method: 'POST',
+      url: '/skills/import/preview',
+      payload: {
+        filename: 'good.md',
+        content_base64: Buffer.from('# Good\n\nA rule.\n').toString('base64'),
+      },
+    });
+    expect(ok.statusCode).toBe(200);
+    expect(ok.json().name).toBe('Good');
+    const list = (await app.inject({ method: 'GET', url: '/skills' })).json();
+    expect(list.map((sk: { name: string }) => sk.name)).not.toContain('Good');
+    await app.close();
+  });
+
   it('rejects a skill with a blank body', async () => {
     const app = await makeApp();
     const res = await app.inject({

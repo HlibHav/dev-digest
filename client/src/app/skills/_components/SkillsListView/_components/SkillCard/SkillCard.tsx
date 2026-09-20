@@ -10,7 +10,7 @@ import type { Skill } from "@devdigest/shared";
 // specifiers that the Next bundler cannot resolve, so a RUNTIME value has to
 // come from the contract file directly. Type-only imports are unaffected.
 import { isSkillUntrusted } from "@devdigest/shared/contracts/knowledge";
-import { TYPE_COLOR } from "../../constants";
+import { SkillTypeBadge } from "../../../../../../components/skill-type-badge";
 import { s } from "./styles";
 
 export function SkillCard({
@@ -61,9 +61,7 @@ export function SkillCard({
       <div style={s.description}>{skill.description || t("card.noDescription")}</div>
 
       <div style={s.metaRow}>
-        <Badge color={TYPE_COLOR[skill.type]} dot>
-          {t(`listItem.type.${skill.type}`)}
-        </Badge>
+        <SkillTypeBadge type={skill.type} />
         <span style={s.version}>{t("preview.version", { version: skill.version })}</span>
         {needsVetting && (
           <Badge color="var(--warn)" icon="AlertTriangle">

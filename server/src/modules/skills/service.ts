@@ -1,7 +1,6 @@
-import type { Container } from '../../platform/container.js';
 import type { Skill, SkillType } from '@devdigest/shared';
 import { ValidationError } from '../../platform/errors.js';
-import { SkillsRepository } from './repository.js';
+import type { SkillsRepository } from './repository.js';
 import {
   toSkillDto,
   toSkillVersionDto,
@@ -42,11 +41,15 @@ export interface UpdateSkillInput {
 }
 
 export class SkillsService {
-  private repo: SkillsRepository;
-
-  constructor(container: Container) {
-    this.repo = new SkillsRepository(container.db);
-  }
+  /**
+   * Takes the one port it calls, not the whole `Container`.
+   *
+   * The older services take the container and build their own repository from
+   * `container.db`; `.claude/rules/onion-boundaries.md` grandfathers those and
+   * asks new code for the ports instead, so the service can be unit-tested
+   * against a fake repository with no container in sight.
+   */
+  constructor(private repo: SkillsRepository) {}
 
   async list(workspaceId: string): Promise<Skill[]> {
     const rows = await this.repo.list(workspaceId);
@@ -136,12 +139,11 @@ export class SkillsService {
    * `create` with `imported: true`.
    */
   previewImport(filename: string, contentBase64: string): SkillImportPreview {
-    let bytes: Uint8Array;
-    try {
-      bytes = new Uint8Array(Buffer.from(contentBase64, 'base64'));
-    } catch {
-      throw new ValidationError('Upload is not valid base64');
-    }
+    // The base64 SHAPE is the route schema's job: `Buffer.from(…, 'base64')`
+    // never throws, it just drops characters outside the alphabet, so a
+    // try/catch here would be unreachable and the check has to happen at the
+    // edge. What is left to guard is what the bytes turn out to be.
+    const bytes = new Uint8Array(Buffer.from(contentBase64, 'base64'));
     if (bytes.byteLength === 0) throw new ValidationError('Upload is empty');
     if (bytes.byteLength > IMPORT_MAX_UPLOAD_BYTES) {
       throw new ValidationError(`Upload is larger than ${IMPORT_MAX_UPLOAD_BYTES} bytes`);
