@@ -31,11 +31,14 @@ paraphrase them here.
 
    | Changed paths | Load |
    |---|---|
-   | `client/**` | `frontend-ui-architecture`, `react-best-practices`, `react-testing-library`, `security`, `zod` |
+   | `client/**` | `frontend-ui-architecture`, `next-best-practices`, `react-best-practices`, `react-testing-library`, `security`, `zod` |
    | `server/**`, `reviewer-core/**` | `onion-architecture`, `fastify-best-practices`, `drizzle-orm-patterns`, `security`, `zod` |
    | `server/src/db/**` | the row above **plus** `postgresql-table-design` |
    | `e2e/**` | no skill owns this surface — review against `e2e/CLAUDE.md` |
    | `*.md`, `docs/`, `scripts/`, `.claude/` | unrouted |
+
+   `typescript-expert` is deliberately absent: it applies to every TypeScript line in the repo,
+   so routing it would load it on every run and say nothing about the change.
 
    A surface is code only: a `*.md` path is **unrouted even inside a routed surface**, so
    `server/INSIGHTS.md` alone pulls in nothing. A surface absent from the diff routes to nothing
