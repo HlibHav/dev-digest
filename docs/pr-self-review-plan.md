@@ -151,9 +151,12 @@ hard way. Copy its shape; do not rediscover its incidents.
    `{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
    "permissionDecisionReason": "<the findings>"}}`. Not exit code 2 — per `prepush-review.py`, a
    non-zero exit is a non-blocking error here and would never deny.
-4. **Fail open on infrastructure, closed only on a verdict.** Unreadable artifact, git failure,
-   crash → allow and log. The gate denies only on an actual `blocked` verdict or a stale one.
-5. **Skip oversized diffs** above a line cap rather than choking, and log the skip.
+4. **Fail open on infrastructure, closed on the absence of a verdict.** These are different
+   things. A broken `git` means the gate cannot form an opinion → allow and log. A missing,
+   unreadable or stale artifact *is* the opinion — nobody reviewed this → deny.
+5. **No line cap.** `prepush-review.py` skips diffs over 1500 lines because each one costs a
+   Sonnet call. This hook calls no model — its only work is a `shasum` over the tree — so a cap
+   would buy nothing and would hand every large PR a free pass, which is the opposite of the point.
 6. **One JSONL line per non-noop invocation** to `~/.claude/state/pr-self-review/log.jsonl`, so the
    gate's behaviour is measurable.
 7. **Escape hatch:** an explicit override phrase from the user, so the gate is bypassed
@@ -186,7 +189,8 @@ review of the same action — which is also why the hook here deliberately does 
 | Verdict is `ready`, then `git fetch` moves `origin/main` | verdict stays valid — base is not a freshness key |
 | Detached HEAD | skill writes no artifact; hook denies as missing |
 | Bash command with no `gh pr create` | hook returns 0 with no git call and no log line |
-| Artifact deleted or corrupt | hook fails open, writes a log line |
+| Artifact deleted or corrupt | hook **denies** — a missing verdict is a verdict: nobody reviewed this |
+| `git` itself unusable | hook fails open, writes a log line |
 
 ## 8. Where this lands
 
