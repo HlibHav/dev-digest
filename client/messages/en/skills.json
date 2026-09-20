@@ -20,7 +20,10 @@
       "body": "Pick a skill on the left to preview its body."
     },
     "count": "{count, plural, =1 {# skill} other {# skills}}",
-    "deleteConfirm": "Delete the skill \"{name}\"? Agents lose it from their prompt."
+    "deleteConfirm": "Delete the skill \"{name}\"? Agents lose it from their prompt.",
+    "deleteTitle": "Delete this skill?",
+    "deleteAction": "Delete",
+    "deleteCancel": "Cancel"
   },
   "detail": {
     "crumbSkill": "Skill",
@@ -68,7 +71,8 @@
     "untrustedNotice": "This skill came from an untrusted source. Its body is stored as data (delimiter-wrapped) and must be vetted before it is enabled for an agent.",
     "bodyLabel": "Skill body (Markdown)",
     "bodyHint": "Saving a changed body creates a new immutable version.",
-    "version": "v{version}"
+    "version": "v{version}",
+    "open": "Open"
   },
   "create": {
     "title": "New skill",
@@ -91,7 +95,8 @@
   "card": {
     "noDescription": "No description",
     "agents": "{count, plural, =0 {No agents} =1 {# agent} other {# agents}}",
-    "delete": "Delete skill"
+    "delete": "Delete skill",
+    "agentCount": "{count, plural, one {# agent} other {# agents}}"
   },
   "importer": {
     "pick": "Choose a .md file or a .zip archive",
@@ -111,5 +116,29 @@
     "confirm": "Save skill",
     "confirming": "Saving…",
     "saved": "Imported “{name}” — disabled until you enable it."
+  },
+  "detailPage": {
+    "tabs": {
+      "config": "Config",
+      "preview": "Preview",
+      "versioning": "Versioning"
+    },
+    "backToLibrary": "Back to library",
+    "bodyHint": "Markdown. Saving a changed body snapshots the previous one.",
+    "save": "Save",
+    "saving": "Saving…"
+  },
+  "versions": {
+    "subtitle": "{count, plural, one {# version} other {# versions}}. Every body edit snapshots the text it replaced.",
+    "none": "No versions recorded yet.",
+    "loadError": "Could not load this skill's history.",
+    "current": "Current",
+    "diff": "Diff",
+    "diffStat": "v{version} compared with the current v{current} — {added} added, {removed} removed.",
+    "restore": "Restore",
+    "restoreTitle": "Restore this version?",
+    "restoreConfirm": "Restore the body from v{version}? It is written forward as a new version, so nothing in the history is lost.",
+    "restoreAction": "Restore",
+    "restoreCancel": "Cancel"
   }
 }

@@ -15,7 +15,7 @@ const CONTROL_CHARS = /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g;
 const CONTROL_CHARS_AND_BREAKS = /[\x00-\x1f\x7f]+/g;
 
 /** Map a persisted skill row to the public `Skill` DTO. */
-export function toSkillDto(row: SkillRow): Skill {
+export function toSkillDto(row: SkillRow, agentCount?: number): Skill {
   return {
     id: row.id,
     name: row.name,
@@ -26,6 +26,9 @@ export function toSkillDto(row: SkillRow): Skill {
     enabled: row.enabled,
     version: row.version,
     evidence_files: row.evidenceFiles ?? null,
+    // Omitted rather than 0 when the caller didn't ask for it, so a single-skill
+    // read never claims "linked to no agents" on the strength of not counting.
+    ...(agentCount !== undefined ? { agent_count: agentCount } : {}),
   };
 }
 

@@ -3,6 +3,7 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Badge, Button, Markdown, Toggle } from "@devdigest/ui";
 import type { Skill } from "@devdigest/shared";
@@ -23,6 +24,7 @@ export function SkillPreview({
   onToggle: (enabled: boolean) => void;
 }) {
   const t = useTranslations("skills");
+  const router = useRouter();
   const untrusted = isSkillUntrusted(skill.source);
 
   return (
@@ -55,6 +57,16 @@ export function SkillPreview({
         </div>
         <Button kind="ghost" size="sm" icon="Edit" onClick={onEdit}>
           {t("preview.edit")}
+        </Button>
+        {/* The card click belongs to this panel — a fast look while triaging.
+            Opening the full page is its own, explicit action. */}
+        <Button
+          kind="secondary"
+          size="sm"
+          icon="ExternalLink"
+          onClick={() => router.push(`/skills/${skill.id}`)}
+        >
+          {t("preview.open")}
         </Button>
       </div>
 

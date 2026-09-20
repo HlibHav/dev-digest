@@ -1,7 +1,12 @@
 {
   "card": {
     "noDescription": "No description",
-    "skillCount": "{count} skills"
+    "skillCount": "{count} skills",
+    "delete": "Delete agent",
+    "deleteTitle": "Delete this agent?",
+    "deleteConfirm": "Delete the agent “{name}”? Its runs stay, but it cannot review again.",
+    "deleteAction": "Delete",
+    "deleteCancel": "Cancel"
   },
   "list": {
     "breadcrumbLab": "Skills Lab",

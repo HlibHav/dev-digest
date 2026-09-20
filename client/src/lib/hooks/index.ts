@@ -12,9 +12,11 @@ export {
   useUpdateSkill,
   useDeleteSkill,
   usePreviewSkillImport,
+  useSkillVersions,
   type CreateSkillInput,
   type UpdateSkillInput,
   type SkillImportPreview,
+  type SkillVersion,
   type SkippedEntry,
 } from "./skills";
 export * from "./reviews";

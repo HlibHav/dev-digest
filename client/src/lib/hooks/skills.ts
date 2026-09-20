@@ -51,6 +51,8 @@ export function useUpdateSkill() {
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["skills"] });
       qc.setQueryData(["skill", data.id], data);
+      // A body edit snapshots a new version; the history list is now stale.
+      qc.invalidateQueries({ queryKey: ["skill-versions", data.id] });
     },
   });
 }
@@ -63,6 +65,22 @@ export function useDeleteSkill() {
       qc.invalidateQueries({ queryKey: ["skills"] });
       qc.removeQueries({ queryKey: ["skill", id] });
     },
+  });
+}
+
+/** One snapshot of a skill's body. Only the body is versioned. */
+export interface SkillVersion {
+  skill_id: string;
+  version: number;
+  body: string;
+  created_at: string;
+}
+
+export function useSkillVersions(skillId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["skill-versions", skillId],
+    queryFn: () => api.get<SkillVersion[]>(`/skills/${skillId}/versions`),
+    enabled: !!skillId,
   });
 }
 

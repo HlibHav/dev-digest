@@ -8,6 +8,7 @@ import { useTranslations } from "next-intl";
 import { Button, Dropdown, EmptyState, ErrorState, Icon, Skeleton } from "@devdigest/ui";
 import type { Skill } from "@devdigest/shared";
 import { AppShell } from "../../../../components/app-shell";
+import { ConfirmModal } from "../../../../components/confirm-modal";
 import { useSkills, useUpdateSkill, useDeleteSkill } from "../../../../lib/hooks/skills";
 import { SkillCard } from "./_components/SkillCard";
 import { SkillPreview } from "./_components/SkillPreview";
@@ -26,6 +27,7 @@ export function SkillsListView() {
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [editing, setEditing] = React.useState<Skill | "new" | null>(null);
   const [importing, setImporting] = React.useState(false);
+  const [deleting, setDeleting] = React.useState<Skill | null>(null);
 
   const list = filterSkills(skills ?? [], search);
   const selected = (skills ?? []).find((sk) => sk.id === selectedId) ?? null;
@@ -37,6 +39,20 @@ export function SkillsListView() {
           {...(editing !== "new" ? { skill: editing } : {})}
           onClose={() => setEditing(null)}
           onSaved={(saved) => setSelectedId(saved.id)}
+        />
+      )}
+      {deleting && (
+        <ConfirmModal
+          title={t("page.deleteTitle")}
+          body={t("page.deleteConfirm", { name: deleting.name })}
+          confirmLabel={t("page.deleteAction")}
+          cancelLabel={t("page.deleteCancel")}
+          pending={del.isPending}
+          onConfirm={() => {
+            if (deleting.id === selectedId) setSelectedId(null);
+            del.mutate(deleting.id, { onSettled: () => setDeleting(null) });
+          }}
+          onClose={() => setDeleting(null)}
         />
       )}
       {importing && (
@@ -104,12 +120,7 @@ export function SkillsListView() {
                   active={skill.id === selectedId}
                   onClick={() => setSelectedId(skill.id)}
                   onToggle={(enabled) => update.mutate({ id: skill.id, patch: { enabled } })}
-                  onDelete={() => {
-                    if (window.confirm(t("page.deleteConfirm", { name: skill.name }))) {
-                      if (skill.id === selectedId) setSelectedId(null);
-                      del.mutate(skill.id);
-                    }
-                  }}
+                  onDelete={() => setDeleting(skill)}
                 />
               ))}
             </div>

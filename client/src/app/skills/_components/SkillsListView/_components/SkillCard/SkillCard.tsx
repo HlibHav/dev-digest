@@ -63,6 +63,11 @@ export function SkillCard({
       <div style={s.metaRow}>
         <SkillTypeBadge type={skill.type} />
         <span style={s.version}>{t("preview.version", { version: skill.version })}</span>
+        {skill.agent_count != null && (
+          <Badge color="var(--text-secondary)" icon="Cpu">
+            {t("card.agentCount", { count: skill.agent_count })}
+          </Badge>
+        )}
         {needsVetting && (
           <Badge color="var(--warn)" icon="AlertTriangle">
             {t("listItem.needsVetting")}
