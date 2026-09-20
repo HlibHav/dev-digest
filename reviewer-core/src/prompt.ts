@@ -36,11 +36,67 @@ export function wrapUntrusted(label: string, content: string): string {
 /** Cap the PR description so a huge author body can't blow the token budget. */
 const MAX_PR_DESCRIPTION_CHARS = 4000;
 
+/**
+ * One resolved skill on its way into the prompt.
+ *
+ * `untrusted` marks a body this workspace did not author — an imported or
+ * community skill. Those are someone else's instructions arriving inside our
+ * agent's prompt, so they are delimiter-wrapped exactly like the diff. The flag
+ * travels with the body rather than being applied by the caller, because this
+ * file is the one shared place that cannot forget to wrap.
+ */
+export interface PromptSkill {
+  name: string;
+  body: string;
+  untrusted?: boolean;
+}
+
+/** Longest skill name we render; a name is a heading, not a payload. */
+const MAX_SKILL_NAME_CHARS = 120;
+
+/**
+ * Flatten a skill name onto one line.
+ *
+ * A name is rendered as a markdown heading, so a newline in it could forge a
+ * section header (`## Diff to review`) and change what the model believes it is
+ * reading. Applied to trusted names too: the cost is nothing and the failure is
+ * silent.
+ */
+function safeSkillName(name: string): string {
+  const flat = name.replace(/\s+/g, ' ').trim();
+  return (flat || 'skill').slice(0, MAX_SKILL_NAME_CHARS);
+}
+
+/**
+ * Render the `## Skills / rules` block, or null when there is nothing to render
+ * (the section is then omitted entirely and the prompt is byte-identical to one
+ * assembled for an agent with no skills).
+ *
+ * An untrusted skill is wrapped with a FIXED label and its name inside the
+ * block. `wrapUntrusted` escapes the content but interpolates the label raw, so
+ * passing an imported skill's name as the label would hand attacker-influenced
+ * text straight into the `source="…"` attribute.
+ */
+export function renderSkillsBlock(skills: readonly PromptSkill[] | undefined): string | null {
+  if (!skills || skills.length === 0) return null;
+  return skills
+    .map((skill, i) => {
+      const name = safeSkillName(skill.name);
+      return skill.untrusted
+        ? wrapUntrusted(`skill-${i}`, `# ${name}\n\n${skill.body}`)
+        : `### ${name}\n${skill.body}`;
+    })
+    .join('\n\n');
+}
+
 export interface PromptParts {
   /** Agent's system prompt (trusted). */
   system: string;
-  /** Linked skill bodies (trusted-ish; community skills should be sanitized upstream). */
-  skills?: string[];
+  /**
+   * Linked skills, in the order the agent lists them. Bodies flagged
+   * `untrusted` are delimiter-wrapped here — see `renderSkillsBlock`.
+   */
+  skills?: readonly PromptSkill[];
   /** Relevant memory items (trusted, curated). */
   memory?: string[];
   /** Project-context spec chunks (untrusted content). */
@@ -85,8 +141,7 @@ export interface AssembledPrompt {
 export function assemblePrompt(parts: PromptParts): AssembledPrompt {
   const system = `${parts.system}\n\n${INJECTION_GUARD}`;
 
-  const skillsBlock =
-    parts.skills && parts.skills.length > 0 ? parts.skills.join('\n\n') : undefined;
+  const skillsBlock = renderSkillsBlock(parts.skills) ?? undefined;
   const memoryBlock =
     parts.memory && parts.memory.length > 0
       ? parts.memory.map((m) => `- ${m}`).join('\n')

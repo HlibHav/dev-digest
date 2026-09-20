@@ -118,6 +118,18 @@ export type SkillType = z.infer<typeof SkillType>;
 export const SkillSource = z.enum(['manual', 'imported_url', 'extracted', 'community']);
 export type SkillSource = z.infer<typeof SkillSource>;
 
+/**
+ * Sources whose body is third-party text: an imported or community skill is
+ * someone else's instructions arriving inside an agent's prompt. The server
+ * delimiter-wraps those bodies (`renderSkillsBlock`) and the client badges them
+ * as needing vetting, so the rule lives here rather than in either of them.
+ */
+export const UNTRUSTED_SKILL_SOURCES: readonly SkillSource[] = ['imported_url', 'community'];
+
+export function isSkillUntrusted(source: string): boolean {
+  return (UNTRUSTED_SKILL_SOURCES as readonly string[]).includes(source);
+}
+
 export const Skill = z.object({
   id: z.string(),
   name: z.string(),

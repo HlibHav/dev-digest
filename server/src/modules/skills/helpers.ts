@@ -1,14 +1,12 @@
 import type { Skill, SkillSource, SkillType } from '@devdigest/shared';
 import type { SkillRow, SkillVersionRow } from '../../db/rows.js';
-import {
-  MAX_SKILL_DESCRIPTION_CHARS,
-  MAX_SKILL_NAME_CHARS,
-  UNTRUSTED_SKILL_SOURCES,
-} from './constants.js';
+import { MAX_SKILL_DESCRIPTION_CHARS, MAX_SKILL_NAME_CHARS } from './constants.js';
 
 /**
- * Pure helpers for the skills module — row ⇄ DTO mapping, the version-bump rule,
- * and the trust classification. No I/O.
+ * Pure helpers for the skills module — row ⇄ DTO mapping, the version-bump rule
+ * and prompt-safe normalisation. No I/O. The trust classification
+ * (`isSkillUntrusted`) is a contract-level fact and lives in `@devdigest/shared`,
+ * because the client badges the same sources as needing vetting.
  */
 
 /** Control characters that must never reach a prompt (C0 + DEL, keeping \n and \t). */
@@ -59,11 +57,6 @@ export function toSkillVersionDto(row: SkillVersionRow): SkillVersionDto {
  */
 export function isBodyChange(existing: Pick<SkillRow, 'body'>, patch: { body?: string }): boolean {
   return patch.body !== undefined && patch.body !== existing.body;
-}
-
-/** Whether a skill's body is third-party text that must be delimiter-wrapped. */
-export function isSkillUntrusted(source: string): boolean {
-  return UNTRUSTED_SKILL_SOURCES.has(source as SkillSource);
 }
 
 /**

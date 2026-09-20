@@ -1,6 +1,12 @@
 import type { Container } from '../../platform/container.js';
+import { isSkillUntrusted } from '@devdigest/shared';
 import type { Provider, Review, RunTrace, UnifiedDiff } from '@devdigest/shared';
-import { reviewPullRequest, countBlockers } from '@devdigest/reviewer-core';
+import {
+  reviewPullRequest,
+  countBlockers,
+  renderSkillsBlock,
+  type PromptSkill,
+} from '@devdigest/reviewer-core';
 import { RunLogger } from '../../platform/run-logger.js';
 import * as schema from '../../db/schema.js';
 import type { AgentRow } from '../../db/rows.js';
@@ -152,6 +158,10 @@ export class ReviewRunExecutor {
 
     runLog.info(`Starting review with agent "${agent.name}" (${agent.provider}/${agent.model})`);
 
+    // Declared outside the try so the failure path can persist what the model
+    // was actually given, not an empty prompt-assembly record.
+    let skillsBlock: string | null = null;
+
     try {
       // Resolve the agent's LLM provider. (container.llm throws if the provider
       // key is missing — caught below and persisted as a failed run.)
@@ -183,6 +193,12 @@ export class ReviewRunExecutor {
 
       const task = taskLine(pull) + rankNote;
 
+      // The agent's skills, in its own order. Attached AND enabled only: a
+      // skill that is linked but not yet vetted contributes nothing, which is
+      // what the editor's "needs vetting" state tells the user.
+      const skills = await this.resolveSkills(workspaceId, agent, runLog);
+      skillsBlock = renderSkillsBlock(skills);
+
       // ---- Engine: assemble → single-pass → grounding -----------------------
       // The pure review pipeline lives in @devdigest/reviewer-core (shared with
       // the CI runner). The service owns only I/O: repo-intel context resolution
@@ -195,6 +211,9 @@ export class ReviewRunExecutor {
         // Per-agent review strategy (configured in the Agent editor); falls back
         // to the studio default. single-pass = whole diff in one call.
         strategy: agent.strategy ?? REVIEW_STRATEGY,
+        // Omitted when the agent has no skills, so its prompt stays
+        // byte-identical to the pre-skills shape.
+        ...(skills.length > 0 ? { skills } : {}),
         // T1.3 — pass the callers digest only when we built one. assemblePrompt
         // omits the section when this is empty/undefined.
         ...(callersDigest ? { callers: callersDigest } : {}),
@@ -308,7 +327,10 @@ export class ReviewRunExecutor {
         })
         .catch(() => undefined);
       await this.repo
-        .saveRunTrace(runId, this.traceFromBuffer(runId, pull, agent, '0/0 passed', Date.now() - start))
+        .saveRunTrace(
+          runId,
+          this.traceFromBuffer(runId, pull, agent, '0/0 passed', Date.now() - start, skillsBlock),
+        )
         .catch(() => undefined);
       this.container.runBus.complete(runId);
       throw err;
@@ -403,6 +425,40 @@ export class ReviewRunExecutor {
   }
 
   /**
+   * The skills that reach this agent's prompt, in `agent_skills.order`.
+   *
+   * Best-effort, like the repo-intel digests: skills are context, not the
+   * review itself, so a DB hiccup degrades the prompt instead of failing the
+   * run. The count is logged because "which skills fired" is the first
+   * question anyone asks of a run whose findings changed.
+   */
+  private async resolveSkills(
+    workspaceId: string,
+    agent: AgentRow,
+    runLog: RunLogger,
+  ): Promise<PromptSkill[]> {
+    try {
+      const links = await this.container.agentsRepo.enabledSkillsForAgent(workspaceId, agent.id);
+      if (links.length === 0) return [];
+      const skills = links.map(({ skill }) => ({
+        name: skill.name,
+        body: skill.body,
+        untrusted: isSkillUntrusted(skill.source),
+      }));
+      const untrusted = skills.filter((s) => s.untrusted).length;
+      runLog.info(
+        `skills: ${skills.length} attached (${untrusted} untrusted) — ${skills
+          .map((s) => s.name)
+          .join(', ')}`,
+      );
+      return skills;
+    } catch (err) {
+      runLog.info(`skills: could not resolve — ${(err as Error).message}`);
+      return [];
+    }
+  }
+
+  /**
    * A minimal RunTrace whose `log` is the run's full SSE buffer — persisted on
    * failure/cancel (and pre-work failures) so the events (and WHY it failed)
    * survive a reload, not just the in-memory stream.
@@ -413,6 +469,7 @@ export class ReviewRunExecutor {
     agent: AgentRow,
     grounding: string,
     durationMs = 0,
+    skillsBlock: string | null = null,
   ): RunTrace {
     return {
       config: {
@@ -424,7 +481,16 @@ export class ReviewRunExecutor {
         source: 'local',
       },
       stats: { duration_ms: durationMs, tokens_in: 0, tokens_out: 0, findings: 0, grounding },
-      prompt_assembly: { system: agent.systemPrompt, skills: null, memory: null, specs: null, user: '' },
+      prompt_assembly: {
+        system: agent.systemPrompt,
+        // Non-null only when the run got far enough to resolve its skills. The
+        // pre-work failure path (diff load) never assembled a prompt, so it
+        // keeps null rather than showing a block the model never saw.
+        skills: skillsBlock,
+        memory: null,
+        specs: null,
+        user: '',
+      },
       tool_calls: [],
       raw_output: '',
       memory_pulled: [],
