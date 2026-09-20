@@ -16,19 +16,27 @@ export function toggleAttached(attached: string[], skillId: string): string[] {
     : [...attached, skillId];
 }
 
-/** The attached skills in prompt order, dropping ids whose skill is gone. */
-export function orderedAttached(skills: Skill[], attached: string[]): Skill[] {
+/** Whether a skill matches the filter box. An empty query matches everything. */
+export function matchesQuery(skill: Skill, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  return skill.name.toLowerCase().includes(q) || skill.description.toLowerCase().includes(q);
+}
+
+/**
+ * The attached skills in prompt order, dropping ids whose skill is gone, and
+ * filtered by the search box — the tab shows one list, so the filter has to
+ * reach the attached rows too.
+ */
+export function orderedAttached(skills: Skill[], attached: string[], query = ""): Skill[] {
   const byId = new Map(skills.map((s) => [s.id, s]));
   return attached.flatMap((id) => {
     const skill = byId.get(id);
-    return skill ? [skill] : [];
+    return skill && matchesQuery(skill, query) ? [skill] : [];
   });
 }
 
 /** Everything not attached, filtered by the search box. */
 export function availableSkills(skills: Skill[], attached: string[], query: string): Skill[] {
-  const q = query.trim().toLowerCase();
-  return skills
-    .filter((s) => !attached.includes(s.id))
-    .filter((s) => !q || s.name.toLowerCase().includes(q) || s.description.toLowerCase().includes(q));
+  return skills.filter((s) => !attached.includes(s.id) && matchesQuery(s, query));
 }

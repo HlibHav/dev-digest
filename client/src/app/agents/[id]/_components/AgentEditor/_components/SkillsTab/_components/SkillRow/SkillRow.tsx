@@ -1,12 +1,14 @@
-/* SkillRow — one skill in the agent's Skills tab. Attached rows carry a drag
-   handle and are sortable; available rows are plain. */
+/* SkillRow — one skill in the agent's Skills tab: drag handle, checkbox, name,
+   type badge. The shape follows the design: no description and no position
+   number, because the row's whole job is to say what is attached and in what
+   order the prompt will carry it. */
 "use client";
 
 import React from "react";
 import { useTranslations } from "next-intl";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Badge, Icon, Toggle } from "@devdigest/ui";
+import { Badge, Checkbox, Icon } from "@devdigest/ui";
 import type { Skill } from "@devdigest/shared";
 import { isSkillUntrusted } from "@devdigest/shared/contracts/knowledge";
 import { SkillTypeBadge } from "../../../../../../../../../components/skill-type-badge";
@@ -15,17 +17,15 @@ import { s } from "./styles";
 export function SkillRow({
   skill,
   attached,
-  position,
   onToggle,
 }: {
   skill: Skill;
   attached: boolean;
-  /** 1-based prompt order; shown only for attached rows. */
-  position?: number;
   onToggle: () => void;
 }) {
   const t = useTranslations("agents");
   const tSkills = useTranslations("skills");
+  // Only an attached skill has a position in the prompt, so only it is sortable.
   const sortable = useSortable({ id: skill.id, disabled: !attached });
 
   // A skill reaches the prompt only when it is attached AND enabled in the
@@ -54,14 +54,11 @@ export function SkillRow({
         <span style={s.handlePlaceholder} />
       )}
 
-      {position != null && <span style={s.position}>{position}</span>}
+      <Checkbox checked={attached} onChange={onToggle} />
 
-      <div style={s.text}>
-        <span style={s.name(inert)}>{skill.name}</span>
-        <span style={s.description}>{skill.description}</span>
-      </div>
-
-      <SkillTypeBadge type={skill.type} />
+      <span className="mono" style={s.name(inert)} title={skill.description}>
+        {skill.name}
+      </span>
 
       {inert && (
         <Badge color="var(--warn)" icon="AlertTriangle">
@@ -71,7 +68,7 @@ export function SkillRow({
         </Badge>
       )}
 
-      <Toggle on={attached} onChange={onToggle} size={14} />
+      <SkillTypeBadge type={skill.type} />
     </div>
   );
 }

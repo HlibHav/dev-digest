@@ -27,12 +27,5 @@ export const s = {
   } satisfies CSSProperties,
   hint: { fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 } satisfies CSSProperties,
   list: { display: "flex", flexDirection: "column", gap: 6 } satisfies CSSProperties,
-  availableLabel: {
-    fontSize: 11,
-    textTransform: "uppercase",
-    letterSpacing: "0.08em",
-    color: "var(--text-muted)",
-    marginTop: 14,
-  } satisfies CSSProperties,
   empty: { fontSize: 12.5, color: "var(--text-muted)", padding: "6px 2px" } satisfies CSSProperties,
 } as const;

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { Skill } from "@devdigest/shared";
-import { availableSkills, moveSkill, orderedAttached, toggleAttached } from "./helpers";
+import { availableSkills, matchesQuery, moveSkill, orderedAttached, toggleAttached } from "./helpers";
 
 /**
  * The Skills tab sends `skill_ids` as one ordered set, so these four functions
@@ -64,6 +64,26 @@ describe("orderedAttached", () => {
 
   it("drops an id whose skill was deleted rather than rendering a hole", () => {
     expect(orderedAttached(skills, ["a", "gone", "b"]).map((s) => s.id)).toEqual(["a", "b"]);
+  });
+
+  it("applies the filter to attached rows too, since the tab shows one list", () => {
+    const named = [skill("a", "branch-coverage-gate"), skill("b", "test-smells")];
+    expect(orderedAttached(named, ["a", "b"], "smell").map((s) => s.id)).toEqual(["b"]);
+    expect(orderedAttached(named, ["a", "b"], "").map((s) => s.id)).toEqual(["a", "b"]);
+  });
+});
+
+describe("matchesQuery", () => {
+  it("matches everything on an empty or whitespace query", () => {
+    expect(matchesQuery(skill("a"), "")).toBe(true);
+    expect(matchesQuery(skill("a"), "   ")).toBe(true);
+  });
+
+  it("matches name and description, case-insensitively", () => {
+    const s = skill("a", "branch-coverage-gate");
+    expect(matchesQuery(s, "COVERAGE")).toBe(true);
+    expect(matchesQuery(s, "description")).toBe(true);
+    expect(matchesQuery(s, "nothing")).toBe(false);
   });
 });
 

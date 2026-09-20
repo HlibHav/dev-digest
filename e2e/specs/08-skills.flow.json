@@ -56,15 +56,7 @@
         "--text",
         "Branch coverage gate"
       ],
-      "label": "the preview pane renders its body heading"
-    },
-    {
-      "cmd": [
-        "wait",
-        "--text",
-        "Skill body (Markdown)"
-      ],
-      "label": "the preview pane is open"
+      "label": "the preview pane renders the selected skill body"
     }
   ]
 }

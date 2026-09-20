@@ -49,7 +49,7 @@ export function SkillsTab({ agent }: { agent: Agent }) {
 
   const commit = (skillIds: string[]) => setSkills.mutate({ agentId: agent.id, skillIds });
 
-  const attachedSkills = orderedAttached(skills, attached);
+  const attachedSkills = orderedAttached(skills, attached, search);
   const available = availableSkills(skills, attached, search);
 
   function onDragEnd(event: DragEndEvent) {
@@ -93,38 +93,36 @@ export function SkillsTab({ agent }: { agent: Agent }) {
 
       <p style={s.hint}>{t("skills.orderHint")}</p>
 
-      {attachedSkills.length > 0 && (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-          <SortableContext items={attached} strategy={verticalListSortingStrategy}>
-            <div style={s.list}>
-              {attachedSkills.map((skill, i) => (
-                <SkillRow
-                  key={skill.id}
-                  skill={skill}
-                  attached
-                  position={i + 1}
-                  onToggle={() => commit(toggleAttached(attached, skill.id))}
-                />
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
+      {/* One list, as the design has it: attached skills first in prompt order,
+          then everything else in the library. They share a list because a
+          checkbox is how a skill joins the prompt — but only the attached ones
+          are sortable, since `agent_skills` records a position for those alone. */}
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        <SortableContext items={attached} strategy={verticalListSortingStrategy}>
+          <div style={s.list}>
+            {attachedSkills.map((skill) => (
+              <SkillRow
+                key={skill.id}
+                skill={skill}
+                attached
+                onToggle={() => commit(toggleAttached(attached, skill.id))}
+              />
+            ))}
+            {available.map((skill) => (
+              <SkillRow
+                key={skill.id}
+                skill={skill}
+                attached={false}
+                onToggle={() => commit(toggleAttached(attached, skill.id))}
+              />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
+
+      {attachedSkills.length + available.length === 0 && (
+        <p style={s.empty}>{t("skills.noneInLibrary")}</p>
       )}
-
-      {attachedSkills.length === 0 && <p style={s.empty}>{t("skills.noneAttached")}</p>}
-
-      <div style={s.availableLabel}>{t("skills.available")}</div>
-      <div style={s.list}>
-        {available.map((skill) => (
-          <SkillRow
-            key={skill.id}
-            skill={skill}
-            attached={false}
-            onToggle={() => commit(toggleAttached(attached, skill.id))}
-          />
-        ))}
-        {available.length === 0 && <p style={s.empty}>{t("skills.allAttached")}</p>}
-      </div>
     </div>
   );
 }
