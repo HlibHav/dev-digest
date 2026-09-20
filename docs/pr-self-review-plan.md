@@ -44,10 +44,11 @@ The skill runs in the normal session, where the project skills are loaded native
 verdict to `~/.claude/state/pr-self-review/<repo>-<branch>.json`. The hook reads that file and
 denies if the verdict is missing, stale or `blocked`.
 
-Freshness is the entire security of this design. The artifact records
-`base_sha`, `head_sha` and a hash of the uncommitted diff; the hook recomputes all three and treats
-any mismatch as missing. A verdict therefore dies the instant a single line changes, and cannot be
-faked by touching a file.
+Freshness is the entire security of this design. The artifact records `head_sha` and a hash of the
+uncommitted diff; the hook recomputes **those two** and treats a mismatch as missing. A verdict
+therefore dies the instant a commit lands or a single line changes, and cannot be faked by
+touching a file. `base_sha` is recorded for information only — `origin/main` moves on any fetch,
+so keying freshness to it would deny PRs for code nobody touched.
 
 - **For:** routing works exactly as designed, because the real session owns the skills. No nested
   model, so no added cost, no timeout, no recursion surface. The deny message carries the actual
@@ -182,6 +183,8 @@ review of the same action — which is also why the hook here deliberately does 
 | Branch with a hardcoded secret in `server/**` | skill → `blocked`; hook denies `gh pr create` |
 | Clean docs-only branch | all surfaces unrouted; `ready`; hook allows |
 | Verdict is `ready`, then one more line is committed | freshness keys mismatch → hook denies as stale |
+| Verdict is `ready`, then `git fetch` moves `origin/main` | verdict stays valid — base is not a freshness key |
+| Detached HEAD | skill writes no artifact; hook denies as missing |
 | Bash command with no `gh pr create` | hook returns 0 with no git call and no log line |
 | Artifact deleted or corrupt | hook fails open, writes a log line |
 
