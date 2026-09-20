@@ -104,5 +104,7 @@ No linter or formatter is configured in any package: typecheck + tests are the g
 - Working inside a package → that package's CLAUDE.md: `server/CLAUDE.md`, `client/CLAUDE.md`,
   `reviewer-core/CLAUDE.md`, `e2e/CLAUDE.md` (auto-load is unreliable, VS Code #24987)
 - Agent prompt templates, model choice → `docs/agent-prompts/`
+- Placing a new file under `client/src` — which folder, when to promote to shared, import
+  directions → `frontend-ui-architecture`
 - Finishing a non-trivial task → `engineering-insights` to record what was learned in the touched
   package's `INSIGHTS.md`. Don't skip it; "nothing worth recording" is a valid outcome.
