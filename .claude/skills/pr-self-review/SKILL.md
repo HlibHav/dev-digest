@@ -76,9 +76,14 @@ paraphrase them here.
    Verdict:   blocked — 1 critical. Fix it, then re-run.
    ```
 
-8. **Write the verdict artifact, always — `ready` and `blocked` alike.** The `gh pr create` hook
-   reads it and denies when it is missing, stale or `blocked`, so skipping this step is the same
-   as reporting `blocked`.
+8. **In pre-PR mode, write the verdict artifact — `ready` and `blocked` alike.** The
+   `gh pr create` hook reads it and denies when it is missing, stale or `blocked`, so skipping
+   this step in pre-PR mode is the same as reporting `blocked`.
+
+   **Pre-commit mode writes nothing.** Its diff covers only uncommitted work, so a `ready` from it
+   says nothing about the commits already on the branch. Writing it would hand the hook a verdict
+   for a review that never looked at what the PR would actually contain. The artifact records its
+   `mode`, and the hook accepts only `pre-PR`.
 
    Path: `~/.claude/state/pr-self-review/<repo>-<branch>.json`, where `<branch>` is
    `git branch --show-current` with `/` → `-`, and `<repo>` is

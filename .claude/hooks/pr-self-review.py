@@ -248,6 +248,17 @@ def main() -> int:
         )
         return 0
 
+    # A pre-commit review only looked at uncommitted work, so its `ready` says nothing about the
+    # commits the PR would carry. Only a pre-PR verdict may open a PR.
+    mode = str(data.get("mode", ""))
+    if mode != "pre-PR":
+        log(decision="deny", cwd=cwd, repo=repo, branch=branch, reason=f"mode={mode or 'missing'}")
+        deny(
+            f"pr-self-review: the verdict for `{branch}` was produced in `{mode or 'unknown'}` "
+            f"mode, which only covers uncommitted work.\n{run_it}"
+        )
+        return 0
+
     verdict = str(data.get("verdict", "")).lower()
     if verdict == "ready":
         log(decision="allow", cwd=cwd, repo=repo, branch=branch, head=head)
