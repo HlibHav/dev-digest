@@ -41,6 +41,8 @@ const CreateAgentBody = z.object({
   ci_fail_on: CiFailOn.optional(),
   repo_intel: z.boolean().optional(),
   enabled: z.boolean().optional(),
+  /** Free-form label shown on the agent tile. */
+  tag: z.string().max(24).optional(),
 });
 
 const UpdateAgentBody = z.object({
@@ -102,7 +104,7 @@ export default async function agentsRoutes(appBase: FastifyInstance) {
       },
       userId,
     );
-    reply.status(201);
+    reply.status(200);
     return agent;
   });
 
