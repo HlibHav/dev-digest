@@ -210,6 +210,21 @@ d('skills CRUD + /skills/:id/versions', () => {
     });
     expect(garbage.statusCode).toBe(422);
 
+    // Wrapped, padded base64 — what `base64 file` and `openssl base64` emit —
+    // must be accepted. A one-pass regex rejects it, because the padding is no
+    // longer at the end of the string.
+    const wrapped = Buffer.from('# Wrapped\n\nA rule that survived line breaks.\n')
+      .toString('base64')
+      .replace(/(.{20})/g, '$1\n');
+    expect(wrapped).toMatch(/=\n?$|\n/);
+    const wrappedRes = await app.inject({
+      method: 'POST',
+      url: '/skills/import/preview',
+      payload: { filename: 'wrapped.md', content_base64: `${wrapped}\n` },
+    });
+    expect(wrappedRes.statusCode).toBe(200);
+    expect(wrappedRes.json().name).toBe('Wrapped');
+
     // A real markdown upload still previews, and still writes nothing.
     const ok = await app.inject({
       method: 'POST',

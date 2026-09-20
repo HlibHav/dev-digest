@@ -48,21 +48,34 @@ const UpdateSkillBody = z.object({
   enabled: z.boolean().optional(),
 });
 
+/** 4 base64 characters per 3 bytes, padded up to the next multiple of 4. */
+const MAX_BASE64_CHARS = Math.ceil(IMPORT_MAX_UPLOAD_BYTES / 3) * 4;
+/**
+ * The same, with room for the line breaks `base64(1)` and `openssl base64`
+ * insert every 76 columns. The browser's `readAsDataURL` emits one long line,
+ * but a CLI caller is a first-class client of this route.
+ */
+const MAX_BASE64_PAYLOAD_CHARS = MAX_BASE64_CHARS + Math.ceil(MAX_BASE64_CHARS / 76) + 16;
+
 /**
  * Base64 payload, validated at the edge.
  *
  * `Buffer.from(x, 'base64')` never throws — it silently skips anything that is
  * not an alphabet character — so garbage would otherwise decode to junk bytes
- * and reach the parser as "not a zip, not markdown". The length cap is derived
- * from the byte cap (4 base64 chars per 3 bytes, plus padding and newlines).
+ * and reach the parser as "not a zip, not markdown".
+ *
+ * Whitespace is stripped BEFORE the shape is checked: padding only appears at
+ * the very end, so a wrapped payload (`YWI=\n`) fails a naive one-pass regex
+ * even though it is perfectly valid base64.
  */
 const ImportPreviewBody = z.object({
   filename: z.string().min(1),
   content_base64: z
     .string()
     .min(1)
-    .max(Math.ceil((IMPORT_MAX_UPLOAD_BYTES / 3) * 4) + 1024)
-    .regex(/^[A-Za-z0-9+/\s]*={0,2}$/, 'content_base64 must be base64'),
+    .max(MAX_BASE64_PAYLOAD_CHARS)
+    .transform((value) => value.replace(/\s+/g, ''))
+    .refine((value) => /^[A-Za-z0-9+/]*={0,2}$/.test(value), 'content_base64 must be base64'),
 });
 
 export default async function skillsRoutes(appBase: FastifyInstance) {

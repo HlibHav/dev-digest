@@ -170,8 +170,10 @@ function readArchive(
 ): Record<string, Uint8Array> {
   try {
     return unzipSync(bytes, options);
-  } catch (err) {
-    throw new ValidationError(`Could not read the archive: ${(err as Error).message}`);
+  } catch {
+    // fflate's own wording ("invalid distance too far back") describes its
+    // internals, not the caller's mistake, so it stays out of the response.
+    throw new ValidationError('Could not read the archive — it is not a valid zip file');
   }
 }
 
