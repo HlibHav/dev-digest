@@ -4,12 +4,12 @@
 
 import React from "react";
 import { useTranslations } from "next-intl";
-import { Toggle, EmptyState } from "@devdigest/ui";
-import type { FindingRecord } from "@devdigest/shared";
+import { Toggle, EmptyState, Chip, SEV } from "@devdigest/ui";
+import type { FindingRecord, Severity } from "@devdigest/shared";
 import { FindingCard } from "../FindingCard";
 import { useFindingAction } from "../../../../../../../lib/hooks/reviews";
-import { KEY_TO_ACTION } from "./constants";
-import { visibleFindings } from "./helpers";
+import { KEY_TO_ACTION, SEVERITY_FILTERS } from "./constants";
+import { countsBySeverity, visibleFindings } from "./helpers";
 import { s } from "./styles";
 
 export function FindingsPanel({
@@ -26,9 +26,33 @@ export function FindingsPanel({
   const t = useTranslations("prReview");
   const action = useFindingAction();
   const [hideLow, setHideLow] = React.useState(false);
+  const [severity, setSeverity] = React.useState<Severity | null>(null);
   const [focusIdx, setFocusIdx] = React.useState(0);
 
-  const shown = React.useMemo(() => visibleFindings(findings, hideLow), [findings, hideLow]);
+  // Counts come from the unfiltered-by-severity list so every pill stays clickable.
+  const base = React.useMemo(() => visibleFindings(findings, hideLow), [findings, hideLow]);
+  const counts = React.useMemo(() => countsBySeverity(base), [base]);
+  // Only severities the run actually has get a pill; a filter whose pill is gone no longer applies.
+  const present = SEVERITY_FILTERS.filter((sev) => counts[sev] > 0);
+  const activeSeverity = severity && counts[severity] > 0 ? severity : null;
+  const shown = React.useMemo(
+    () => visibleFindings(findings, hideLow, activeSeverity),
+    [findings, hideLow, activeSeverity],
+  );
+
+  // A second click on the active pill resets the filter.
+  const toggleSeverity = (sev: Severity) => {
+    setSeverity((cur) => (cur === sev ? null : sev));
+    setFocusIdx(0);
+  };
+
+  // Hiding low confidence can empty the selected severity; drop that filter instead of
+  // letting it silently return when the toggle is switched back off.
+  const changeHideLow = (next: boolean) => {
+    setHideLow(next);
+    if (severity && countsBySeverity(visibleFindings(findings, next))[severity] === 0) setSeverity(null);
+    setFocusIdx(0);
+  };
 
   // j/k navigation + a/d shortcuts on the focused finding (keyboard).
   React.useEffect(() => {
@@ -48,9 +72,22 @@ export function FindingsPanel({
   return (
     <div>
       <div style={s.toolbar}>
+        {present.map((sev, i) => (
+          <React.Fragment key={sev}>
+            {i > 0 && <span style={s.severitySep}>·</span>}
+            <Chip
+              active={activeSeverity === sev}
+              icon={SEV[sev].icon}
+              color={SEV[sev].c}
+              onClick={() => toggleSeverity(sev)}
+            >
+              {t(`panel.severityCount.${sev}`, { count: counts[sev] })}
+            </Chip>
+          </React.Fragment>
+        ))}
         <div style={s.toggleGroup}>
           {t("panel.hideLowConfidence")}
-          <Toggle on={hideLow} onChange={setHideLow} size={16} />
+          <Toggle on={hideLow} onChange={changeHideLow} size={16} />
         </div>
       </div>
 

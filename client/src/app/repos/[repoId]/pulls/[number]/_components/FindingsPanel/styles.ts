@@ -15,6 +15,7 @@ export const s = {
     background: "var(--border)",
     margin: "0 2px",
   } satisfies CSSProperties,
+  severitySep: { color: "var(--text-muted)", fontSize: 13 } satisfies CSSProperties,
   toggleGroup: {
     marginLeft: "auto",
     display: "flex",

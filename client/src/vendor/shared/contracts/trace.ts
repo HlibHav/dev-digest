@@ -63,6 +63,9 @@ export const RunStats = z.object({
   tokens_out: z.number().int(),
   findings: z.number().int(),
   grounding: z.string(),
+  // USD cost of the run (sum over its LLM calls). Nullish: traces written
+  // before cost was persisted have no field; null = the run had no price data.
+  cost_usd: z.number().nullish(),
 });
 export type RunStats = z.infer<typeof RunStats>;
 
@@ -109,5 +112,8 @@ export const RunSummary = z.object({
   // findings that trip the agent's gate. Null on failed/cancelled runs.
   score: z.number().int().nullable(),
   blockers: z.number().int().nullable(),
+  // USD cost of the run; null when unpriced, failed/cancelled, or pre-dating
+  // cost persistence. The UI renders null as "—", never "$0.00".
+  cost_usd: z.number().nullable(),
 });
 export type RunSummary = z.infer<typeof RunSummary>;
