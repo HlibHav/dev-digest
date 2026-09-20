@@ -1,0 +1,68 @@
+import type { CSSProperties } from "react";
+import { LOW_CONFIDENCE } from "../../constants";
+
+export const s = {
+  card: (status: string): CSSProperties => ({
+    padding: 14,
+    borderRadius: 8,
+    border: "1px solid " + (status === "accepted" ? "var(--ok)" : "var(--border)"),
+    background: "var(--bg-elevated)",
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+  }),
+  headerRow: { display: "flex", alignItems: "center", gap: 8 } satisfies CSSProperties,
+  category: {
+    fontSize: 11,
+    fontWeight: 600,
+    textTransform: "uppercase",
+    letterSpacing: "0.04em",
+    color: "var(--accent)",
+    background: "var(--accent-bg)",
+    padding: "2px 7px",
+    borderRadius: 5,
+  } satisfies CSSProperties,
+  spacer: { flex: 1 } satisfies CSSProperties,
+  confidence: (value: number): CSSProperties => ({
+    fontSize: 12,
+    fontWeight: 600,
+    color: value < LOW_CONFIDENCE ? "var(--warn)" : "var(--text-secondary)",
+  }),
+  rule: { fontSize: 13.5, lineHeight: 1.5, color: "var(--text-primary)" } satisfies CSSProperties,
+  evidence: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    fontSize: 12,
+    color: "var(--text-muted)",
+    textDecoration: "none",
+    wordBreak: "break-all",
+  } satisfies CSSProperties,
+  snippet: {
+    fontSize: 11.5,
+    padding: "6px 8px",
+    borderRadius: 6,
+    background: "var(--bg-surface)",
+    border: "1px solid var(--border)",
+    color: "var(--text-secondary)",
+    overflowX: "auto",
+    whiteSpace: "pre",
+  } satisfies CSSProperties,
+  actions: { display: "flex", gap: 8, alignItems: "center" } satisfies CSSProperties,
+  editRow: { display: "flex", flexDirection: "column", gap: 8 } satisfies CSSProperties,
+  input: {
+    width: "100%",
+    fontSize: 13,
+    padding: "7px 9px",
+    borderRadius: 6,
+    border: "1px solid var(--border-strong)",
+    background: "var(--bg-surface)",
+    color: "var(--text-primary)",
+    outline: "none",
+  } satisfies CSSProperties,
+  acceptedTag: {
+    fontSize: 11,
+    fontWeight: 600,
+    color: "var(--ok)",
+  } satisfies CSSProperties,
+} as const;

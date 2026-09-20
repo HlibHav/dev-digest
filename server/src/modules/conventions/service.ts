@@ -10,6 +10,7 @@ import type {
 } from '@devdigest/shared';
 import { NotFoundError, ValidationError } from '../../platform/errors.js';
 import { renderPrompt } from '../../platform/prompts.js';
+import { withTimeout } from '../../platform/resilience.js';
 import type { ConventionsRepository } from './repository.js';
 import {
   ExtractionResult,
@@ -28,6 +29,7 @@ import {
   CONVENTIONS_SKILL_NAME,
   EXTRACTION_SCHEMA_NAME,
   EXTRACTION_TIMEOUT_MS,
+  EXTRACTION_TOTAL_BUDGET_MS,
   MAX_CANDIDATES,
   SAMPLE_FILE_COUNT,
 } from './constants.js';
@@ -163,25 +165,35 @@ export class ConventionsService {
 
     const choice = await this.ports.resolveModel(workspaceId);
     const llm = await this.ports.llm(choice.provider);
+    const rendered = renderSamples(samples);
+    this.ports.log?.(
+      `conventions: prompt carries ${rendered.length} chars of sampled code`,
+    );
     const prompt = await renderPrompt('conventions.system.md', {
-      samples: renderSamples(samples),
+      samples: rendered,
       repoFullName: basics.fullName,
       maxCandidates: String(MAX_CANDIDATES),
     });
 
-    // Our own timeout, under JobRunner's — so a slow model fails here, where
-    // nothing retries it, rather than being re-sent twice at full price.
-    const result = await llm.completeStructured<ExtractionResult>({
-      model: choice.model,
-      schema: ExtractionResult,
-      schemaName: EXTRACTION_SCHEMA_NAME,
-      messages: [
-        { role: 'system', content: prompt },
-        { role: 'user', content: 'Extract the conventions of this repository.' },
-      ],
-      timeoutMs: EXTRACTION_TIMEOUT_MS,
-      maxRetries: 1,
-    });
+    // Two nested budgets on purpose. `timeoutMs` bounds one ATTEMPT, and the
+    // providers apply it inside their own retry loop, so it cannot bound the
+    // call; `withTimeout` bounds the whole thing at a deadline that lands
+    // before JobRunner's 120s. `maxRetries: 0` keeps one slow extraction from
+    // being silently billed twice.
+    const result = await withTimeout(
+      llm.completeStructured<ExtractionResult>({
+        model: choice.model,
+        schema: ExtractionResult,
+        schemaName: EXTRACTION_SCHEMA_NAME,
+        messages: [
+          { role: 'system', content: prompt },
+          { role: 'user', content: 'Extract the conventions of this repository.' },
+        ],
+        timeoutMs: EXTRACTION_TIMEOUT_MS,
+        maxRetries: 0,
+      }),
+      EXTRACTION_TOTAL_BUDGET_MS,
+    );
 
     const verified = verifyCandidates(result.data.candidates ?? [], samples);
     this.ports.log?.(

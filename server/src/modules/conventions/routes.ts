@@ -14,7 +14,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { ConventionStatus, type FeatureModelChoice } from '@devdigest/shared';
 import * as t from '../../db/schema.js';
 import { getContext } from '../_shared/context.js';
@@ -78,8 +78,17 @@ export default async function conventionsRoutes(appBase: FastifyInstance) {
     log: (message) => app.log.info(message),
   });
 
+  // A scan interrupted by a restart has no worker to finish it, so clear it at
+  // boot rather than leave the page polling forever.
+  void repo
+    .reapStaleScans()
+    .then((n) => {
+      if (n > 0) app.log.warn(`conventions: reaped ${n} interrupted scan(s)`);
+    })
+    .catch((err) => app.log.error({ err }, 'conventions: could not reap stale scans'));
+
   // Registered once at plugin load, like the index jobs.
-  container.jobs.register(CONVENTIONS_JOB_KIND, async (payload) => {
+  container.jobs.register(CONVENTIONS_JOB_KIND, async (payload, ctx) => {
     const { workspaceId, repoId, scanId } = payload as {
       workspaceId: string;
       repoId: string;
@@ -87,6 +96,7 @@ export default async function conventionsRoutes(appBase: FastifyInstance) {
     };
     try {
       const written = await service.runScan(workspaceId, repoId, scanId);
+      await repo.clearJobError(ctx.jobId);
       app.log.info(`conventions: scan ${scanId} wrote ${written} candidate(s)`);
     } catch (err) {
       // Swallowed on purpose. JobRunner retries a throwing handler twice, and
@@ -94,10 +104,12 @@ export default async function conventionsRoutes(appBase: FastifyInstance) {
       // to the user through the job row and the scan's own error text.
       const message = err instanceof Error ? err.message : String(err);
       app.log.error(`conventions: scan ${scanId} failed — ${message}`);
+      // Scoped to THIS job. Matching on kind + workspace would rewrite every
+      // past scan of the workspace, including ones that succeeded.
       await container.db
         .update(t.jobs)
         .set({ status: 'failed', error: message, finishedAt: new Date() })
-        .where(and(eq(t.jobs.kind, CONVENTIONS_JOB_KIND), eq(t.jobs.workspaceId, workspaceId)));
+        .where(eq(t.jobs.id, ctx.jobId));
     }
   });
 
@@ -120,6 +132,11 @@ export default async function conventionsRoutes(appBase: FastifyInstance) {
         repoId: req.params.id,
         scanId,
       });
+      // JobRunner records the failure on the job row and then RETHROWS, so
+      // `done` rejects. Nothing awaits it, and an unhandled rejection takes the
+      // whole API process down — this catch is what keeps a failed scan a
+      // failed scan. The UI reads the outcome from the job row either way.
+      void job.done.catch(() => {});
       reply.code(202);
       return { status: 'accepted', job_id: job.id, scan_id: scanId };
     },

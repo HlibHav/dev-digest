@@ -1,12 +1,15 @@
 /* ConventionsService against fake ports — no container, no database, no network.
    The point of these tests is the SHAPE of the pipeline: which step is allowed
    to call the model, and what happens to what the model says afterwards. */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import type { FeatureModelChoice, Skill } from '@devdigest/shared';
 import { MockLLMProvider } from '../src/adapters/mocks.js';
 import { ConventionsService, type ConventionsPorts, type RepoBasics } from '../src/modules/conventions/service.js';
 import type { ConventionRow, VerifiedCandidate } from '../src/modules/conventions/helpers.js';
-import { EXTRACTION_SCHEMA_NAME } from '../src/modules/conventions/constants.js';
+import {
+  EXTRACTION_SCHEMA_NAME,
+  EXTRACTION_TOTAL_BUDGET_MS,
+} from '../src/modules/conventions/constants.js';
 
 const WS = 'ws-1';
 const REPO = 'repo-1';
@@ -64,6 +67,8 @@ function harness(opts: {
   readFails?: boolean;
   /** Replace the file fixtures entirely. */
   blankFiles?: Record<string, string>;
+  /** Model call that never resolves, to exercise the budget. */
+  hangs?: boolean;
 } = {}): Harness {
   const llm = new MockLLMProvider('openai', {
     structuredBySchema: { [EXTRACTION_SCHEMA_NAME]: opts.structured ?? extraction() },
@@ -96,7 +101,13 @@ function harness(opts: {
       return content;
     },
     resolveModel: async (): Promise<FeatureModelChoice> => ({ provider: 'openai', model: 'gpt-5.4' }),
-    llm: async () => llm,
+    llm: async () =>
+      opts.hangs
+        ? ({
+            ...llm,
+            completeStructured: () => new Promise(() => {}),
+          } as unknown as MockLLMProvider)
+        : llm,
     upsertSkill: async (_ws, input) => {
       upserts.push({ name: input.name, body: input.body, evidenceFiles: input.evidenceFiles });
       return { id: 'sk-1', name: input.name, body: input.body } as unknown as Skill;
@@ -173,11 +184,30 @@ describe('runScan', () => {
     expect((call?.req as { model: string }).model).toBe('gpt-5.4');
   });
 
-  it('caps its own timeout so a JobRunner retry cannot re-bill the call', async () => {
+  it('bounds the whole model call below JobRunner\'s 120s, not just one attempt', async () => {
     const h = harness();
     await h.service.runScan(WS, REPO, 'scan-1');
     const call = h.llm.calls.find((c) => c.method === 'completeStructured');
-    expect((call?.req as { timeoutMs: number }).timeoutMs).toBeLessThan(120_000);
+    const req = call?.req as { timeoutMs: number; maxRetries: number };
+    // The providers apply timeoutMs PER ATTEMPT inside their retry loop, so
+    // attempts x timeout has to stay under the job timeout as well.
+    expect(req.maxRetries).toBe(0);
+    expect(req.timeoutMs * (req.maxRetries + 1)).toBeLessThan(120_000);
+    expect(EXTRACTION_TOTAL_BUDGET_MS).toBeLessThan(120_000);
+  });
+
+  it('gives up at its own deadline rather than letting the job time out', async () => {
+    // Fake timers: the point is WHICH deadline fires, not waiting for it.
+    vi.useFakeTimers();
+    try {
+      const h = harness({ hangs: true });
+      const scan = h.service.runScan(WS, REPO, 'scan-1');
+      const assertion = expect(scan).rejects.toThrow(/timed out/i);
+      await vi.advanceTimersByTimeAsync(EXTRACTION_TOTAL_BUDGET_MS + 1_000);
+      await assertion;
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('writes nothing when this scan id already produced rows', async () => {

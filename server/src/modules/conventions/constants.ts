@@ -14,9 +14,11 @@ export const EXTRACTION_SCHEMA_NAME = 'ConventionExtraction';
 export const SAMPLE_FILE_COUNT = 12;
 
 /** Per-file budget. A sampled file is evidence, not the whole story — the first
-    N lines carry the imports, naming and error handling a convention lives in. */
-export const SAMPLE_MAX_LINES = 120;
-export const SAMPLE_MAX_CHARS = 6_000;
+    N lines carry the imports, naming and error handling a convention lives in.
+    Kept small on purpose: 12 files at 6k characters took a cheap model past the
+    120s job window, and a scan that times out teaches nothing. */
+export const SAMPLE_MAX_LINES = 70;
+export const SAMPLE_MAX_CHARS = 2_800;
 
 /** Whole-prompt ceiling for the sampled text, in tokens. */
 export const SAMPLE_TOKEN_BUDGET = 40_000;
@@ -48,7 +50,17 @@ export const MIN_CONFIDENCE = 0.3;
 /** Upper bound on rows one scan may write, so a runaway response can't flood the table. */
 export const MAX_CANDIDATES = 40;
 
-/** Our own ceiling on the model call, kept under JobRunner's 120s timeout so a
-    slow extraction fails HERE — where it is not retried — instead of being
-    retried twice at full price. */
-export const EXTRACTION_TIMEOUT_MS = 90_000;
+/** Per-ATTEMPT ceiling handed to the provider. Note the providers apply their
+    `timeoutMs` inside their own retry loop (`adapters/llm/openai.ts:108`), so
+    this alone does not bound the call — see the total budget below. */
+export const EXTRACTION_TIMEOUT_MS = 70_000;
+
+/**
+ * Ceiling on the WHOLE model call, enforced by us.
+ *
+ * JobRunner times out at 120s and then RETHROWS, which both re-runs the handler
+ * and — since nothing awaits `job.done` — would otherwise take the process down
+ * with an unhandled rejection. Failing at our own deadline first keeps the
+ * failure ours: recorded on the job row, paid for once.
+ */
+export const EXTRACTION_TOTAL_BUDGET_MS = 100_000;

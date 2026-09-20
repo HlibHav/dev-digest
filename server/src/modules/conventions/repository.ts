@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import type { Db } from '../../db/client.js';
 import * as t from '../../db/schema.js';
 import type { ConventionStatus } from '@devdigest/shared';
@@ -139,6 +139,11 @@ export class ConventionsRepository {
     return row;
   }
 
+  /** Mark a job as having finished cleanly, clearing any error text. */
+  async clearJobError(jobId: string): Promise<void> {
+    await this.db.update(t.jobs).set({ error: null }).where(eq(t.jobs.id, jobId));
+  }
+
   /** Has this scan already written rows? Guards against a retried job paying twice. */
   async countForScan(scanId: string): Promise<number> {
     const [row] = await this.db
@@ -146,6 +151,32 @@ export class ConventionsRepository {
       .from(t.conventions)
       .where(eq(t.conventions.scanId, scanId));
     return row?.n ?? 0;
+  }
+
+  /**
+   * Fail any scan left mid-flight by a previous process.
+   *
+   * JobRunner is in-memory and the app assumes one API instance per database
+   * (`app.ts`), so a `queued`/`running` extract job at boot has no worker and
+   * never will. Without this the page polls "Scanning…" forever. Mirrors
+   * `reapStaleRunningRuns` for review runs.
+   */
+  async reapStaleScans(): Promise<number> {
+    const rows = await this.db
+      .update(t.jobs)
+      .set({
+        status: 'failed',
+        finishedAt: new Date(),
+        error: 'Interrupted — the API restarted while this scan was running.',
+      })
+      .where(
+        and(
+          eq(t.jobs.kind, CONVENTIONS_JOB_KIND),
+          inArray(t.jobs.status, ['queued', 'running']),
+        ),
+      )
+      .returning({ id: t.jobs.id });
+    return rows.length;
   }
 
   /** Latest extract job for this repo — the UI's "Scanning…" state. */
@@ -167,6 +198,12 @@ export class ConventionsRepository {
       )
       .orderBy(desc(t.jobs.scheduledAt))
       .limit(1);
-    return row as ScanRow | undefined;
+    if (!row) return undefined;
+    // The handler catches its own failure so JobRunner won't retry a paid model
+    // call — but that also means JobRunner sees the handler RESOLVE and stamps
+    // `done` over it. The error text is the truthful signal, so a row that
+    // carries one is reported as failed whatever the status column says.
+    const status = row.error ? 'failed' : row.status;
+    return { ...row, status } as ScanRow;
   }
 }

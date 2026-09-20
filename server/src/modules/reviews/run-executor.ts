@@ -161,6 +161,7 @@ export class ReviewRunExecutor {
     // Declared outside the try so the failure path can persist what the model
     // was actually given, not an empty prompt-assembly record.
     let skillsBlock: string | null = null;
+    let skillsTokens: number | null = null;
 
     try {
       // Resolve the agent's LLM provider. (container.llm throws if the provider
@@ -198,6 +199,11 @@ export class ReviewRunExecutor {
       // what the editor's "needs vetting" state tells the user.
       const skills = await this.resolveSkills(workspaceId, agent, runLog);
       skillsBlock = renderSkillsBlock(skills);
+      // What the skills cost, measured on the block ALONE — the number the
+      // trace shows next to it. Counted here, where the exact text that reaches
+      // the prompt exists, rather than re-rendered later from the skill rows.
+      skillsTokens = skillsBlock === null ? null : this.container.tokenizer.count(skillsBlock);
+      if (skillsTokens !== null) runLog.info(`skills: ${skillsTokens} tokens in the skills block`);
 
       // ---- Engine: assemble → single-pass → grounding -----------------------
       // The pure review pipeline lives in @devdigest/reviewer-core (shared with
@@ -289,7 +295,7 @@ export class ReviewRunExecutor {
           grounding,
           cost_usd: costUsd,
         },
-        prompt_assembly: outcome.assembly,
+        prompt_assembly: { ...outcome.assembly, skills_tokens: skillsTokens },
         tool_calls: outcome.chunks.map((c) => ({
           tool: 'review_file',
           args: c.label,
@@ -329,7 +335,15 @@ export class ReviewRunExecutor {
       await this.repo
         .saveRunTrace(
           runId,
-          this.traceFromBuffer(runId, pull, agent, '0/0 passed', Date.now() - start, skillsBlock),
+          this.traceFromBuffer(
+            runId,
+            pull,
+            agent,
+            '0/0 passed',
+            Date.now() - start,
+            skillsBlock,
+            skillsTokens,
+          ),
         )
         .catch(() => undefined);
       this.container.runBus.complete(runId);
@@ -470,6 +484,7 @@ export class ReviewRunExecutor {
     grounding: string,
     durationMs = 0,
     skillsBlock: string | null = null,
+    skillsTokens: number | null = null,
   ): RunTrace {
     return {
       config: {
@@ -487,6 +502,7 @@ export class ReviewRunExecutor {
         // pre-work failure path (diff load) never assembled a prompt, so it
         // keeps null rather than showing a block the model never saw.
         skills: skillsBlock,
+        skills_tokens: skillsTokens,
         memory: null,
         specs: null,
         user: '',

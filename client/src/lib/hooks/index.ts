@@ -20,3 +20,12 @@ export {
 export * from "./reviews";
 export * from "./trace";
 export * from "./repo-intel";
+export {
+  useConventions,
+  useExtractConventions,
+  usePatchConvention,
+  useConventionSkillPreview,
+  useCreateConventionSkill,
+  type PatchConventionInput,
+  type CreateConventionSkillInput,
+} from "./conventions";
