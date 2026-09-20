@@ -104,6 +104,7 @@ No linter or formatter is configured in any package: typecheck + tests are the g
 - Working inside a package → that package's CLAUDE.md: `server/CLAUDE.md`, `client/CLAUDE.md`,
   `reviewer-core/CLAUDE.md`, `e2e/CLAUDE.md` (auto-load is unreliable, VS Code #24987)
 - Agent prompt templates, model choice → `docs/agent-prompts/`
+- Whether a skill actually changes a review → `docs/skills-control-experiment.md`
 - Adding or changing backend code (`server/src/**`, `reviewer-core/src/**`) → the
   `onion-architecture` skill: which ring the change belongs to, which way the imports point,
   and the per-tool rules for Drizzle, Fastify and zod. Don't skip it; "no extra ring here" is a

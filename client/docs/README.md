@@ -11,3 +11,4 @@ targets.
 - `run-cost-badge.md` — where the badge is wired, which hook and endpoint feed each surface, tests.
 - `severity-counters.md` — the severity pill row in the findings panel: the two derived lists, helpers, tests.
 - `findings-popover.md` — FindingsCell and FindingsPopover: data flow, fixed positioning, hover handling, tests.
+- `skills-ui.md` — where the Skills UI lives, why the shared contract is deep-imported, and why a drag does not snap back.

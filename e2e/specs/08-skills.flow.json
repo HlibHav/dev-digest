@@ -1,0 +1,70 @@
+{
+  "name": "Skills library lists the seeded skills and previews one",
+  "description": "Loads /skills, confirms the seeded skill cards render, selects one and confirms the preview pane shows its rendered body and version. Exercises the skills route, GET /skills and the card \u2192 preview selection (SkillsListView / SkillCard / SkillPreview). Read-only seeded data (no model call).",
+  "steps": [
+    {
+      "cmd": [
+        "open",
+        "{BASE}/skills"
+      ],
+      "label": "load the skills library"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--url",
+        "/skills"
+      ],
+      "label": "skills route reached"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--load",
+        "networkidle"
+      ],
+      "label": "skills fetch settles"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "branch-coverage-gate"
+      ],
+      "label": "a seeded skill card is visible"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "test-smells"
+      ],
+      "label": "a second seeded skill card is visible"
+    },
+    {
+      "cmd": [
+        "find",
+        "text",
+        "branch-coverage-gate",
+        "click"
+      ],
+      "label": "select the skill"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "Branch coverage gate"
+      ],
+      "label": "the preview pane renders its body heading"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "Skill body (Markdown)"
+      ],
+      "label": "the preview pane is open"
+    }
+  ]
+}
