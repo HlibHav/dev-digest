@@ -82,11 +82,18 @@ d('conventions extract → triage → skill', () => {
       overrides: {
         git: new MockGitClient({ files: { 'src/modules/skills/service.ts': SERVICE_TS } }),
         github: new MockGitHubClient(),
-        llm: {
-          openai: new MockLLMProvider('openai', {
-            structuredBySchema: { [EXTRACTION_SCHEMA_NAME]: extraction(rules) },
-          }),
-        },
+        // Registered under EVERY provider id, not just the one the feature
+        // defaults to today. `resolveFeatureModel` reads the default from the
+        // shared registry, so changing that default would otherwise silently
+        // route this test past the mock and into a real, paid API call.
+        llm: Object.fromEntries(
+          (['openai', 'anthropic', 'openrouter'] as const).map((id) => [
+            id,
+            new MockLLMProvider('openai', {
+              structuredBySchema: { [EXTRACTION_SCHEMA_NAME]: extraction(rules) },
+            }),
+          ]),
+        ),
       },
     });
   }
