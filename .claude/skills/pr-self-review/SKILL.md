@@ -1,6 +1,7 @@
 ---
 name: pr-self-review
 description: Reviews the local changes before they leave the machine as a pull request. Reads the diff, names the surfaces it touches, routes each surface to the skills that own it — `client/**` to frontend-ui-architecture + react-best-practices + react-testing-library + security + zod; `server/**` and `reviewer-core/**` to onion-architecture + fastify-best-practices + drizzle-orm-patterns + security + zod; `.claude/hooks/**` to security — grades each finding, and writes a verdict artifact. One critical finding means `blocked`. The enforcing `gh pr create` hook ships **unregistered** (`.claude/hooks/pr-self-review.py` is in the repo but not in `.claude/settings.json`), so invoke this skill deliberately — nothing calls it for you. Use before opening a pull request, before a commit, and when asked to self-review or sanity-check a change. Also triggers on "self review", "review my diff", "before I commit", "готово?", "перевір мої зміни", "самоперевірка". Routes only — it does NOT restate the routed skills' rules, does not hunt for correctness bugs (that is code-review), and does not run a package's typecheck/test gate (that is **Check** in the root CLAUDE.md).
+type: Workflow
 ---
 
 # pr-self-review
