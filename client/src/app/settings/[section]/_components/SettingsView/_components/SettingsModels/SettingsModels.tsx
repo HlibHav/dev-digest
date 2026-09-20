@@ -29,6 +29,9 @@ export function SettingsModels() {
 
   const setModel = (id: FeatureModelId, model: string) =>
     update.mutate({
+      // This picker lists OpenRouter's catalogue (`useProviderModels`), so the
+      // provider it writes is openrouter whatever a feature's registry default
+      // says — the model id chosen here is only resolvable there.
       feature_models: { ...chosen, [id]: { provider: "openrouter", model } },
     });
 

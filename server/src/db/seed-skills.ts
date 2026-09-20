@@ -135,6 +135,29 @@ accepting the old name for one release.
 - \`suggestion\` — a change that is compatible today but pins the design into a
   corner.
 
+## Good / bad
+
+Bad — the field is renamed, and every deployed caller reading \`cost_usd\` gets
+\`undefined\`:
+
+\`\`\`ts
+// before
+return { id: run.id, cost_usd: run.costUsd };
+// after
+return { id: run.id, cost: run.costUsd };
+\`\`\`
+
+Good — add the new name, keep the old one for one release, and say when it goes:
+
+\`\`\`ts
+return {
+  id: run.id,
+  cost: run.costUsd,
+  /** @deprecated use \`cost\`; removed in v3. */
+  cost_usd: run.costUsd,
+};
+\`\`\`
+
 ## Do not flag
 
 A route the diff itself introduces — nothing calls it yet.`;
@@ -182,6 +205,166 @@ per rule broken.
 \`pulls/\`, \`polling/\`, \`settings/\` and \`workspace/\` for keeping SQL in
 \`routes.ts\` — that is grandfathered and documented.`;
 
+
+const RESPONSE_SCHEMA = `# Response schema discipline
+
+The response body is the half of the contract a caller cannot validate before
+it ships. Read every change to the SHAPE of what a route returns, separately
+from whether the code is correct.
+
+## Flag
+
+- A field that disappears, is renamed, or moves to a nested object.
+- A field whose type changes — \`string\` → \`number\`, scalar → array, object →
+  array of objects.
+- A field that becomes nullable or optional when callers dereference it today.
+- An enum that gains a member a caller's exhaustive \`switch\` does not handle.
+- A list that changes shape — bare array → \`{ items, next_cursor }\`.
+- A schema changed in \`server\` without the matching edit in the vendored client
+  copy: the two are hand-mirrored, so one alone is a silent drift.
+
+## How to report
+
+Quote the zod schema before and after, and name one consumer that reads the
+field — a hook, a component, an e2e flow. "Some client might" is not a finding.
+
+## Good / bad
+
+Bad — a nullable widening with no caller change. Every \`score.toFixed(1)\`
+now throws:
+
+\`\`\`ts
+export const RunStats = z.object({ score: z.number() });        // before
+export const RunStats = z.object({ score: z.number().nullish() }); // after
+\`\`\`
+
+Good — widen the type AND say what reads it, so the caller is fixed in the
+same diff:
+
+\`\`\`ts
+export const RunStats = z.object({ score: z.number().nullish() });
+// client/…/ScoreBadge.tsx: score == null ? "—" : score.toFixed(1)
+\`\`\`
+
+## Severity
+
+- \`critical\` — a removed, renamed or retyped field on an existing route.
+- \`warning\` — a new nullable, a new enum member, or a server/client mirror drift.
+- \`suggestion\` — a shape that is compatible but inconsistent with sibling routes.
+
+## Do not flag
+
+A field added as optional to a response. Callers that do not know it ignore it.`;
+
+const SEMVER_DISCIPLINE = `# Semver discipline
+
+Decide what the change costs a consumer, and say which version bump it forces.
+The question is never "how big is the diff" — it is "what breaks if someone
+upgrades without reading".
+
+## The rule
+
+- **major** — an existing caller that changes nothing now behaves differently or
+  fails: a removed or renamed field, a new required input, a narrowed type, a
+  changed status code, a changed default that alters an outcome.
+- **minor** — new capability, nothing existing moves: a new route, a new
+  optional field, a new enum member on INPUT only.
+- **patch** — behaviour already documented, now actually true: a bug fix with no
+  shape change.
+
+Route a version bump by the WORST change in the diff. One major forces a major,
+however many minors surround it.
+
+## How to report
+
+State the bump the diff forces, quote the single change that forces it, and say
+whether the version in \`package.json\` matches. A diff that earns a major and
+bumps a patch is itself the finding.
+
+## Good / bad
+
+Bad — a major change shipped as a patch, so consumers upgrade silently:
+
+\`\`\`diff
+- "version": "2.4.1",
++ "version": "2.4.2",
+- app.get('/repos/:id/pulls', …)
++ app.get('/repos/:id/pull-requests', …)
+\`\`\`
+
+Good — the bump matches the worst change, and the reason is written down:
+
+\`\`\`diff
+- "version": "2.4.1",
++ "version": "3.0.0",
+  # CHANGELOG: BREAKING — /repos/:id/pulls is now /repos/:id/pull-requests.
+\`\`\`
+
+## Severity
+
+- \`critical\` — a major-forcing change released as minor or patch.
+- \`warning\` — a minor-forcing change released as patch.
+- \`suggestion\` — the bump is right but the changelog does not say why.
+
+## Do not flag
+
+An internal refactor behind an unchanged public surface — that is a patch, and
+a patch is what it should get.`;
+
+const DEPRECATION_POLICY = `# Deprecation policy
+
+Removing something is easy and the cost lands on someone else. A public surface
+leaves in two steps, never one: announce, then remove — with a release in
+between so callers can move.
+
+## Flag
+
+- A public export, route, field, or config key deleted in the same release it
+  was first called unwanted.
+- A \`@deprecated\` marker with no replacement named and no removal version.
+- A replacement shipped with no deprecation on the thing it replaces, so two
+  ways to do one thing exist with nothing saying which wins.
+- A deprecation whose stated removal version has passed and which is still here.
+
+## The shape of a good deprecation
+
+1. The replacement exists and works.
+2. The old surface keeps working and says, in one line, what to use instead and
+   when it disappears.
+3. Removal happens in a later release, and the changelog names it.
+
+## Good / bad
+
+Bad — the field is simply gone, and the caller finds out in production:
+
+\`\`\`ts
+export const PrMeta = z.object({
+-  head_sha: z.string(),
++  head_ref: z.string(),
+});
+\`\`\`
+
+Good — both exist for one release, the marker names the replacement AND the
+removal, so the next reviewer can delete it with confidence:
+
+\`\`\`ts
+export const PrMeta = z.object({
+  head_ref: z.string(),
+  /** @deprecated use \`head_ref\`. Removed in v3.0. */
+  head_sha: z.string(),
+});
+\`\`\`
+
+## Severity
+
+- \`critical\` — a silent removal of a public surface.
+- \`warning\` — a \`@deprecated\` with no replacement or no removal version.
+- \`suggestion\` — a deprecation past its stated removal date.
+
+## Do not flag
+
+Deleting something that was never exported, or that the same diff introduced.`;
+
 export const SEED_SKILLS: readonly SeedSkill[] = [
   {
     name: 'branch-coverage-gate',
@@ -198,11 +381,25 @@ export const SEED_SKILLS: readonly SeedSkill[] = [
     body: TEST_SMELLS,
   },
   {
-    name: 'breaking-change-gate',
+    name: 'breaking-change',
     description:
       'Flag any change to an existing route that breaks a deployed caller — required fields, removed or renamed fields, narrowed types, changed status codes — and give the compatible alternative.',
     type: 'rubric',
     body: BREAKING_CHANGE_GATE,
+  },
+  {
+    name: 'response-schema',
+    description:
+      'Read every change to the SHAPE of a response — removed, renamed, retyped or newly-nullable fields — and name the consumer that breaks.',
+    type: 'rubric',
+    body: RESPONSE_SCHEMA,
+  },
+  {
+    name: 'semver-discipline',
+    description:
+      'State which version bump the diff forces, routed by its worst change, and flag a release whose version does not match.',
+    type: 'rubric',
+    body: SEMVER_DISCIPLINE,
   },
   {
     name: 'api-contract-conventions',
@@ -216,5 +413,8 @@ export const SEED_SKILLS: readonly SeedSkill[] = [
 /** Which seeded skills each seeded agent links, in prompt order. */
 export const SEED_AGENT_SKILLS: Readonly<Record<string, readonly string[]>> = {
   'Test Quality Reviewer': ['branch-coverage-gate', 'test-smells'],
-  'API Contract Reviewer': ['breaking-change-gate', 'api-contract-conventions'],
+  // The fourth skill, `deprecation-policy`, ships as a file under
+  // `docs/skills/` and is added through the Skills importer instead of the
+  // seed — so at least one linked skill has "imported" provenance.
+  'API Contract Reviewer': ['breaking-change', 'response-schema', 'semver-discipline'],
 };
