@@ -10,6 +10,8 @@ fixed — add to the one that fits.
 
 ## What Doesn't Work
 
+- **2026-09-20** — A review of a PR nobody has opened sees an **empty diff**, completes, and costs money: it reports 0 findings with `Reviewing 0 changed file(s)` in the run log. `loadDiff` tries `git diff base...head` in the clone first, but `fetchPullHead` has no production caller, so an unmerged PR's head sha is never in the clone and the call throws; the fallback reconstructs the diff from `pr_files.patch`, which only `GET /pulls/:id` fills (it refreshes from GitHub). Open the PR in the UI once — or call `GET /pulls/:id` — before measuring anything about a review. Evidence: `server/src/modules/reviews/diff-loader.ts:20`, `server/src/modules/pulls/routes.ts:227`, `server/src/adapters/git/simple-git.ts:72`
+
 - **2026-09-16** — In `*.it.test.ts`, `expect(row.newColumn).not.toBeNull()` passes before the column exists: a drizzle row has no such key, so the value is `undefined`, not `null`, and the test goes green without the feature. Assert the type instead (`toEqual(expect.any(String))`) or a value (`toBeGreaterThan(0)`). Evidence: `server/test/reviews.it.test.ts:214`
 
 ## Codebase Patterns
@@ -24,6 +26,8 @@ fixed — add to the one that fits.
 ## Recurring Errors & Fixes
 
 ## Session Notes
+
+- **2026-09-20** — Skills for review agents: skills module, file/archive import, and the query that feeds an agent's prompt → What Doesn't Work. Evidence: `server/src/modules/agents/repository.ts:212`
 
 - **2026-09-16** — Run Cost Badge (persist `agent_runs.cost_usd` + `batch_id`, surface cost on PR list / timeline / trace) → What Doesn't Work, Codebase Patterns; e2e → Recurring Errors & Fixes
   - **2026-09-16** — Refined: the session's main code change, the run cost persisted when a run completes. Evidence: `server/src/modules/reviews/run-executor.ts:253`
