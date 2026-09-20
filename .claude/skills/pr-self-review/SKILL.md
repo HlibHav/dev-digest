@@ -1,12 +1,13 @@
 ---
 name: pr-self-review
-description: Reviews the local changes before they leave the machine as a pull request. Reads the diff, names the surfaces it touches, routes each surface to the skills that own it — `client/**` to frontend-ui-architecture + react-best-practices + react-testing-library + security + zod; `server/**` and `reviewer-core/**` to onion-architecture + fastify-best-practices + drizzle-orm-patterns + security + zod — grades each finding, and writes a verdict the `gh pr create` hook reads. One critical finding blocks the PR. Use before opening a pull request, before a commit, and when asked to self-review or sanity-check a change. Also triggers on "self review", "review my diff", "before I commit", "готово?", "перевір мої зміни", "самоперевірка". Routes only — it does NOT restate the routed skills' rules, does not hunt for correctness bugs (that is code-review), and does not run a package's typecheck/test gate (that is **Check** in the root CLAUDE.md).
+description: Reviews the local changes before they leave the machine as a pull request. Reads the diff, names the surfaces it touches, routes each surface to the skills that own it — `client/**` to frontend-ui-architecture + react-best-practices + react-testing-library + security + zod; `server/**` and `reviewer-core/**` to onion-architecture + fastify-best-practices + drizzle-orm-patterns + security + zod; `.claude/hooks/**` to security — grades each finding, and writes a verdict artifact. One critical finding means `blocked`. The enforcing `gh pr create` hook ships **unregistered** (`.claude/hooks/pr-self-review.py` is in the repo but not in `.claude/settings.json`), so invoke this skill deliberately — nothing calls it for you. Use before opening a pull request, before a commit, and when asked to self-review or sanity-check a change. Also triggers on "self review", "review my diff", "before I commit", "готово?", "перевір мої зміни", "самоперевірка". Routes only — it does NOT restate the routed skills' rules, does not hunt for correctness bugs (that is code-review), and does not run a package's typecheck/test gate (that is **Check** in the root CLAUDE.md).
 ---
 
 # pr-self-review
 
 A dispatcher with a verdict. It looks at what actually changed, hands each surface to the skill
-that owns it, grades what comes back, and records the result where the hook can find it.
+that owns it, grades what comes back, and records the result where the (currently unregistered)
+`gh pr create` hook would look for it.
 Everything it would otherwise explain lives in the skills it routes to — read them there, never
 paraphrase them here.
 
@@ -15,7 +16,7 @@ paraphrase them here.
 
    | Mode | When | Scope |
    |---|---|---|
-   | pre-PR | the hook denied a `gh pr create`, or you are about to open a PR | `git merge-base HEAD origin/main` → `git diff <base>...HEAD`, **plus** any uncommitted delta |
+   | pre-PR | you are about to open a PR (or the hook is registered and denied a `gh pr create`) | `git merge-base HEAD origin/main` → `git diff <base>...HEAD`, **plus** any uncommitted delta |
    | pre-commit | "перевір мої зміни", "before I commit" | uncommitted only: `git status --porcelain` + `git diff HEAD` |
 
    In pre-PR mode the work is usually already committed. **Never report "nothing to review" on a
@@ -35,10 +36,16 @@ paraphrase them here.
    | `server/**`, `reviewer-core/**` | `onion-architecture`, `fastify-best-practices`, `drizzle-orm-patterns`, `security`, `zod` |
    | `server/src/db/**` | the row above **plus** `postgresql-table-design` |
    | `e2e/**` | no skill owns this surface — review against `e2e/CLAUDE.md` |
-   | `*.md`, `docs/`, `scripts/`, `.claude/` | unrouted |
+   | `.claude/hooks/**` | `security` |
+   | `*.md`, `docs/`, `scripts/`, `.claude/` **except** `.claude/hooks/**` | unrouted |
 
    `typescript-expert` is deliberately absent: it applies to every TypeScript line in the repo,
    so routing it would load it on every run and say nothing about the change.
+
+   `.claude/hooks/**` is the one executable surface outside the packages: a hook script runs on
+   every matching tool call with the user's own privileges, so it routes to `security` even
+   though no package owns Python. The gate added that row after shipping its own hook through an
+   all-unrouted diff — a review that read nothing.
 
    A surface is code only: a `*.md` path is **unrouted even inside a routed surface**, so
    `server/INSIGHTS.md` alone pulls in nothing. A surface absent from the diff routes to nothing
@@ -79,9 +86,11 @@ paraphrase them here.
    Verdict:   blocked — 1 critical. Fix it, then re-run.
    ```
 
-8. **In pre-PR mode, write the verdict artifact — `ready` and `blocked` alike.** The
-   `gh pr create` hook reads it and denies when it is missing, stale or `blocked`, so skipping
-   this step in pre-PR mode is the same as reporting `blocked`.
+8. **In pre-PR mode, write the verdict artifact — `ready` and `blocked` alike.** When the
+   `gh pr create` hook is registered it reads the artifact and denies on missing, stale or
+   `blocked`, so skipping this step in pre-PR mode is the same as reporting `blocked`. The hook
+   is unregistered by default, which changes who enforces the verdict, not whether you write it:
+   the artifact is still the record of what was reviewed and at which `head_sha`.
 
    **Pre-commit mode writes nothing.** Its diff covers only uncommitted work, so a `ready` from it
    says nothing about the commits already on the branch. Writing it would hand the hook a verdict

@@ -2,6 +2,13 @@
 
 Plan only. Nothing here is implemented yet, and one decision (§3) needs sign-off before it can be.
 
+> **Status, 2026-09-20.** Built and verified. Two things changed after this plan was written:
+> `.claude/hooks/**` now routes to `security` (the gate shipped its own hook through an
+> all-unrouted diff, so no skill read it), and the `PreToolUse` registration in step 6 was
+> **removed from `.claude/settings.json`** — the script stays in the repo, but nothing
+> auto-denies `gh pr create` any more. The skill is invoked deliberately. Re-register the
+> hook block to turn enforcement back on.
+
 ## 1. The brief
 
 1. A skill named **PR Self Review**.
