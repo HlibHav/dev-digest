@@ -54,9 +54,39 @@ STATE_DIR = Path(
 )
 LOG_FILE = STATE_DIR / "log.jsonl"
 
-# `gh pr create`, tolerant of extra flags and whitespace between the words.
-GH_PR_CREATE_RX = re.compile(r"(?<![\w./-])gh\s+(?:--\S+\s+)*pr\s+create\b")
+# `gh pr create` in COMMAND POSITION: start of the command, or after a shell separator,
+# with optional VAR=value prefixes. Matching the bare phrase anywhere is the 2026-09-13 bug in
+# another costume — observed live on 2026-09-20, when `prepush-review.py` spent $0.07 and 12.7s
+# on a Sonnet review because the words "git push" appeared inside a heredoc it was writing.
+# Here the same false positive would DENY an innocent command, so the phrase is matched only
+# where a command can actually start, and only after heredoc bodies and quoted strings are
+# stripped (`grep -rn 'gh pr create' docs/` must not trip the gate).
+GH_PR_CREATE_RX = re.compile(
+    r"(?:\A|[;&|(\n])\s*(?:\w+=\S*\s+)*gh\s+(?:--\S+\s+)*pr\s+create\b"
+)
 OVERRIDE_RX = re.compile(r"PR_SELF_REVIEW_OVERRIDE=1\b")
+HEREDOC_RX = re.compile(r"<<-?\s*[\'\"]?(\w+)[\'\"]?")
+QUOTED_RX = re.compile(r"'[^']*'|\"[^\"]*\"")
+
+
+def strip_noise(command: str) -> str:
+    """Drop heredoc bodies and quoted strings, so only real command text is matched.
+
+    A conservative shell approximation, not a parser: it only ever removes text, so it can
+    hide a real invocation (fails open on a weird command) but cannot invent one.
+    """
+    out, lines, i = [], command.split("\n"), 0
+    while i < len(lines):
+        line = lines[i]
+        out.append(line)
+        for m in HEREDOC_RX.finditer(line):
+            delim = m.group(1)
+            i += 1
+            while i < len(lines) and lines[i].strip() != delim:
+                i += 1  # body dropped
+            break
+        i += 1
+    return QUOTED_RX.sub(" ", "\n".join(out))
 
 # Must stay byte-for-byte identical to the pipeline in the skill's step 8, or every verdict
 # reads as stale. Run through bash rather than reimplementing it in Python, so there is one
@@ -145,7 +175,7 @@ def main() -> int:
     if hook_input.get("tool_name") != "Bash":
         return 0
     command = str((hook_input.get("tool_input") or {}).get("command", ""))
-    if not GH_PR_CREATE_RX.search(command):
+    if not GH_PR_CREATE_RX.search(strip_noise(command)):
         return 0  # the no-op path: no log, no git, no filesystem
 
     cwd = str(hook_input.get("cwd") or os.getcwd())
