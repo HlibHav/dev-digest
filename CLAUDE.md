@@ -104,6 +104,10 @@ No linter or formatter is configured in any package: typecheck + tests are the g
 - Working inside a package → that package's CLAUDE.md: `server/CLAUDE.md`, `client/CLAUDE.md`,
   `reviewer-core/CLAUDE.md`, `e2e/CLAUDE.md` (auto-load is unreliable, VS Code #24987)
 - Agent prompt templates, model choice → `docs/agent-prompts/`
+- Adding or changing backend code (`server/src/**`, `reviewer-core/src/**`) → the
+  `onion-architecture` skill: which ring the change belongs to, which way the imports point,
+  and the per-tool rules for Drizzle, Fastify and zod. Don't skip it; "no extra ring here" is a
+  valid outcome. The always-on guardrail is `.claude/rules/onion-boundaries.md`.
 - Placing a new file under `client/src` — which folder, when to promote to shared, import
   directions → `frontend-ui-architecture`
 - Finishing a non-trivial task → `engineering-insights` to record what was learned in the touched

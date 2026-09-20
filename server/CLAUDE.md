@@ -29,6 +29,9 @@ rewritten by `tsc`. Run the API through `tsx` (`pnpm dev`) everywhere.
   This package owns I/O, persistence, and streaming only.
 - Secrets only through `container.secrets`, never `process.env` or
   `AppConfig` directly.
+- These are the onion's rings. The ring table, the known leaks and the
+  per-tool rules live in the `onion-architecture` skill; the always-on
+  guardrail is `.claude/rules/onion-boundaries.md`.
 
 ## Async model
 
