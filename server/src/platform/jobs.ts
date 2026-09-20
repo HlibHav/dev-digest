@@ -97,6 +97,13 @@ export class JobRunner {
       }
     }) as Promise<void>;
 
+    // The repos and repo-intel call sites drop `done` and nothing registers
+    // `unhandledRejection`, so a plain failed job — a private repo, a typo'd
+    // URL — terminated the process.
+    // Attaching a handler here marks the rejection handled; `done` itself still
+    // rejects for anyone who does await it.
+    void done.catch(() => undefined);
+
     return { id: jobId, done };
   }
 

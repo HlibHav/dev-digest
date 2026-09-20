@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { randomUUID } from 'node:crypto';
 import { startPg, dockerAvailable, type PgFixture } from './helpers/pg.js';
 import { waitForPrRuns } from './helpers/runs.js';
 import { buildApp } from '../src/app.js';
@@ -303,6 +304,63 @@ d('A2 reviews + agents (Testcontainers pg)', () => {
     // The replay buffer should contain our log lines as SSE `data:` frames.
     expect(sse.payload).toContain('Starting review');
     expect(sse.payload).toContain('Citation grounding');
+    await app.close();
+  });
+
+  it('run-scoped routes 404 on an unknown id and leave the RunBus untouched', async () => {
+    const app = await appWith(REVIEW_FIXTURE);
+    const unknown = randomUUID();
+
+    for (const call of [
+      { method: 'GET' as const, url: `/runs/${unknown}/events` },
+      { method: 'POST' as const, url: `/runs/${unknown}/cancel` },
+      { method: 'GET' as const, url: `/runs/${unknown}/trace` },
+    ]) {
+      const res = await app.inject(call);
+      expect(res.statusCode, `${call.method} ${call.url}`).toBe(404);
+    }
+
+    // Subscribing used to CREATE a permanent emitter + buffer + seq entry for any
+    // id, then park the generator on a 'done' that could never fire — so the old
+    // code both grew these maps and held the connection open forever (this test
+    // would hang rather than fail). Reaching into the private maps is the only
+    // way to assert the absence.
+    const bus = app.container.runBus as unknown as {
+      buffers: Map<string, unknown>;
+      emitters: Map<string, unknown>;
+      seq: Map<string, unknown>;
+    };
+    expect(bus.buffers.has(unknown)).toBe(false);
+    expect(bus.emitters.has(unknown)).toBe(false);
+    expect(bus.seq.has(unknown)).toBe(false);
+
+    await app.close();
+  });
+
+  it('never serves a run, or its trace, that belongs to another workspace', async () => {
+    const app = await appWith(REVIEW_FIXTURE);
+    const db = pg.handle.db;
+    const [other] = await db.insert(t.workspaces).values({ name: 'Other Tenant' }).returning();
+    const [foreign] = await db
+      .insert(t.agentRuns)
+      .values({ workspaceId: other!.id, status: 'done' })
+      .returning();
+    // A trace holds the whole assembled prompt and the raw model output.
+    await db.insert(t.runTraces).values({
+      runId: foreign!.id,
+      trace: { log: [{ t: '00.01', kind: 'info', msg: 'tenant-only prompt text' }] },
+    });
+
+    expect(
+      (await app.inject({ method: 'GET', url: `/runs/${foreign!.id}/trace` })).statusCode,
+    ).toBe(404);
+    expect(
+      (await app.inject({ method: 'POST', url: `/runs/${foreign!.id}/cancel` })).statusCode,
+    ).toBe(404);
+    const sse = await app.inject({ method: 'GET', url: `/runs/${foreign!.id}/events` });
+    expect(sse.statusCode).toBe(404);
+    expect(sse.payload).not.toContain('tenant-only prompt text');
+
     await app.close();
   });
 

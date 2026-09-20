@@ -82,8 +82,23 @@ export default async function reviewsRoutes(appBase: FastifyInstance) {
     '/runs/:id/events',
     { schema: { params: IdParams }, config: { rateLimit: false } },
     async (req, reply) => {
-    await getContext(container, req);
+    const { workspaceId } = await getContext(container, req);
     const runId = req.params.id;
+    // Resolved (and 404'd) BEFORE the bus is touched: subscribe() creates a
+    // permanent emitter + buffer + seq entry for whatever id it is handed, and a
+    // run that is not running has no 'done' to wait for.
+    const plan = await service.streamPlan(workspaceId, runId);
+
+    if (!plan.live) {
+      reply.sse(
+        (async function* () {
+          for (const e of plan.replay) {
+            yield { id: String(e.seq), event: e.kind, data: JSON.stringify(e) };
+          }
+        })(),
+      );
+      return;
+    }
 
     reply.sse(
       (async function* () {
@@ -145,15 +160,15 @@ export default async function reviewsRoutes(appBase: FastifyInstance) {
 
   // ---- Cancel an in-flight run --------------------------------------------
   app.post('/runs/:id/cancel', { schema: { params: IdParams } }, async (req) => {
-    await getContext(container, req);
-    await service.cancelRun(req.params.id);
+    const { workspaceId } = await getContext(container, req);
+    await service.cancelRun(workspaceId, req.params.id);
     return { ok: true };
   });
 
   // ---- Run trace (single document; A5 enriches with multi-agent/stats) ----
   app.get('/runs/:id/trace', { schema: { params: IdParams } }, async (req) => {
-    await getContext(container, req);
-    const trace = await service.getRunTrace(req.params.id);
+    const { workspaceId } = await getContext(container, req);
+    const trace = await service.getRunTrace(workspaceId, req.params.id);
     if (!trace) throw new NotFoundError('Run trace not found');
     return trace;
   });

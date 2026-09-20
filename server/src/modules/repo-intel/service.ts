@@ -28,6 +28,7 @@ import {
 } from '../../adapters/astgrep/index.js';
 import { readFile } from 'node:fs/promises';
 import { extname, join } from 'node:path';
+import { NotFoundError } from '../../platform/errors.js';
 import { RepoIntelRepository, type FullSymbolRow } from './repository.js';
 import type {
   BlastCallerRow,
@@ -103,6 +104,12 @@ export class RepoIntelService implements RepoIntel {
 
   constructor(private container: Container) {
     this.repo = new RepoIntelRepository(container.db);
+  }
+
+  async requireRepoInWorkspace(workspaceId: string, repoId: string): Promise<void> {
+    if (!(await this.repo.repoInWorkspace(workspaceId, repoId))) {
+      throw new NotFoundError('Repo not found');
+    }
   }
 
   // -------------------------------------------------------------------------
