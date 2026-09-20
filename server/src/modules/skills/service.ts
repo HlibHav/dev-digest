@@ -9,7 +9,11 @@ import {
   sanitizeSkillName,
   type SkillVersionDto,
 } from './helpers.js';
-import { IMPORT_MAX_UPLOAD_BYTES, IMPORTED_SKILL_SOURCE } from './constants.js';
+import {
+  EXTRACTED_SKILL_SOURCE,
+  IMPORT_MAX_UPLOAD_BYTES,
+  IMPORTED_SKILL_SOURCE,
+} from './constants.js';
 import { parseSkillUpload, type SkillImportPreview } from './import.js';
 
 /**
@@ -79,6 +83,54 @@ export class SkillsService {
       body,
       enabled: input.imported ? false : (input.enabled ?? true),
       ...(input.evidence_files !== undefined ? { evidenceFiles: input.evidence_files } : {}),
+    });
+    return toSkillDto(row);
+  }
+
+  /**
+   * Create-or-update a skill this app generated itself, keyed by name.
+   *
+   * The conventions extractor calls this every time the user presses "Create
+   * skill". `skills` has no unique constraint on (workspace_id, name), so a
+   * plain `create` would leave a second `repo-conventions` behind the first
+   * time someone accepts another candidate and creates again. Updating instead
+   * keeps exactly one skill and — because the body changed — bumps its version
+   * and snapshots the previous one, which is what fills the Versioning tab.
+   *
+   * `source` is `extracted`, not `imported_url`: this body is ours, assembled
+   * from snippets already proven to exist in the repo, so it is trusted text
+   * and lands enabled.
+   */
+  async upsertExtracted(
+    workspaceId: string,
+    input: { name: string; description: string; body: string; evidenceFiles?: string[] },
+  ): Promise<Skill> {
+    const body = sanitizeSkillBody(input.body);
+    if (body.length === 0) throw new ValidationError('A skill needs a body');
+    const name = sanitizeSkillName(input.name);
+    const description = sanitizeSkillDescription(input.description);
+
+    const existing = await this.repo.getByName(workspaceId, name);
+    if (existing) {
+      const row = await this.repo.update(workspaceId, existing.id, {
+        description,
+        body,
+        ...(input.evidenceFiles !== undefined ? { evidenceFiles: input.evidenceFiles } : {}),
+      });
+      // `update` returns undefined only if the row vanished between the two
+      // statements; falling back to the row we read keeps the caller typed.
+      return toSkillDto(row ?? existing);
+    }
+
+    const row = await this.repo.insert({
+      workspaceId,
+      name,
+      description,
+      type: 'convention',
+      source: EXTRACTED_SKILL_SOURCE,
+      body,
+      enabled: true,
+      ...(input.evidenceFiles !== undefined ? { evidenceFiles: input.evidenceFiles } : {}),
     });
     return toSkillDto(row);
   }

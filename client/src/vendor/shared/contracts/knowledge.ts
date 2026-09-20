@@ -153,15 +153,38 @@ export const CommunitySkill = z.object({
 export type CommunitySkill = z.infer<typeof CommunitySkill>;
 
 // ---- Conventions ----
+// A candidate is a rule the extractor derived from sampled repo files, kept only
+// when its snippet was found in the named file. `evidence_line` is the VERIFIED
+// line, which is what the GitHub deep link points at.
+export const ConventionStatus = z.enum(['pending', 'accepted', 'rejected']);
+export type ConventionStatus = z.infer<typeof ConventionStatus>;
+
 export const ConventionCandidate = z.object({
   id: z.string(),
+  category: z.string(),
   rule: z.string(),
   evidence_path: z.string(),
+  evidence_line: z.number().int().positive().nullable(),
   evidence_snippet: z.string(),
   confidence: z.number().min(0).max(1),
-  accepted: z.boolean(),
+  status: ConventionStatus,
 });
 export type ConventionCandidate = z.infer<typeof ConventionCandidate>;
+
+/** Status of the latest extract job for a repo, read from the `jobs` table. */
+export const ConventionScan = z.object({
+  job_id: z.string(),
+  status: z.enum(['queued', 'running', 'done', 'failed']),
+  error: z.string().nullable(),
+  finished_at: z.string().nullable(),
+});
+export type ConventionScan = z.infer<typeof ConventionScan>;
+
+export const ConventionsPage = z.object({
+  candidates: z.array(ConventionCandidate),
+  scan: ConventionScan.nullable(),
+});
+export type ConventionsPage = z.infer<typeof ConventionsPage>;
 
 // ---- Agents ----
 export const Provider = z.enum(['openai', 'anthropic', 'openrouter']);
