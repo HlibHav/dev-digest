@@ -192,6 +192,29 @@ review of the same action — which is also why the hook here deliberately does 
 | Artifact deleted or corrupt | hook **denies** — a missing verdict is a verdict: nobody reviewed this |
 | `git` itself unusable | hook fails open, writes a log line |
 
+### Verified on 2026-09-20
+
+Both open questions about the harness were settled empirically, with a temporary probe hook and a
+nested `claude -p` run inside `.claude/worktrees/pr-self-review-skill`:
+
+- **User and project `PreToolUse` hooks merge; the project one does not shadow the user one.** A
+  single `git push --dry-run` in the nested session produced both a `skip-dry-run` line in
+  `~/.claude/state/prepush-review/log.jsonl` and a probe line from the project hook, same cwd, same
+  command. Registering this gate does not disable the global push gate.
+- **`$CLAUDE_PROJECT_DIR` resolves to the worktree root**, not the main checkout
+  (`…/.claude/worktrees/pr-self-review-skill`), so the registered hook path is correct in every
+  worktree.
+
+All of §7 passes, plus ten command-recognition cases. Two end-to-end runs: a branch with a
+hardcoded secret, raw SQL and no authz in `server/**` produced three criticals, a `blocked` verdict
+and a hook deny; a docs-only branch produced no findings, `ready`, and a hook allow.
+
+The hook's own matching was hardened during this pass. `gh pr create` is now recognised only in
+command position, after heredoc bodies and quoted strings are stripped: the first version denied
+`grep -rn 'gh pr create' docs/` and any heredoc whose prose mentioned the phrase. The live
+`prepush-review.py` log showed the same class of bug costing $0.07 and 12.7s on a heredoc that
+merely contained the words "git push".
+
 ## 8. Where this lands
 
 The skill and the hook go on `feat/reviewer-skills`, beside `onion-architecture` and
