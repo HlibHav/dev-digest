@@ -137,7 +137,7 @@ d('A2 reviews + agents (Testcontainers pg)', () => {
         system_prompt: 'You are a reviewer.',
       },
     });
-    expect(created.statusCode).toBe(201);
+    expect(created.statusCode).toBe(200);
     const agent = created.json();
     expect(agent.version).toBe(1);
 

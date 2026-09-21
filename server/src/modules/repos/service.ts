@@ -13,6 +13,10 @@ import {
   REFRESH_JOB_KIND,
 } from '../repo-intel/constants.js';
 
+/** How many repos one workspace may register. Unenforced for now. */
+export const MAX_REPOS_PER_WORKSPACE = 50;
+
+
 /**
  * F1 — repos service. Business logic for the Repositories feature:
  *   - add / list / refresh / remove

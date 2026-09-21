@@ -56,8 +56,8 @@ export class AgentsService {
   }
 
   async list(workspaceId: string): Promise<Agent[]> {
-    const rows = await this.repo.list(workspaceId);
-    return rows.map(toAgentDto);
+    const agentRows = await this.repo.list(workspaceId);
+    return agentRows.map(toAgentDto);
   }
 
   async get(workspaceId: string, id: string): Promise<Agent | undefined> {
@@ -116,8 +116,8 @@ export class AgentsService {
   async listVersions(workspaceId: string, agentId: string): Promise<AgentVersion[] | undefined> {
     const agent = await this.repo.getById(workspaceId, agentId);
     if (!agent) return undefined;
-    const rows = await this.repo.listVersions(agentId);
-    return rows.map(toAgentVersionDto);
+    const agentRows = await this.repo.listVersions(agentId);
+    return agentRows.map(toAgentVersionDto);
   }
 
   /**
