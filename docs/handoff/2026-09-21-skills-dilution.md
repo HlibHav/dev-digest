@@ -237,8 +237,13 @@ model, `[system, user]` messages, temperature 0, `json_schema` strict and
 added, and the `provider` field of each response was recorded. The run made 55
 calls for $0.027 in total and wrote nothing to the dev DB.
 
-**Routing is not sticky.** Four unpinned calls with the all-five prompt were
-served by AtlasCloud, Mancer 2, OpenInference and OpenInference.
+**Routing is not reliably sticky.** All 27 runs from 07:02 to 07:11 carry
+OpenInference's token counts: no skills took 5204 then and takes 5204 pinned to
+it now. Yet four unpinned calls at ~09:00 went to AtlasCloud, Mancer 2,
+OpenInference and OpenInference. **Temperature 0 does not make one provider
+deterministic either.** Pinned to OpenInference, one prompt got different
+verdicts: no skills gave 5 × request_changes and 1 × approve. At n = 6, 5/6 and
+6/6 can't be told apart. Only the all-five arm stands out.
 
 **One call per provider, all-five prompt:**
 
@@ -268,7 +273,7 @@ the schema into the prompt. That is inferred, not checked.
 | + one neutral sentence (7c570fbe) | 6/6 |
 | + 1997 chars of neutral prose (5a27bcb9) | 6/6 |
 | + `repo-conventions` (76a38fc2) | 6/6 |
-| all five (c7f0a9cb) | **1/9** (6 pinned, 1 pinned in the sweep, 2 unpinned that landed there) |
+| all five (c7f0a9cb) | **0/6**; 1/9 counting the sweep call and the 2 unpinned calls that landed there |
 
 Across the other nine providers, the all-five prompt was caught in 10 of 11
 calls. The one miss was Alibaba.
