@@ -73,6 +73,51 @@ export function reviewToDto(
   };
 }
 
+const CSV_COLUMNS = [
+  'severity',
+  'category',
+  'title',
+  'file',
+  'start_line',
+  'end_line',
+  'confidence',
+  'rationale',
+  'suggestion',
+  'accepted_at',
+  'dismissed_at',
+] as const;
+
+/** Quote a CSV field when it contains a comma, quote or newline; double any embedded quotes. */
+function csvField(value: string): string {
+  return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+}
+
+/**
+ * Render a PR's findings (across all its reviews) as CSV, one row per finding.
+ * `rationale`/`suggestion` are free-form markdown, so every field is quoted
+ * defensively rather than only when a delimiter happens to appear.
+ */
+export function findingsToCsv(findings: ReviewDtoFinding[]): string {
+  const rows = findings.map((f) =>
+    [
+      f.severity,
+      f.category,
+      f.title,
+      f.file,
+      String(f.start_line),
+      String(f.end_line),
+      String(f.confidence),
+      f.rationale,
+      f.suggestion ?? '',
+      f.accepted_at ?? '',
+      f.dismissed_at ?? '',
+    ]
+      .map(csvField)
+      .join(','),
+  );
+  return [CSV_COLUMNS.join(','), ...rows].join('\r\n') + '\r\n';
+}
+
 /**
  * Build the per-run task instruction line for a PR.
  *

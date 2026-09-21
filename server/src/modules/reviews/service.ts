@@ -7,7 +7,7 @@ import { ReviewRepository } from './repository.js';
 import { type ReviewDto, type ReviewDtoFinding } from './helpers.js';
 import { ReviewRunExecutor, type Logger } from './run-executor.js';
 import { actOnFinding as actOnFindingImpl } from './findings.js';
-import { reviewToDto } from './helpers.js';
+import { reviewToDto, findingsToCsv } from './helpers.js';
 
 // Re-export DTO types + converters for backward-compatible imports from
 // './service.js' (these previously lived here; logic now in ./helpers.ts).
@@ -179,5 +179,11 @@ export class ReviewService {
 
   async getRunTrace(runId: string): Promise<RunTrace | undefined> {
     return this.repo.getRunTrace(runId);
+  }
+
+  /** All of a PR's findings (every review run, newest first), as CSV for export. */
+  async findingsCsvForPull(workspaceId: string, prId: string): Promise<string> {
+    const reviews = await this.reviewsForPull(workspaceId, prId);
+    return findingsToCsv(reviews.flatMap((r) => r.findings));
   }
 }

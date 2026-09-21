@@ -28,6 +28,8 @@
   },
   "panel": {
     "hideLowConfidence": "Hide low confidence",
+    "exportCsv": "Export all findings (CSV)",
+    "exportCsvError": "Couldn't export findings. Try again.",
     "severityCount": {
       "CRITICAL": "{count} CRITICAL",
       "WARNING": "{count} WARNING",

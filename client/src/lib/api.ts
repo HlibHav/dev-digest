@@ -72,3 +72,16 @@ export const api = {
     apiFetch<T>(path, { method: "PATCH", body: body ? JSON.stringify(body) : undefined }),
   del: <T>(path: string) => apiFetch<T>(path, { method: "DELETE" }),
 };
+
+/**
+ * Export a PR's findings as CSV for use outside the studio. The response is a
+ * file blob, not JSON, so this goes straight through `fetch` rather than
+ * `apiFetch`/`api.get`.
+ */
+export async function downloadFindingsCsv(prId: string): Promise<Blob> {
+  const res = await fetch(`${API_BASE}/pulls/${prId}/findings.csv`);
+  if (!res.ok) {
+    throw new Error(`Export failed: ${res.status} ${res.statusText}`);
+  }
+  return res.blob();
+}
