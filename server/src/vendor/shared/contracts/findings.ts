@@ -59,6 +59,8 @@ export const Finding = z.object({
   // Lethal-trifecta variant fields (present only when kind === 'lethal_trifecta')
   trifecta_components: z.array(TrifectaComponent).nullish(),
   evidence: z.array(TrifectaEvidence).nullish(),
+  /** Ids of other findings in this same review that this one duplicates or follows up on. */
+  related_finding_ids: z.array(z.string()).optional(),
 });
 export type Finding = z.infer<typeof Finding>;
 
