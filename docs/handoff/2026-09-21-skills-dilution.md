@@ -136,3 +136,94 @@ repo-conventions. `breaking-change` is at v3, with v1's body restored. Do not ru
 - The recorded homework criteria 17/18 ("misses without, catches with") are not
   met by the current fixtures. How to present that is Glib's call. The data is
   in PR #7.
+
+## H1 probe (second session, 2026-09-21)
+
+**H1 could not be decided: the effect it was meant to explain no longer
+reproduces.** From 08:33 to 08:41 UTC every configuration blocked, including all
+five skills. That config approved four times at 07:02–07:04 on a byte-identical
+prompt. The evidence points at the backend that served the request, not at the
+skills.
+
+### Runs (`breaking-change` v3; its md5 `d3581545…` equals v1's)
+
+| Arm | Skills block | Blockers | Score | Run |
+|---|---|---|---|---|
+| gate: `breaking-change` alone | 506 | 1 | 65 | f56680b8-235e-4f94-8a1f-bb9b380ada5d |
+| + `ringbahn-note`, one neutral sentence (106 chars) | 536 | 1 | 65 | 7c570fbe-0ac4-40a8-97b2-d9aa5c7b1b0c, 03f0ecdd-33b4-452f-88eb-e857f678c0ab |
+| + `ringbahn-note`, neutral prose (1997 chars, no headings, no rules) | 935 | 1 | 65 | 5a27bcb9-ba09-40b9-8d9e-0e98fa48525d |
+| + `repo-conventions` (positive control) | 627 | 1 | 65 | 76a38fc2-77bf-419d-ab45-180b7ebe60a4 |
+| all five, documented order (positive control) | 1935 | 1 | 65 | c7f0a9cb-0b90-4bad-9270-b75f6aabc4eb |
+
+`ringbahn-note` was a `custom` skill created for the probe and deleted after it.
+Its body was plain prose about the Berlin Ringbahn. Run 03f0ecdd repeats the
+one-sentence arm: its body update went out as `PATCH`, the route is `PUT`, and
+the 404 went unnoticed until the token count came back unchanged.
+
+### The table at the top mixes two things
+
+1. **Two `breaking-change` bodies.** Every pair row (skills block 546, 667, 952,
+   1004, 1854) ran with v2, the reworded body. Its prompt lacks v1's phrase
+   "exists in the default branch". The only v1 runs that morning were "all five"
+   (1935, 07:02–07:04).
+2. **Two backends.** Same system prompt (md5 `0353de0b…`), same user prompt
+   (md5 `efe20224…`), same model slug, temperature 0, single pass, no tool calls:
+
+   | All-five runs | prompt_tokens | completion_tokens | Duration | Verdict |
+   |---|---|---|---|---|
+   | 07:02–07:04, ×4 | 7186 | 120–258 | 5.5–9.9 s | approve, 0 findings |
+   | 08:41, ×1 | 5854 | 2676 | 57 s | request_changes, 1 CRITICAL |
+
+   The sharper signal is the output. At 07:02 completion tokens match the content
+   (171 tokens for a 678-char JSON), so nothing was spent on reasoning. At 08:41,
+   2676 completion tokens produced 1938 chars, so roughly 2000 tokens went to
+   reasoning. The input counts differ as well, and schema retries can't explain
+   it: `completeStructured` adds up `prompt_tokens` across attempts, but a retry
+   would at least double the count, and 7186 is identical across four runs with
+   different outputs. Different tokenization or templating upstream is the
+   likely reading, but it is inferred. The whole 07:02–07:11 series
+   has short outputs (120–724 tokens). Where a comparable prompt exists, its input
+   count is inflated too: `breaking-change` alone took 5762 tokens then and 4389
+   now, and the two bodies differ by 40 tokens. The 2026-09-20 evening runs and
+   everything from 08:33 on have longer outputs (617–3745 tokens).
+
+What the morning data actually show: on that one backend, `breaking-change`
+alone blocked (6/6, v2) and no skills blocked (4/4), while 17 runs with two or
+more skills all approved. On the backend serving now, nothing tried flips it.
+
+Why this can happen: OpenRouter lists 15 providers for
+`deepseek/deepseek-v4-flash` (fp8; fp4 at AtlasCloud; several "unknown"). They
+come from `GET https://openrouter.ai/api/v1/models/deepseek/deepseek-v4-flash/endpoints`.
+`completeStructured` (`reviewer-core/src/llm/openrouter.ts:69`) sends no
+`provider` preference. It keeps only `choices[0].message.content` and `usage`,
+so which provider answered is recorded nowhere. Repeats agreeing within minutes
+fit sticky routing just as well as determinism.
+
+### H5, and the run that separates it
+
+**H5: the flip belongs to one provider behind the slug, not to the skills.**
+Take the byte-identical system and user prompt from the trace of run c7f0a9cb.
+Call OpenRouter directly once per provider with
+`provider: { order: [<name>], allow_fallbacks: false }`, temperature 0 and the
+same `json_schema` response format. Record the `provider` field of each
+response, `usage.prompt_tokens` and the verdict. The provider that reports 7186
+prompt tokens is the morning one. H5 holds if it approves and the others block.
+Before the sweep, send the same prompt unpinned 3–5 times. If verdicts vary
+from call to call, routing is not sticky and the sweep needs more calls per
+provider. Neither step writes to the dev DB or touches the running server. The
+whole thing costs a few cents.
+
+Until H5 is settled, H1–H4 cannot be read. An arm's verdict says which backend
+served it. The table at the top and the "4 / 4" in PR #7 are confounded by
+routing as well as by the skill version.
+
+The code change this points to (to pin a provider, or at least require one, and
+to write `provider` into the run trace) is a vendor choice. It needs Glib's
+sign-off.
+
+### State after the probe
+
+Probe skill deleted, nine skills left, the agent relinked in the documented
+order, `breaking-change` still v3. The six runs above are new rows on PR #8. The
+latest API Contract Reviewer run on PR #8 now **blocks** (c7f0a9cb, score 65).
+Before this session the latest one approved at 100.

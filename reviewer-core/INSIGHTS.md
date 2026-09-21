@@ -19,10 +19,13 @@ fixed — add to the one that fits.
 ## Tool & Library Notes
 
 - **2026-09-21** — A review defaults to `temperature: 0`, so running the same agent on the same diff N times is **not** N samples: on PR #8 the raw text differed between runs but the verdict, finding count and score were identical every time within a configuration (e.g. 65 ×4, 100 ×4). "4/4" means the decision is stable at temp 0, not that it held across four independent draws. For an experiment that needs a rate, vary the input or pass an explicit `temperature`. Evidence: `reviewer-core/src/llm/openrouter.ts:72`
+  - **2026-09-21** — Refined: repeats also agree because OpenRouter keeps routing to one backend for a while, and that expires. About 15 providers serve `deepseek/deepseek-v4-flash`. `completeStructured` sends no `provider` preference and keeps only the content and `usage`, so nothing records who answered. On PR #8 one byte-identical prompt counted 7186 prompt tokens and approved (×4, 07:02–07:04 UTC), then counted 5854 and blocked (08:41). For an experiment, pin one provider (`provider: { order: [<name>], allow_fallbacks: false }`). Two signs of a backend switch: `tokens_in` jumps on an identical prompt, or `tokens_out` sits at the content length (171 tokens for 678 chars: no reasoning) where it used to run far above it (2676 for 1938 chars). Evidence: `reviewer-core/src/llm/openrouter.ts:69`
 
 ## Recurring Errors & Fixes
 
 ## Session Notes
+
+- **2026-09-21** — Ran H1 on skills dilution. The effect stopped reproducing, and the evidence points at unpinned OpenRouter routing (not yet proven) → Tool & Library Notes (comment), Open Questions (comment). Evidence: `reviewer-core/src/llm/openrouter.ts:69`
 
 - **2026-09-21** — Investigated why the API Contract Reviewer lost a breaking change once more than one skill was linked → What Doesn't Work, Tool & Library Notes, Open Questions. Evidence: `reviewer-core/src/prompt.ts:80`
 
@@ -31,3 +34,4 @@ fixed — add to the one that fits.
 ## Open Questions
 
 - **2026-09-21** — Why does one skill catch a breaking change that two miss? On PR #8 (`POST /agents` 201 → 200) `breaking-change` alone blocks, and `breaking-change` plus any one of `repo-conventions`, `semver-discipline` or `deprecation-policy` approves at score 100 with a false claim that the route "already answered 200". Ruled out: the diff being truncated (the `- reply.status(201)` line is in every prompt), the updated test assertions in the diff, and the skill's "default branch" wording. Not yet separated: the heading collision and `<untrusted>` wrapping above, the stacked `## Do not flag` sections, and plain dilution. Next discriminator: link a same-size skill with no rules at all — if it also flips the verdict, it is volume, not content. Evidence: `docs/handoff/2026-09-21-skills-dilution.md`
+  - **2026-09-21** — Refined: the H1 run could not decide it. `breaking-change` plus a rule-free skill (one sentence, then 1997 chars of prose) still blocked. So did `breaking-change` + `repo-conventions` and all five skills, both of which approved that morning. Every pair row behind the question ran with the reworded v2 body, and the whole morning series came from a different backend (see the `temperature: 0` note). The open question is now whether one provider causes the flip. Next discriminator: the same prompt pinned to each provider (H5). Evidence: `docs/handoff/2026-09-21-skills-dilution.md:202`
