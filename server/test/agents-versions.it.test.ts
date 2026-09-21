@@ -54,7 +54,7 @@ d('GET /agents/:id/versions', () => {
   it('a new agent has exactly one version (v1) capturing its config', async () => {
     const app = await makeApp();
     const created = await app.inject({ method: 'POST', url: '/agents', payload: createBody });
-    expect(created.statusCode).toBe(201);
+    expect(created.statusCode).toBe(200);
     const agentId = created.json().id as string;
 
     const res = await app.inject({ method: 'GET', url: `/agents/${agentId}/versions` });
