@@ -10,6 +10,7 @@ import {
   API_CONTRACT_REVIEWER_PROMPT,
 } from './seed-prompts.js';
 import { SEED_SKILLS, SEED_AGENT_SKILLS } from './seed-skills.js';
+import { ruleHash } from '../modules/conventions/helpers.js';
 
 /** Default provider/model for the built-in reviewer agents. */
 const DEFAULT_PROVIDER = 'openrouter' as const;
@@ -26,8 +27,11 @@ const DEFAULT_MODEL = 'deepseek/deepseek-v4-flash';
  * openrouter/deepseek-v4-flash provider+model, and the four skills the latter
  * two link.
  *
- * Course lessons populate the remaining tables (conventions, memory, eval, …)
- * once their features are built — they start empty here.
+ * Plus three pending convention candidates for the demo repo, standing in for
+ * a finished scan (a real scan calls a model, which e2e flows may not).
+ *
+ * Course lessons populate the remaining tables (memory, eval, …) once their
+ * features are built — they start empty here.
  */
 
 export const DEFAULT_WORKSPACE_NAME = 'default';
@@ -179,6 +183,50 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
       },
     ]);
   }
+
+  // ---- convention candidates (the Conventions page's triage queue) ----
+  // A scan calls a model, and e2e flows may not. These rows stand in for one
+  // finished scan of the demo repo so the page has something to triage. They
+  // are `pending`, and idempotent on (repo_id, rule_hash): a re-seed never
+  // resets a decision the user already made on one of them.
+  const SEED_CONVENTIONS = [
+    {
+      category: 'api',
+      rule: 'Validate every route body with a zod schema at the edge, never inside the handler.',
+      evidencePath: 'src/api/users.ts',
+      evidenceLine: 12,
+      evidenceSnippet: 'app.post(\'/users\', { schema: { body: CreateUserBody } }, async (req) => {',
+      confidence: 0.92,
+    },
+    {
+      category: 'error-handling',
+      rule: 'Rate-limit rejections answer 429 with a Retry-After header.',
+      evidencePath: 'src/middleware/ratelimit.ts',
+      evidenceLine: 41,
+      evidenceSnippet: "reply.header('Retry-After', String(retryAfter)).code(429);",
+      confidence: 0.81,
+    },
+    {
+      category: 'naming',
+      rule: 'Read configuration through the typed config module, never process.env directly.',
+      evidencePath: 'src/config.ts',
+      evidenceLine: 3,
+      evidenceSnippet: 'export const config = loadConfig(process.env);',
+      confidence: 0.64,
+    },
+  ] as const;
+  await db
+    .insert(t.conventions)
+    .values(
+      SEED_CONVENTIONS.map((c) => ({
+        workspaceId,
+        repoId,
+        ...c,
+        ruleHash: ruleHash(c.rule),
+        status: 'pending' as const,
+      })),
+    )
+    .onConflictDoNothing({ target: [t.conventions.repoId, t.conventions.ruleHash] });
 
   // ---- built-in skills ----
   // Reusable review guidance, linked to agents below. Bodies live in
