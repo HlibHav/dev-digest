@@ -1,0 +1,18 @@
+### server/src/modules/agents/repository.ts
+- `list` — async list(workspaceId: string): Promise<AgentRow[]>
+### server/src/modules/repos/service.ts
+- `list` — async list(workspaceId: string): Promise<Repo[]>
+### server/src/modules/repos/repository.ts
+- `list` — async list(workspaceId: string): Promise<RepoRow[]>
+### server/src/modules/agents/routes.ts
+- `agentsRoutes` — async function agentsRoutes(appBase: FastifyInstance)
+- `agentsRoutes` — async function agentsRoutes(appBase: FastifyInstance)
+### server/src/modules/repos/routes.ts
+- `reposRoutes` — async function reposRoutes(appBase: FastifyInstance)
+### server/src/adapters/github/octokit.ts
+- `listPullRequests` — async listPullRequests(repo: RepoRef): Promise<PrMeta[]>
+- `findOpenPr` — async findOpenPr(repo: RepoRef, branch: string): Promise<{ url: string } | null>
+### server/src/adapters/llm/anthropic.ts
+- `listModels` — async listModels(): Promise<ModelInfo[]>
+### server/src/adapters/llm/openai.ts
+- `listModels` — async listModels(): Promise<ModelInfo[]>

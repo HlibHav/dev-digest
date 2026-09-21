@@ -1,0 +1,15 @@
+diff --git a/server/src/vendor/shared/contracts/platform.ts b/server/src/vendor/shared/contracts/platform.ts
+index fb4e2c2..c5d21d6 100644
+--- a/server/src/vendor/shared/contracts/platform.ts
++++ b/server/src/vendor/shared/contracts/platform.ts
+@@ -172,6 +172,10 @@ export const PrMeta = z.object({
+   status: PrStatus,
+   opened_at: z.string().nullish(),
+   updated_at: z.string().nullish(),
++  // Whether GitHub currently reports this PR as unmergeable (dirty against
++  // base). Null/absent until the next sync computes it. Additive and
++  // optional — old clients that don't read it keep working unchanged.
++  merge_conflict: z.boolean().nullish(),
+   // Latest-review score (list endpoint only; null/absent until reviewed).
+   score: z.number().int().nullish(),
+   // USD cost summed over all of the PR's completed runs (list endpoint only).

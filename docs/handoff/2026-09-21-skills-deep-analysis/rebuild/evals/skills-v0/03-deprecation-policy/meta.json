@@ -1,0 +1,6 @@
+{
+  "name": "deprecation-policy",
+  "source": "imported_url",
+  "untrusted": true,
+  "order": 3
+}

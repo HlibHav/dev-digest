@@ -1,0 +1,42 @@
+diff --git a/client/src/vendor/shared/contracts/platform.ts b/client/src/vendor/shared/contracts/platform.ts
+index fb4e2c2..c53add1 100644
+--- a/client/src/vendor/shared/contracts/platform.ts
++++ b/client/src/vendor/shared/contracts/platform.ts
+@@ -177,6 +177,9 @@ export const PrMeta = z.object({
+   // USD cost summed over all of the PR's completed runs (list endpoint only).
+   // Null when the PR has no completed runs or none of them has a price.
+   cost_usd: z.number().nullish(),
++  // Direct link to the latest review's findings tab (list endpoint only).
++  // Null until the PR has a review.
++  reviewUrl: z.string().nullish(),
+   // Findings of the latest review (the one `score` comes from), counted per
+   // severity (list endpoint only). Null until the PR has a review.
+   latest_findings: z
+diff --git a/server/src/modules/pulls/routes.ts b/server/src/modules/pulls/routes.ts
+index b6ea71e..69c0206 100644
+--- a/server/src/modules/pulls/routes.ts
++++ b/server/src/modules/pulls/routes.ts
+@@ -184,6 +184,9 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
+         updated_at: r.updatedAt?.toISOString() ?? null,
+         score: review ? review.score : null,
+         cost_usd: costByPr.get(r.id) ?? null,
++        // Deep link straight to the latest review's findings tab, so the
++        // dashboard's PR-list widget can skip the extra lookup.
++        reviewUrl: review ? `/repos/${repo.id}/pulls/${r.number}?tab=findings` : null,
+         latest_findings: review
+           ? {
+               review_id: review.id,
+diff --git a/server/src/vendor/shared/contracts/platform.ts b/server/src/vendor/shared/contracts/platform.ts
+index fb4e2c2..c53add1 100644
+--- a/server/src/vendor/shared/contracts/platform.ts
++++ b/server/src/vendor/shared/contracts/platform.ts
+@@ -177,6 +177,9 @@ export const PrMeta = z.object({
+   // USD cost summed over all of the PR's completed runs (list endpoint only).
+   // Null when the PR has no completed runs or none of them has a price.
+   cost_usd: z.number().nullish(),
++  // Direct link to the latest review's findings tab (list endpoint only).
++  // Null until the PR has a review.
++  reviewUrl: z.string().nullish(),
+   // Findings of the latest review (the one `score` comes from), counted per
+   // severity (list endpoint only). Null until the PR has a review.
+   latest_findings: z

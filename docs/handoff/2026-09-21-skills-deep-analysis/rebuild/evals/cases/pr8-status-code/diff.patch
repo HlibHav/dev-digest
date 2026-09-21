@@ -1,0 +1,84 @@
+diff --git a/server/src/modules/agents/routes.ts b/server/src/modules/agents/routes.ts
+--- a/server/src/modules/agents/routes.ts
++++ b/server/src/modules/agents/routes.ts
+@@ -41,6 +41,8 @@ const CreateAgentBody = z.object({
+   ci_fail_on: CiFailOn.optional(),
+   repo_intel: z.boolean().optional(),
+   enabled: z.boolean().optional(),
++  /** Free-form label shown on the agent tile. */
++  tag: z.string().max(24).optional(),
+ });
+ 
+ const UpdateAgentBody = z.object({
+@@ -102,7 +104,7 @@ export default async function agentsRoutes(appBase: FastifyInstance) {
+       },
+       userId,
+     );
+-    reply.status(201);
++    reply.status(200);
+     return agent;
+   });
+ 
+diff --git a/server/src/modules/agents/service.ts b/server/src/modules/agents/service.ts
+--- a/server/src/modules/agents/service.ts
++++ b/server/src/modules/agents/service.ts
+@@ -56,8 +56,8 @@ export class AgentsService {
+   }
+ 
+   async list(workspaceId: string): Promise<Agent[]> {
+-    const rows = await this.repo.list(workspaceId);
+-    return rows.map(toAgentDto);
++    const agentRows = await this.repo.list(workspaceId);
++    return agentRows.map(toAgentDto);
+   }
+ 
+   async get(workspaceId: string, id: string): Promise<Agent | undefined> {
+@@ -116,8 +116,8 @@ export class AgentsService {
+   async listVersions(workspaceId: string, agentId: string): Promise<AgentVersion[] | undefined> {
+     const agent = await this.repo.getById(workspaceId, agentId);
+     if (!agent) return undefined;
+-    const rows = await this.repo.listVersions(agentId);
+-    return rows.map(toAgentVersionDto);
++    const agentRows = await this.repo.listVersions(agentId);
++    return agentRows.map(toAgentVersionDto);
+   }
+ 
+   /**
+diff --git a/server/src/modules/repos/service.ts b/server/src/modules/repos/service.ts
+--- a/server/src/modules/repos/service.ts
++++ b/server/src/modules/repos/service.ts
+@@ -13,6 +13,10 @@ import {
+   REFRESH_JOB_KIND,
+ } from '../repo-intel/constants.js';
+ 
++/** How many repos one workspace may register. Unenforced for now. */
++export const MAX_REPOS_PER_WORKSPACE = 50;
++
++
+ /**
+  * F1 — repos service. Business logic for the Repositories feature:
+  *   - add / list / refresh / remove
+diff --git a/server/test/agents-versions.it.test.ts b/server/test/agents-versions.it.test.ts
+--- a/server/test/agents-versions.it.test.ts
++++ b/server/test/agents-versions.it.test.ts
+@@ -54,7 +54,7 @@ d('GET /agents/:id/versions', () => {
+   it('a new agent has exactly one version (v1) capturing its config', async () => {
+     const app = await makeApp();
+     const created = await app.inject({ method: 'POST', url: '/agents', payload: createBody });
+-    expect(created.statusCode).toBe(201);
++    expect(created.statusCode).toBe(200);
+     const agentId = created.json().id as string;
+ 
+     const res = await app.inject({ method: 'GET', url: `/agents/${agentId}/versions` });
+diff --git a/server/test/reviews.it.test.ts b/server/test/reviews.it.test.ts
+--- a/server/test/reviews.it.test.ts
++++ b/server/test/reviews.it.test.ts
+@@ -137,7 +137,7 @@ d('A2 reviews + agents (Testcontainers pg)', () => {
+         system_prompt: 'You are a reviewer.',
+       },
+     });
+-    expect(created.statusCode).toBe(201);
++    expect(created.statusCode).toBe(200);
+     const agent = created.json();
+     expect(agent.version).toBe(1);
+ 

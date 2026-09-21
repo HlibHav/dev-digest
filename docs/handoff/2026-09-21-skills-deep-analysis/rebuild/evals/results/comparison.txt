@@ -1,0 +1,13 @@
+found / n  (Parasail | OpenInference); clean-optional-field = false positives
+case                     no skills       old five        v1.0.0          v1.1.0          v1.2.0          
+h-optional-in-llm-schema 0/6 | 0/6       — | —           6/6 | 6/6       6/6 | 6/6       6/6 | 6/6       
+f2-apierror-bypass       0/8 | 0/8       4/4 | 0/4       9/9 | 6/6       6/6 | 6/6       6/6 | 6/6       
+h-mirror-one-side        2/6 | 0/6       — | —           5/6 | 0/6       6/6 | 0/6       5/6 | 0/6       
+pr8-status-code          8/8 | 8/8       4/4 | 3/4       11/11 | 6/6     6/6 | 6/6       6/6 | 5/6       
+clean-optional-field     0/8 | 0/8       0/4 | 0/4       0/6 | 0/6       0/6 | 2/6       0/6 | 0/6       
+f1-enum-mirror           7/8 | 4/8       3/4 | 2/4       6/6 | 5/6       5/6 | 4/6       5/5 | 6/6       
+f3-204-json              7/7 | 7/8       4/4 | 1/4       6/6 | 6/6       6/6 | 6/6       6/6 | 2/6       
+h-get-sync-moved         10/10 | 10/14   — | —           2/4 | 4/6       5/6 | 5/5       4/6 | 4/6       
+h-camelcase-field        6/6 | 4/6       — | —           2/6 | 2/6       2/6 | 0/6       6/6 | 1/6       
+v1.2 pr8 blocks 11 / 12 | grounded 11 / 12
+v1.2 cost 0.0571 | errors 1

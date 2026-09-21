@@ -1,0 +1,114 @@
+# Repo skeleton (top-ranked by import graph only, partial view)
+server/src/db/schema/_shared.ts:
+  const now = ()
+client/src/lib/api.ts:
+  class ApiError extends Error
+  async function apiFetch<T>(path: string, init?: RequestInit): Promise<T>
+client/src/components/diff-viewer/comments.ts:
+  interface DiffCommentApi
+  interface CommentThread
+  function lineKey(side: "LEFT" | "RIGHT", line: number | null | undefined): string | null
+  function buildThreads(comments: PrReviewComment[]): CommentThread[]
+  function keysForLine(ln: Line): string[]
+  function commentTargetFor(ln: Line): { line: number; side: "LEFT" | "RIGHT" } | null
+  function partitionThreads( threads: CommentThread[], renderedKeys: Set<string>, ): { matched: Map<string, CommentThread…
+client/src/app/repos/[repoId]/pulls/constants.ts:
+  type PrSize = "S" | "M" | "L";
+  type SizeInfo = { size: PrSize; lines: number };
+server/src/adapters/git/diff-parser.ts:
+  function parseUnifiedDiff(raw: string): UnifiedDiff
+client/src/lib/hooks/agents.ts:
+  function useAgents()
+  function useAgent(id: string | null | undefined)
+  interface CreateAgentInput
+  function useCreateAgent()
+  interface UpdateAgentInput
+  function useUpdateAgent()
+  function useDeleteAgent()
+  function useProviderModels(provider: Provider | null | undefined)
+client/src/lib/hooks/reviews.ts:
+  interface ActiveRun
+  function usePrActiveRuns(prId: string | null | undefined)
+  function usePrRuns(prId: string | null | undefined)
+  function usePrReviews(prId: string | null | undefined)
+  function useDeleteRun(prId: string | null | undefined)
+  function useCancelRun()
+  function useDeleteReview(prId: string | null | undefined)
+  function usePrComments(prId: string | null | undefined)
+  interface CreateCommentInput
+  function useCreatePrComment(prId: string | null | undefined)
+  interface RunReviewInput
+  function useRunReview()
+  function useFindingAction()
+  function useRunEvents(runIds: string[])
+server/src/platform/errors.ts:
+  class AppError extends Error
+  class NotFoundError extends AppError
+  class ValidationError extends AppError
+  class ExternalServiceError extends AppError
+  class ConfigError extends AppError
+client/src/lib/toast.tsx:
+  function useToast(): ToastApi
+  function ToastProvider({ children }: { children: React.ReactNode })
+  type ToastKind = "success" | "error" | "info";
+  interface Toast
+  interface ToastApi
+  type Pusher = (message: string, kind?: ToastKind) => void;
+client/src/components/app-shell/AppShell.tsx:
+  function AppShell({ children, crumb }: { children: React.ReactNode; crumb?: Crumb[] })
+server/src/adapters/codeindex/extract.ts:
+  interface ExtractedSymbol
+  interface ExtractedReference
+  function extractSymbols(content: string): ExtractedSymbol[]
+  function extractReferences(content: string, symbol: string): ExtractedReference[]
+  function extractEndpoints(content: string): string[]
+  function extractCrons(content: string): string[]
+  function sanitizeLine(line: string): string
+  function countBraces(s: string): number
+  function dedupeSymbols(syms: ExtractedSymbol[]): ExtractedSymbol[]
+client/src/app/repos/[repoId]/pulls/[number]/_components/RunReviewDropdown/RunReviewDropdown.tsx:
+  function RunReviewDropdown({ prId, size = "sm", kind = "primary", warnMerged = false, onRunStart, onRunsStarted, onRunS…
+client/src/lib/repo-context.tsx:
+  function RepoProvider({ children }: { children: React.ReactNode })
+  function useActiveRepo()
+  function useRepoNotFound(repoId: string | null | undefined): boolean
+  function repoIdFromPath(pathname: string | null): string | null
+server/src/platform/resilience.ts:
+  class TimeoutError extends Error
+  async function withTimeout<T>(p: Promise<T>, ms: number): Promise<T>
+  interface RetryOptions
+  async function withRetry<T>(fn: () => Promise<T>, opts: RetryOptions = {}): Promise<T>
+  function defaultIsRetryable(err: unknown): boolean
+server/src/modules/_shared/context.ts:
+  interface RequestContext
+  async function getContext( container: Container, req: FastifyRequest, ): Promise<RequestContext>
+client/src/app/repos/[repoId]/pulls/[number]/_components/VerdictBanner/VerdictBanner.tsx:
+  function VerdictBanner({ verdict, summary, score, findingsCount, blockers, agentName, }: { verdict: Verdict; summary: s…
+client/src/app/repos/[repoId]/pulls/[number]/_components/FindingsPanel/FindingsPanel.tsx:
+  function FindingsPanel({ findings, prId, repoFullName, headSha, }: { findings: FindingRecord[]; prId: string; repoFullN…
+client/src/components/diff-viewer/CommentCard/CommentCard.tsx:
+  function CommentCard({ c }: { c: PrReviewComment })
+  function formatWhen(iso: string): string
+client/src/app/repos/[repoId]/pulls/[number]/_components/FindingCard/FindingCard.tsx:
+  function FindingCard({ f, focused, defaultExpanded, onAction, pending, repoFullName, headSha, }: { f: FindingRecord; fo…
+client/src/lib/theme.tsx:
+  function ThemeProvider({ children }: { children: React.ReactNode })
+  function useTheme()
+  type Theme = "dark" | "light";
+client/src/app/agents/_components/AgentCard/AgentCard.tsx:
+  function AgentCard({ ag, active, skillCount, onClick, onToggle, }: { ag: Agent; active?: boolean; skillCount?: number; …
+client/src/components/diff-viewer/styles.ts:
+  function chevronFor(open: boolean): CSSProperties
+  function lineRowFor(kind: Line["kind"]): CSSProperties
+  function lineSignFor(kind: Line["kind"]): CSSProperties
+client/src/app/repos/[repoId]/pulls/[number]/_components/RunStatus/RunStatus.tsx:
+  function RunStatus({ runIds, onDone, }: { runIds: string[]; onDone?: () => void; })
+server/src/modules/reviews/helpers.ts:
+  interface ReviewDtoFinding extends Finding
+  interface ReviewDto
+  function findingRowToDto(row: FindingRow): ReviewDtoFinding
+  function reviewToDto( review: ReviewRow, findings: FindingRow[], agentName?: string | null, ): ReviewDto
+  function taskLine(pull: PullRow): string
+client/src/components/diff-viewer/FileCard/FileCard.tsx:
+  function FileCard({ file, commenting }: { file: PrFile; commenting?: DiffCommentApi })
+  function threadsForLine(ln: Line, matched: Map<string, CommentThread[]>): CommentThread[]

@@ -1,0 +1,51 @@
+diff --git a/client/src/lib/api.ts b/client/src/lib/api.ts
+index 4f8a112..d0c6e3a 100644
+--- a/client/src/lib/api.ts
++++ b/client/src/lib/api.ts
+@@ -71,3 +71,11 @@ export const api = {
+   patch: <T>(path: string, body?: unknown) =>
+     apiFetch<T>(path, { method: "PATCH", body: body ? JSON.stringify(body) : undefined }),
+   del: <T>(path: string) => apiFetch<T>(path, { method: "DELETE" }),
+ };
++
++/** Export a PR's findings as CSV for use outside the studio. */
++export async function downloadFindingsCsv(prId: string): Promise<Blob> {
++  const res = await fetch(`${API_BASE}/pulls/${prId}/findings.csv`);
++  if (!res.ok) {
++    throw new Error(`Export failed: ${res.status} ${res.statusText}`);
++  }
++  return res.blob();
++}
+diff --git a/client/src/app/repos/[repoId]/pulls/[number]/_components/FindingsPanel/FindingsPanel.tsx b/client/src/app/repos/[repoId]/pulls/[number]/_components/FindingsPanel/FindingsPanel.tsx
+index 6a91d4e..b2c7f88 100644
+--- a/client/src/app/repos/[repoId]/pulls/[number]/_components/FindingsPanel/FindingsPanel.tsx
++++ b/client/src/app/repos/[repoId]/pulls/[number]/_components/FindingsPanel/FindingsPanel.tsx
+@@ -6,6 +6,7 @@ import React from "react";
+ import { useTranslations } from "next-intl";
+ import { Toggle, EmptyState, Chip, SEV } from "@devdigest/ui";
+ import type { FindingRecord, Severity } from "@devdigest/shared";
++import { downloadFindingsCsv } from "../../../../../../../lib/api";
+ import { FindingCard } from "../FindingCard";
+ import { useFindingAction } from "../../../../../../../lib/hooks/reviews";
+ import { KEY_TO_ACTION, SEVERITY_FILTERS } from "./constants";
+@@ -85,6 +86,17 @@ export function FindingsPanel({
+         <div style={s.toggleGroup}>
+           {t("panel.hideLowConfidence")}
+           <Toggle on={hideLow} onChange={changeHideLow} size={16} />
++          <button
++            type="button"
++            onClick={async () => {
++              const blob = await downloadFindingsCsv(prId);
++              const url = URL.createObjectURL(blob);
++              const a = document.createElement("a");
++              a.href = url;
++              a.download = `findings-${prId}.csv`;
++              a.click();
++              URL.revokeObjectURL(url);
++            }}
++          >
++            {t("panel.exportCsv")}
++          </button>
+         </div>
+       </div>
+

@@ -1,0 +1,30 @@
+diff --git a/server/src/vendor/shared/contracts/findings.ts b/server/src/vendor/shared/contracts/findings.ts
+index 3a1c9de..7b2f001 100644
+--- a/server/src/vendor/shared/contracts/findings.ts
++++ b/server/src/vendor/shared/contracts/findings.ts
+@@ -23,7 +23,7 @@ export type FindingKind = z.infer<typeof FindingKind>;
+ export type FindingKind = z.infer<typeof FindingKind>;
+
+-export const Verdict = z.enum(['request_changes', 'approve', 'comment']);
++export const Verdict = z.enum(['request_changes', 'approve', 'comment', 'needs_discussion']);
+ export type Verdict = z.infer<typeof Verdict>;
+
+ export const TrifectaComponent = z.enum([
+diff --git a/reviewer-core/src/review/reduce.ts b/reviewer-core/src/review/reduce.ts
+index 9c4a221..e15b6aa 100644
+--- a/reviewer-core/src/review/reduce.ts
++++ b/reviewer-core/src/review/reduce.ts
+@@ -29,9 +29,10 @@ export function scoreFromFindings(findings: Finding[]): number {
+
+ /** Verdict severity order for the reduce step (worst verdict wins). */
+ const VERDICT_RANK: Record<string, number> = {
+-  request_changes: 2,
+-  comment: 1,
+-  approve: 0,
++  request_changes: 3,
++  needs_discussion: 2,
++  comment: 1,
++  approve: 0,
+ };
+
+ /**

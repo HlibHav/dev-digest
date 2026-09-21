@@ -1,0 +1,220 @@
+diff --git a/client/src/app/repos/[repoId]/pulls/[number]/_components/PrDetailHeader/PrDetailHeader.tsx b/client/src/app/repos/[repoId]/pulls/[number]/_components/PrDetailHeader/PrDetailHeader.tsx
+index dc0531a..e97a05a 100644
+--- a/client/src/app/repos/[repoId]/pulls/[number]/_components/PrDetailHeader/PrDetailHeader.tsx
++++ b/client/src/app/repos/[repoId]/pulls/[number]/_components/PrDetailHeader/PrDetailHeader.tsx
+@@ -3,6 +3,7 @@
+ import React, { useCallback } from "react";
+ import { Icon, Avatar, Badge, Button, Tabs } from "@devdigest/ui";
+ import { RunReviewDropdown } from "../RunReviewDropdown";
++import { useRefreshPull } from "../../../../../../../lib/hooks";
+ import { s } from "./styles";
+ import type { PrDetail } from "@/lib/types";
+ 
+@@ -28,6 +29,8 @@ export function PrDetailHeader({
+   onRunStart,
+   onRunsStarted,
+ }: PrDetailHeaderProps) {
++  const refreshPull = useRefreshPull(prId);
++
+   const handleRunStart = useCallback(() => {
+     onRunStart();
+   }, [onRunStart]);
+@@ -78,6 +81,15 @@ export function PrDetailHeader({
+           </div>
+         </div>
+         <div style={s.actions}>
++          <Button
++            kind="ghost"
++            size="sm"
++            icon="RefreshCw"
++            disabled={!prId || refreshPull.isPending}
++            onClick={() => prId && refreshPull.mutate()}
++          >
++            {refreshPull.isPending ? "Refreshing…" : "Refresh"}
++          </Button>
+           <Button
+             kind="ghost"
+             size="sm"
+diff --git a/client/src/lib/hooks/core.ts b/client/src/lib/hooks/core.ts
+index c059d2e..7cc2802 100644
+--- a/client/src/lib/hooks/core.ts
++++ b/client/src/lib/hooks/core.ts
+@@ -119,6 +119,15 @@ export function usePullDetail(prId: string | number | null | undefined) {
+   });
+ }
+ 
++/** Pulls the latest files/commits/body from GitHub for one PR, then refetches it. */
++export function useRefreshPull(prId: string | null | undefined) {
++  const qc = useQueryClient();
++  return useMutation({
++    mutationFn: () => api.post<PrDetail>(`/pulls/${prId}/refresh`),
++    onSuccess: () => qc.invalidateQueries({ queryKey: ["pull", prId] }),
++  });
++}
++
+ // ---- Project Context (A3 contract; safe to call once API exposes it) ----
+ export function useContextFiles(repoId: string | null | undefined) {
+   return useQuery({
+diff --git a/server/src/modules/pulls/routes.ts b/server/src/modules/pulls/routes.ts
+index b6ea71e..a866b61 100644
+--- a/server/src/modules/pulls/routes.ts
++++ b/server/src/modules/pulls/routes.ts
+@@ -203,89 +203,88 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
+         and(eq(t.pullRequests.workspaceId, workspaceId), eq(t.pullRequests.id, req.params.id)),
+       );
+     if (!pr) throw new NotFoundError('Pull request not found');
+-    const [repo] = await container.db
+-      .select()
+-      .from(t.repos)
+-      .where(eq(t.repos.id, pr.repoId));
+-    if (!repo) throw new NotFoundError('Repo not found');
+ 
+-    // Local-first: refresh detail from GitHub when a token is configured;
+-    // otherwise serve the persisted files/commits/body (seeded or previously
+-    // imported) so PR detail works offline.
+-    try {
+-      const gh = await container.github();
+-      const detail = await gh.getPullRequest({ owner: repo.owner, name: repo.name }, pr.number);
++    // Pure read now — no GitHub call, no DB write. Call POST /pulls/:id/refresh
++    // first to pull the latest files/commits/body before viewing a PR.
++    const files = await container.db.select().from(t.prFiles).where(eq(t.prFiles.prId, pr.id));
++    const commits = await container.db.select().from(t.prCommits).where(eq(t.prCommits.prId, pr.id));
++    return {
++      id: pr.id,
++      number: pr.number,
++      title: pr.title,
++      author: pr.author,
++      branch: pr.branch,
++      base: pr.base,
++      head_sha: pr.headSha,
++      additions: pr.additions,
++      deletions: pr.deletions,
++      files_count: pr.filesCount,
++      status: pr.status as PrDetail['status'],
++      opened_at: pr.openedAt?.toISOString() ?? null,
++      updated_at: pr.updatedAt?.toISOString() ?? null,
++      body: pr.body ?? null,
++      files: files.map((f) => ({
++        path: f.path,
++        additions: f.additions,
++        deletions: f.deletions,
++        patch: f.patch ?? null,
++      })),
++      commits: commits.map((c) => ({
++        sha: c.sha,
++        message: c.message,
++        author: c.author,
++        committed_at: c.committedAt?.toISOString() ?? null,
++      })),
++    };
++  });
+ 
+-      await container.db.delete(t.prFiles).where(eq(t.prFiles.prId, pr.id));
+-      if (detail.files.length > 0) {
+-        await container.db.insert(t.prFiles).values(
+-          detail.files.map((f) => ({
+-            prId: pr.id,
+-            path: f.path,
+-            additions: f.additions,
+-            deletions: f.deletions,
+-            patch: f.patch ?? null,
+-          })),
+-        );
+-      }
+-      await container.db.delete(t.prCommits).where(eq(t.prCommits.prId, pr.id));
+-      if (detail.commits.length > 0) {
+-        await container.db.insert(t.prCommits).values(
+-          detail.commits.map((c) => ({
+-            prId: pr.id,
+-            sha: c.sha,
+-            message: c.message,
+-            author: c.author,
+-            committedAt: c.committed_at ? new Date(c.committed_at) : null,
+-          })),
+-        );
+-      }
+-      await container.db
+-        .update(t.pullRequests)
+-        .set({
+-          body: detail.body ?? null,
+-          // Diff stats aren't on GitHub's PR-list payload — backfill them from
+-          // the detail fetch so the Pull Requests list shows real size/files.
+-          additions: detail.additions,
+-          deletions: detail.deletions,
+-          filesCount: detail.files_count,
+-        })
+-        .where(eq(t.pullRequests.id, pr.id));
++  // Explicit refresh: pulls the latest files/commits/body from GitHub and
++  // persists them, then returns the refreshed detail. Split out of the GET
++  // above so viewing a PR is a plain, side-effect-free read.
++  app.post('/pulls/:id/refresh', { schema: { params: IdParams } }, async (req): Promise<PrDetail> => {
++    const { workspaceId } = await getContext(container, req);
++    const { pr, repo } = await resolvePrAndRepo(req.params.id, workspaceId);
+ 
+-      return { ...detail, id: pr.id };
+-    } catch (err) {
+-      app.log.warn({ err }, 'GitHub PR detail refresh skipped (no token / offline); serving persisted detail');
+-      const files = await container.db.select().from(t.prFiles).where(eq(t.prFiles.prId, pr.id));
+-      const commits = await container.db.select().from(t.prCommits).where(eq(t.prCommits.prId, pr.id));
+-      return {
+-        id: pr.id,
+-        number: pr.number,
+-        title: pr.title,
+-        author: pr.author,
+-        branch: pr.branch,
+-        base: pr.base,
+-        head_sha: pr.headSha,
+-        additions: pr.additions,
+-        deletions: pr.deletions,
+-        files_count: pr.filesCount,
+-        status: pr.status as PrDetail['status'],
+-        opened_at: pr.openedAt?.toISOString() ?? null,
+-        updated_at: pr.updatedAt?.toISOString() ?? null,
+-        body: pr.body ?? null,
+-        files: files.map((f) => ({
++    const gh = await container.github();
++    const detail = await gh.getPullRequest({ owner: repo.owner, name: repo.name }, pr.number);
++
++    await container.db.delete(t.prFiles).where(eq(t.prFiles.prId, pr.id));
++    if (detail.files.length > 0) {
++      await container.db.insert(t.prFiles).values(
++        detail.files.map((f) => ({
++          prId: pr.id,
+           path: f.path,
+           additions: f.additions,
+           deletions: f.deletions,
+           patch: f.patch ?? null,
+         })),
+-        commits: commits.map((c) => ({
++      );
++    }
++    await container.db.delete(t.prCommits).where(eq(t.prCommits.prId, pr.id));
++    if (detail.commits.length > 0) {
++      await container.db.insert(t.prCommits).values(
++        detail.commits.map((c) => ({
++          prId: pr.id,
+           sha: c.sha,
+           message: c.message,
+           author: c.author,
+-          committed_at: c.committedAt?.toISOString() ?? null,
++          committedAt: c.committed_at ? new Date(c.committed_at) : null,
+         })),
+-      };
++      );
+     }
++    await container.db
++      .update(t.pullRequests)
++      .set({
++        body: detail.body ?? null,
++        // Diff stats aren't on GitHub's PR-list payload — backfill them from
++        // the detail fetch so the Pull Requests list shows real size/files.
++        additions: detail.additions,
++        deletions: detail.deletions,
++        filesCount: detail.files_count,
++      })
++      .where(eq(t.pullRequests.id, pr.id));
++
++    return { ...detail, id: pr.id };
+   });
+ 
+   // ---- Inline review comments (Files changed tab) -------------------------
