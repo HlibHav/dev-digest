@@ -143,7 +143,7 @@ repo-conventions. `breaking-change` is at v3, with v1's body restored. Do not ru
 reproduces.** From 08:33 to 08:41 UTC every configuration blocked, including all
 five skills. That config approved four times at 07:02–07:04 on a byte-identical
 prompt. The evidence points at the backend that served the request, not at the
-skills.
+skills. **Update:** H5 reproduced the flip pinned to OpenInference, see [H5 result](#h5-result).
 
 ### Runs (`breaking-change` v3; its md5 `d3581545…` equals v1's)
 
@@ -227,3 +227,79 @@ Probe skill deleted, nine skills left, the agent relinked in the documented
 order, `breaking-change` still v3. The six runs above are new rows on PR #8. The
 latest API Contract Reviewer run on PR #8 now **blocks** (c7f0a9cb, score 65).
 Before this session the latest one approved at 100.
+
+### H5 result
+
+The run went straight to OpenRouter with the byte-identical prompts from the
+traces above. The body mirrors `reviewer-core/src/llm/openrouter.ts:69`: same
+model, `[system, user]` messages, temperature 0, `json_schema` strict and
+`usage.include`. Only `provider: { order: [<tag>], allow_fallbacks: false }` was
+added, and the `provider` field of each response was recorded. The run made 55
+calls for $0.027 in total and wrote nothing to the dev DB.
+
+**Routing is not sticky.** Four unpinned calls with the all-five prompt were
+served by AtlasCloud, Mancer 2, OpenInference and OpenInference.
+
+**One call per provider, all-five prompt:**
+
+| Provider | prompt_tokens | Reasoning tokens | Verdict | CRITICAL |
+|---|---|---|---|---|
+| OpenInference (fp8) | **7186** | 0 | comment | 0 |
+| Alibaba (fp8) | 5856 | 2435 | comment | 0 |
+| DeepInfra (fp8) | 5854 | 0 | request_changes | 1 |
+| DigitalOcean | 5854 | 0 | request_changes | 2 |
+| Venice, AtlasCloud (fp4), StreamLake, Parasail, NextBit, Mancer 2 | 5854–5856 | 1104–2599 | request_changes | 1 |
+| GMICloud, SiliconFlow, Novita, Azure | — | — | HTTP 404 "No endpoints found" | — |
+| Baidu | — | — | HTTP 429, rate-limited | — |
+
+OpenInference is the only provider that counts 7186 prompt tokens, the morning
+signature. Every run from 07:02 to 07:11 went there. Lack of reasoning is not the
+cause: DeepInfra and DigitalOcean also spent no reasoning tokens, and both
+caught the change. The +1332 tokens are about the size of the `Review` JSON
+schema (3942 chars), so OpenInference probably emulates `json_schema` by putting
+the schema into the prompt. That is inferred, not checked.
+
+**Pinned to OpenInference, 6 calls per prompt:**
+
+| Prompt (from trace) | Caught (≥1 CRITICAL) |
+|---|---|
+| no skills (e292bd7d) | 5/6 |
+| `breaking-change` alone (f56680b8) | 5/6 |
+| + one neutral sentence (7c570fbe) | 6/6 |
+| + 1997 chars of neutral prose (5a27bcb9) | 6/6 |
+| + `repo-conventions` (76a38fc2) | 6/6 |
+| all five (c7f0a9cb) | **1/9** (6 pinned, 1 pinned in the sweep, 2 unpinned that landed there) |
+
+Across the other nine providers, the all-five prompt was caught in 10 of 11
+calls. The one miss was Alibaba.
+
+What this settles:
+
+- **The flip is provider × skills.** OpenInference reproduces the morning
+  pattern exactly. With 0–1 skills it catches the change. With all five it
+  misses, answering `comment` with no findings. The other providers catch it
+  with all five as well.
+- **H1 at `breaking-change`'s size is refuted on the provider where the effect
+  lives.** 1997 chars of neutral prose did not flip it (6/6 caught).
+- **One extra rule skill is not enough either.** `repo-conventions` 6/6. The
+  morning pair rows that flipped ran with the v2 body, so they don't contradict this.
+
+Still open: what in the other four skills flips it on OpenInference. All five
+add about 1430 tokens to `breaking-change`, the neutral arm only 430, so volume
+at that size is not excluded yet. Next arms, pinned to `open-inference/fp8`, 6
+calls each:
+`breaking-change` + `semver-discipline` (its "refactor is a patch" line, H3),
++ `deprecation-policy` (the `<untrusted>` wrap), + `response-schema`, and
++ ~6000 chars of neutral prose (token-matched to all five). Build the prompts
+with `renderSkillsBlock` rather than by hand. Check the construction by
+rebuilding the all-five prompt to md5 `efe20224…` first.
+
+Two code changes this points to. Both need Glib's sign-off:
+
+1. Write the serving `provider` (response field) and the generation `id` into
+   the run trace. Without that, nothing in this section can be reproduced from
+   the DB.
+2. Decide the routing: pin providers, or exclude OpenInference with
+   `provider.ignore`. It is a vendor choice. Until then the verdict of an app run
+   on PR #8 with all five skills depends on where OpenRouter sends it, and two
+   of four unpinned calls went to OpenInference.
