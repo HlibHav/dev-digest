@@ -4,6 +4,8 @@
   "steps": [
     { "cmd": ["open", "{BASE}/"], "label": "load the app root" },
     { "cmd": ["wait", "--url", "/pulls"], "label": "root redirects to the seeded repo" },
+    { "cmd": ["wait", "--load", "networkidle"], "label": "repo and PR fetches settle" },
+    { "cmd": ["wait", "--text", "#482"], "label": "the seeded PR row is visible, so the active repo has resolved" },
     { "cmd": ["wait", "--text", "SKILLS LAB"], "label": "the SKILLS LAB sidebar section renders" },
     { "cmd": ["find", "role", "link", "click", "--name", "Conventions"], "label": "open Conventions from the sidebar" },
     { "cmd": ["wait", "--url", "/conventions"], "label": "conventions route reached" },
