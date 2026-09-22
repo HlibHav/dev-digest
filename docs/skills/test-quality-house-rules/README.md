@@ -96,6 +96,21 @@ it renders trusted; the importer would store it as untrusted and disabled. It is
 Quality Reviewer's only skill. `branch-coverage-gate` and `test-smells` stay in the library
 unlinked. The agent runs on system prompt v5.
 
+Changed on 2026-09-22: the lab expects the reviewer to carry its seeded skills, so it links
+`branch-coverage-gate`, `test-smells`, then this skill last. Pre-registered bar: #12 names the
+one-provider mock at least 2/3, #6 flags the missing tests 2/2. Measured in the app:
+
+| PR | Without skills | Three skills |
+|---|---|---|
+| #12 names the one-provider mock | 0/3 (2026-09-21) | **3/3** |
+| #6 flags a new module with no tests | — | 2/2 |
+| #9 names the untested branches of `shouldSweep` | 3/3 | 3/3, each branch named |
+
+PR #9, the happy-path-only fixture, does not separate the arms: the model finds its untested
+branches without any skill. `branch-coverage-gate` makes the findings sharper, one per branch,
+including the "not old enough" boundary, but the control experiment's "misses without, catches
+with" is PR #12. Skills block: 1,219 tokens.
+
 ## Changelog
 
 - **1.1.0** (2026-09-21): no per-rule severity; every finding is graded by the agent's bands.
