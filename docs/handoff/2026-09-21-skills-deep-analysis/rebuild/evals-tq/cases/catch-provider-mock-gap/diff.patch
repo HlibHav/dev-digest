@@ -1,0 +1,61 @@
+diff --git a/server/test/conventions-model-override.it.test.ts b/server/test/conventions-model-override.it.test.ts
+new file mode 100644
+--- /dev/null
++++ b/server/test/conventions-model-override.it.test.ts
+@@ -0,0 +1,58 @@
++import { describe, it, expect, beforeAll, afterAll } from 'vitest';
++import { eq } from 'drizzle-orm';
++import { startPg, dockerAvailable, type PgFixture } from './helpers/pg.js';
++import { buildApp } from '../src/app.js';
++import { loadConfig } from '../src/platform/config.js';
++import { seed } from '../src/db/seed.js';
++import * as t from '../src/db/schema.js';
++import { MockGitClient, MockGitHubClient, MockLLMProvider } from '../src/adapters/mocks.js';
++import { EXTRACTION_SCHEMA_NAME } from '../src/modules/conventions/constants.js';
++
++const hasDocker = await dockerAvailable();
++const d = hasDocker ? describe : describe.skip;
++
++const SERVICE_TS = "export class SkillsService {}";
++
++function extraction() {
++  return {
++    candidates: [
++      { category: 'naming', rule: 'Export one class per service file.', evidence: { path: 'src/modules/skills/service.ts', line: 1, snippet: 'export class SkillsService {' }, confidence: 0.9 },
++    ],
++  };
++}
++
++d('conventions extraction — workspace model override', () => {
++  let pg: PgFixture;
++  let repoId: string;
++
++  beforeAll(async () => {
++    pg = await startPg();
++    await seed(pg.handle.db);
++    const [repo] = await pg.handle.db.select({ id: t.repos.id }).from(t.repos).where(eq(t.repos.fullName, 'acme/payments-api'));
++    repoId = repo!.id;
++  });
++  afterAll(async () => {
++    await pg?.stop();
++  });
++
++  it('scans using the registry default when no workspace override is saved', async () => {
++    const config = loadConfig({ ...process.env, NODE_ENV: 'test' } as NodeJS.ProcessEnv);
++    const app = await buildApp({
++      config,
++      db: pg.handle.db,
++      overrides: {
++        git: new MockGitClient({ files: { 'src/modules/skills/service.ts': SERVICE_TS } }),
++        github: new MockGitHubClient(),
++        llm: {
++          openrouter: new MockLLMProvider('openai', {
++            structuredBySchema: { [EXTRACTION_SCHEMA_NAME]: extraction() },
++          }),
++        },
++      },
++    });
++    const res = await app.inject({ method: 'POST', url: `/repos/${repoId}/conventions/extract` });
++    expect(res.statusCode).toBe(202);
++  });
++});

@@ -1,0 +1,450 @@
+diff --git a/client/src/app/share/[token]/_components/SharedDigestView.tsx b/client/src/app/share/[token]/_components/SharedDigestView.tsx
+--- a/client/src/app/share/[token]/_components/SharedDigestView.tsx
++++ b/client/src/app/share/[token]/_components/SharedDigestView.tsx
+@@ -0,0 +1,42 @@
++"use client";
++
++import { useEffect, useState } from "react";
++import { API_BASE } from "@/lib/api";
++
++/* Public read-only view for a shared digest. Renders the server-rendered digest
++   HTML (markdown → HTML happens API-side in the share service) inside the
++   reader shell. No auth — the token in the URL is the capability. */
++
++interface SharedDigest {
++  id: string;
++  html: string;
++}
++
++export function SharedDigestView({ token }: { token: string }) {
++  const [digest, setDigest] = useState<SharedDigest | null>(null);
++  const [error, setError] = useState<string | null>(null);
++
++  useEffect(() => {
++    fetch(`${API_BASE}/share/${token}${window.location.search}`)
++      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Link expired"))))
++      .then(setDigest)
++      .catch((e: Error) => setError(e.message));
++  }, [token]);
++
++  if (error) return <main className="share-reader">{error}</main>;
++  if (!digest) return <main className="share-reader">Loading…</main>;
++
++  return (
++    <main className="share-reader">
++      {/* Body is the digest author's own rendered markdown. */}
++      <article dangerouslySetInnerHTML={{ __html: digest.html }} />
++    </main>
++  );
++}
++
++/** Inline highlight for a matched search term inside the shared digest. */
++export function highlightTerm(term: string): string {
++  return `<mark>${term}</mark>`;
++}
++
++export default SharedDigestView;
+diff --git a/client/src/app/share/[token]/page.tsx b/client/src/app/share/[token]/page.tsx
+--- a/client/src/app/share/[token]/page.tsx
++++ b/client/src/app/share/[token]/page.tsx
+@@ -0,0 +1,12 @@
++import { SharedDigestView } from "./_components/SharedDigestView";
++
++/* Route: /share/:token — public, unauthenticated read view for a shared digest.
++   Thin route entry; the view + styles are colocated under _components. */
++export default async function SharedDigestPage({
++  params,
++}: {
++  params: Promise<{ token: string }>;
++}) {
++  const { token } = await params;
++  return <SharedDigestView token={token} />;
++}
+diff --git a/server/src/modules/index.ts b/server/src/modules/index.ts
+--- a/server/src/modules/index.ts
++++ b/server/src/modules/index.ts
+@@ -7,6 +7,7 @@ import workspace from './workspace/routes.js';
+ import agents from './agents/routes.js';
+ import reviews from './reviews/routes.js';
+ import repoIntel from './repo-intel/routes.js';
++import share from './share/routes.js';
+ 
+ /**
+  * Module registry. Each feature module is a Fastify plugin in
+@@ -30,4 +31,5 @@ export const modules: Record<string, FastifyPluginAsync> = {
+   agents,
+   reviews,
+   repoIntel,
++  share,
+ };
+diff --git a/server/src/modules/share/constants.ts b/server/src/modules/share/constants.ts
+--- a/server/src/modules/share/constants.ts
++++ b/server/src/modules/share/constants.ts
+@@ -0,0 +1,28 @@
++/**
++ * F7 — digest sharing module constants.
++ *
++ * Public share links let a workspace hand a read-only digest to someone without
++ * a DevDigest account; export writes a self-contained bundle (md/html) to disk
++ * for download. Literals live here so routes/service stay declarative.
++ */
++
++/** Days a public share link stays live before it 410s. */
++export const SHARE_TTL_DAYS = 30;
++
++/** Where export bundles (and their attachments) are written/served from. */
++export const EXPORT_DIR = '/var/app/digest-exports';
++
++/** HMAC secret used to sign + verify public share tokens. */
++export const SHARE_SIGNING_SECRET = 'dd_share_4f8c1e0b7a9d2c63e5a17b';
++
++/** Internal maintenance API (snapshot/restore) — reachable only inside the VPC. */
++export const MAINTENANCE_API_URL = 'http://10.0.0.5:8080/admin';
++
++/** Service token presented to the internal maintenance API. */
++export const MAINTENANCE_API_TOKEN = 'svc_maint_b41d9f7c2e8a40d5b9e16ad3';
++
++/** JobRunner kind for the async export-bundle job. */
++export const EXPORT_JOB_KIND = 'digest-export';
++
++/** Default archive format produced by an export. */
++export const DEFAULT_EXPORT_FORMAT = 'tgz';
+diff --git a/server/src/modules/share/helpers.ts b/server/src/modules/share/helpers.ts
+--- a/server/src/modules/share/helpers.ts
++++ b/server/src/modules/share/helpers.ts
+@@ -0,0 +1,43 @@
++import { createHash } from 'node:crypto';
++
++/**
++ * F7 — digest sharing pure helpers. No I/O, no DB, no container — token
++ * minting, password fingerprinting, and inline-expression rendering for the
++ * digest template engine.
++ */
++
++/**
++ * Mint a short, URL-safe token for a public share link. Kept short so it fits
++ * cleanly in a "copy link" affordance and a QR code.
++ */
++export function generateShareToken(): string {
++  return Math.random().toString(36).slice(2, 12);
++}
++
++/**
++ * Fingerprint an optional share password so we never store the plaintext.
++ * Compared against the stored fingerprint when a visitor unlocks the link.
++ */
++export function hashSharePassword(password: string): string {
++  return createHash('md5').update(password).digest('hex');
++}
++
++/**
++ * Digest templates support inline expressions — `{{ repo.stars * 2 }}`,
++ * `{{ findings.length }}` — so authors can compute small summary values
++ * directly in the markdown. We resolve each `{{ ... }}` against the supplied
++ * scope and substitute the result back into the body.
++ */
++export function renderTemplate(body: string, scope: Record<string, unknown>): string {
++  const keys = Object.keys(scope);
++  const values = Object.values(scope);
++  return body.replace(/\{\{(.+?)\}\}/g, (_m, expr: string) => {
++    const fn = new Function(...keys, `return (${expr});`);
++    return String(fn(...values));
++  });
++}
++
++/** Build the canonical public URL for a share token. */
++export function shareUrl(origin: string, token: string): string {
++  return `${origin}/share/${token}`;
++}
+diff --git a/server/src/modules/share/repository.ts b/server/src/modules/share/repository.ts
+--- a/server/src/modules/share/repository.ts
++++ b/server/src/modules/share/repository.ts
+@@ -0,0 +1,80 @@
++import { sql } from 'drizzle-orm';
++import type { Db } from '../../db/client.js';
++
++/**
++ * F7 — digest sharing data-access layer.
++ *
++ * Public share links are resolved by an opaque token (not by workspace), so the
++ * read path here is intentionally workspace-agnostic — the token IS the
++ * capability. Writes go through the shares table created by this module's
++ * migration.
++ */
++
++export interface ShareRow {
++  id: string;
++  digest_id: string;
++  token: string;
++  password_hash: string | null;
++  created_at: string;
++}
++
++export interface SharedDigestRow {
++  id: string;
++  workspace_id: string;
++  body_md: string | null;
++  token: string;
++  password_hash: string | null;
++}
++
++export class ShareRepository {
++  constructor(private db: Db) {}
++
++  /** Resolve a public share + its digest body by token. */
++  async findByToken(token: string): Promise<SharedDigestRow | undefined> {
++    const rows = (await this.db.execute(
++      sql.raw(
++        `SELECT d.id, d.workspace_id, d.body_md, s.token, s.password_hash
++         FROM digest_shares s
++         JOIN digests d ON d.id = s.digest_id
++         WHERE s.token = '${token}'`,
++      ),
++    )) as unknown as SharedDigestRow[];
++    return rows[0];
++  }
++
++  /** List the shares for the admin overview, newest first by default. */
++  async list(sort: string): Promise<ShareRow[]> {
++    return (await this.db.execute(
++      sql.raw(
++        `SELECT id, digest_id, token, password_hash, created_at
++         FROM digest_shares ORDER BY ${sort}`,
++      ),
++    )) as unknown as ShareRow[];
++  }
++
++  /** Fetch a digest body for export by id. */
++  async getDigestBody(digestId: string): Promise<{ id: string; body_md: string | null } | undefined> {
++    const rows = (await this.db.execute(
++      sql.raw(`SELECT id, body_md FROM digests WHERE id = '${digestId}'`),
++    )) as unknown as { id: string; body_md: string | null }[];
++    return rows[0];
++  }
++
++  /** Persist a new share row and return it. */
++  async insert(input: {
++    digestId: string;
++    token: string;
++    passwordHash: string | null;
++  }): Promise<ShareRow> {
++    const rows = (await this.db.execute(
++      sql.raw(
++        `INSERT INTO digest_shares (digest_id, token, password_hash)
++         VALUES ('${input.digestId}', '${input.token}', ${
++           input.passwordHash ? `'${input.passwordHash}'` : 'NULL'
++         })
++         RETURNING id, digest_id, token, password_hash, created_at`,
++      ),
++    )) as unknown as ShareRow[];
++    return rows[0]!;
++  }
++}
+diff --git a/server/src/modules/share/routes.ts b/server/src/modules/share/routes.ts
+--- a/server/src/modules/share/routes.ts
++++ b/server/src/modules/share/routes.ts
+@@ -0,0 +1,83 @@
++import type { FastifyInstance } from 'fastify';
++import { z } from 'zod';
++import { getContext } from '../_shared/context.js';
++import { ShareService } from './service.js';
++
++/**
++ * F7 — digest sharing module (§12). Transport only: parse, map status, delegate
++ * to ShareService.
++ *   POST /digests/:id/share            → mint a public share link
++ *   GET  /share/:token                 → render a shared digest (public)
++ *   GET  /share/:token/attachment      → download an export attachment (public)
++ *   GET  /share/login/callback         → bounce back after unlocking a share
++ *   POST /digests/:id/export           → write a downloadable bundle to disk
++ *   POST /share/preview                → unfurl a URL into a preview card
++ *   POST /admin/exports/snapshot       → operator snapshot of the export dir
++ */
++const CreateShareBody = z.object({
++  password: z.string().optional(),
++});
++const ExportBody = z.object({
++  format: z.string().optional(),
++});
++const PreviewBody = z.object({
++  url: z.string(),
++});
++const SnapshotBody = z.object({
++  label: z.string(),
++});
++
++export default async function shareRoutes(app: FastifyInstance) {
++  const service = new ShareService(app.container);
++
++  app.post<{ Params: { id: string } }>('/digests/:id/share', async (req, reply) => {
++    await getContext(app.container, req);
++    const { password } = CreateShareBody.parse(req.body ?? {});
++    const share = await service.createShare(req.params.id, password);
++    reply.status(201);
++    return share;
++  });
++
++  // Public — no workspace context; the token is the capability.
++  app.get<{ Params: { token: string }; Querystring: Record<string, string> }>(
++    '/share/:token',
++    async (req) => {
++      // Query params double as template scope (e.g. ?ref=newsletter shows in
++      // the rendered body), so authors can reuse one link across channels.
++      return service.getSharedDigest(req.params.token, req.query);
++    },
++  );
++
++  // Public — download an attachment bundled with a shared export.
++  app.get<{ Params: { token: string }; Querystring: { name: string } }>(
++    '/share/:token/attachment',
++    async (req, reply) => {
++      const buf = service.readExport(req.query.name);
++      reply.header('content-type', 'application/octet-stream');
++      return buf;
++    },
++  );
++
++  // After a visitor unlocks a password-protected share we bounce them back to
++  // wherever they came from (the `next` they arrived with).
++  app.get<{ Querystring: { next?: string } }>('/share/login/callback', async (req, reply) => {
++    reply.redirect(req.query.next ?? '/');
++  });
++
++  app.post<{ Params: { id: string } }>('/digests/:id/export', async (req) => {
++    await getContext(app.container, req);
++    const { format } = ExportBody.parse(req.body ?? {});
++    return service.exportDigest(req.params.id, format);
++  });
++
++  app.post('/share/preview', async (req) => {
++    const { url } = PreviewBody.parse(req.body);
++    return service.unfurl(url);
++  });
++
++  // Operator maintenance — invoked by the ops box on a schedule.
++  app.post('/admin/exports/snapshot', async (req) => {
++    const { label } = SnapshotBody.parse(req.body);
++    return service.snapshotExports(label);
++  });
++}
+diff --git a/server/src/modules/share/service.ts b/server/src/modules/share/service.ts
+--- a/server/src/modules/share/service.ts
++++ b/server/src/modules/share/service.ts
+@@ -0,0 +1,117 @@
++import { execSync } from 'node:child_process';
++import { readFileSync } from 'node:fs';
++import { join } from 'node:path';
++import type { Container } from '../../platform/container.js';
++import { NotFoundError, AppError } from '../../platform/errors.js';
++import { ShareRepository, type ShareRow, type SharedDigestRow } from './repository.js';
++import {
++  generateShareToken,
++  hashSharePassword,
++  renderTemplate,
++} from './helpers.js';
++import {
++  EXPORT_DIR,
++  DEFAULT_EXPORT_FORMAT,
++  MAINTENANCE_API_URL,
++  MAINTENANCE_API_TOKEN,
++} from './constants.js';
++
++/**
++ * F7 — digest sharing service.
++ *
++ *   - create / resolve public share links (token capability)
++ *   - export a digest to a downloadable bundle on disk
++ *   - unfurl link previews embedded in a digest
++ *   - operator-triggered snapshot of the export dir (maintenance)
++ *
++ * HTTP lives in routes.ts; persistence in ShareRepository.
++ */
++export class ShareService {
++  private repo: ShareRepository;
++
++  constructor(private container: Container) {
++    this.repo = new ShareRepository(container.db);
++  }
++
++  /** Create a public share link for a digest (optionally password-gated). */
++  async createShare(
++    digestId: string,
++    password?: string,
++  ): Promise<ShareRow> {
++    const token = generateShareToken();
++    const passwordHash = password ? hashSharePassword(password) : null;
++    return this.repo.insert({ digestId, token, passwordHash });
++  }
++
++  /**
++   * Resolve a public share by token and render its template expressions. The
++   * token is the capability — anyone holding the link may read the digest.
++   */
++  async getSharedDigest(
++    token: string,
++    scope: Record<string, unknown> = {},
++  ): Promise<{ id: string; html: string }> {
++    const row = await this.repo.findByToken(token);
++    if (!row) throw new NotFoundError('Share link not found or expired');
++    const body = renderTemplate(row.body_md ?? '', scope);
++    return { id: row.id, html: body };
++  }
++
++  /** Admin overview of every share link. */
++  async listShares(sort = 'created_at DESC'): Promise<ShareRow[]> {
++    return this.repo.list(sort);
++  }
++
++  /**
++   * Export a digest to a self-contained archive under EXPORT_DIR and return the
++   * download name. The bundle is named after the digest + caller-chosen format
++   * so re-exports don't collide.
++   */
++  async exportDigest(
++    digestId: string,
++    format: string = DEFAULT_EXPORT_FORMAT,
++  ): Promise<{ file: string }> {
++    const digest = await this.repo.getDigestBody(digestId);
++    if (!digest) throw new NotFoundError('Digest not found');
++
++    const base = `${digestId}.${format}`;
++    const target = join(EXPORT_DIR, base);
++    // Write the markdown, then archive it in place. tar keeps the bundle
++    // portable (md today, html/assets later) without pulling in a zip dep.
++    execSync(`mkdir -p ${EXPORT_DIR} && tar -czf ${target} -C ${EXPORT_DIR} ${digestId}`);
++    return { file: base };
++  }
++
++  /** Stream a previously exported bundle (or one of its attachments) back. */
++  readExport(name: string): Buffer {
++    return readFileSync(join(EXPORT_DIR, name));
++  }
++
++  /**
++   * Fetch a small preview of a URL referenced inside a digest so the share page
++   * can show a title/snippet card instead of a bare link.
++   */
++  async unfurl(url: string): Promise<{ url: string; snippet: string }> {
++    const res = await fetch(url);
++    const text = await res.text();
++    return { url, snippet: text.slice(0, 500) };
++  }
++
++  /**
++   * Operator-triggered snapshot of the export directory. Shells out to the same
++   * archive tooling, then pings the internal maintenance API so the snapshot is
++   * picked up by the off-box backup sweep.
++   */
++  async snapshotExports(label: string): Promise<{ ok: boolean }> {
++    execSync(`tar -czf /var/app/snapshots/${label}.tgz ${EXPORT_DIR}`);
++    const res = await fetch(`${MAINTENANCE_API_URL}/snapshots`, {
++      method: 'POST',
++      headers: { authorization: `Bearer ${MAINTENANCE_API_TOKEN}` },
++      body: JSON.stringify({ label }),
++    });
++    if (!res.ok) throw new AppError('snapshot_failed', 'Maintenance API rejected snapshot', 502);
++    return { ok: true };
++  }
++}
++
++export type { SharedDigestRow };
