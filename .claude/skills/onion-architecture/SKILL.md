@@ -1,7 +1,8 @@
 ---
 name: onion-architecture
-version: 2.0.0
 description: Keeps DevDigest's backend an onion — route → service → domain wired in the container; git, GitHub, the code index, secrets and LLMs behind adapters at the edge; imports pointing inward; no adapter call inside a route handler. Use before adding or changing code in server/src/modules, server/src/adapters, server/src/platform or reviewer-core/src — a new endpoint, module, service, integration, background job, SSE stream or query — and when deciding which layer backend code belongs in. Also triggers on "onion", "hexagonal", "ports and adapters", "layers", "where does this go", "куди покласти", "новий модуль", "lint:boundaries". Not for Fastify API details (fastify-best-practices), writing queries (drizzle-orm-patterns) or client/ (frontend-ui-architecture).
+metadata:
+  version: 2.0.0
 ---
 
 # onion-architecture
