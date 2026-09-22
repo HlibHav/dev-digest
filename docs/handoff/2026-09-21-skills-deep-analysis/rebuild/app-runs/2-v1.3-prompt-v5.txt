@@ -1,0 +1,28 @@
+detach 200
+PR10-noskills#1 | done | blockers=0 | score=100 | grounding=0/0 passed | skills_tok=none | all files: served by Parasail | run=debe711b-22c8-4208-860a-a0abbf3f49e4
+PR11-noskills#1 | done | blockers=1 | score=53 | grounding=2/2 passed | skills_tok=none | all files: served by Parasail | run=b60e96ea-199b-4701-a1a4-53016d4fb942
+    CRITICAL: Client-side CSV download omits authentication credentials
+    WARNING: Import of `notify` from `lib/toast` may not exist
+PR10-noskills#2 | done | blockers=0 | score=100 | grounding=0/0 passed | skills_tok=none | all files: served by StreamLake | run=3dafb4ea-7f0f-4ea0-b751-ecc7b1eefbe8
+PR11-noskills#2 | done | blockers=0 | score=100 | grounding=0/0 passed | skills_tok=none | all files: served by Parasail | run=33fb4502-e0b6-4181-bfdf-d40f0f66f83b
+PR10-noskills#3 | done | blockers=0 | score=100 | grounding=0/0 passed | skills_tok=none | all files: served by StreamLake | run=ae87447c-eca3-4d09-b92f-9782b812856b
+PR11-noskills#3 TIMEOUT
+attach 200
+PR10-skill#1 | done | blockers=0 | score=88 | grounding=1/1 passed | skills_tok=914 | all files: served by Parasail | run=eb3d474e-dfbb-4649-8cac-72e965de8dbb
+    WARNING: New field uses `.optional()` instead of `.nullish()`
+PR11-skill#1 | done | blockers=0 | score=88 | grounding=1/1 passed | skills_tok=914 | all files: served by Parasail | run=e057cc4b-2e60-426c-b7f9-96d244763ef6
+    WARNING: downloadFindingsCsv throws a plain Error instead of ApiError on non-2xx responses
+PR8-skill#1 | done | blockers=0 | score=88 | grounding=1/1 passed | skills_tok=914 | all files: served by Parasail | run=0ec662d2-827d-4207-8fb2-d36a0d326a2c
+    WARNING: POST /agents now returns 200 instead of 201
+PR10-skill#2 | done | blockers=0 | score=88 | grounding=1/1 passed | skills_tok=914 | all files: served by Parasail | run=cd155b4d-e4e1-48ce-822c-1433f8fa48e2
+    WARNING: New `Finding` field uses `.optional()` instead of `.nullish()`
+PR11-skill#2 | done | blockers=1 | score=53 | grounding=2/2 passed | skills_tok=914 | all files: served by Parasail | run=94e648c3-7a48-43e4-8571-40b1d8718ac9
+    CRITICAL: CSV download request lacks authentication headers
+    WARNING: Non-2xx CSV response throws plain Error instead of ApiError
+PR8-skill#2 | done | blockers=0 | score=88 | grounding=1/1 passed | skills_tok=914 | all files: served by Parasail | run=0b4b1c65-ddb0-4eae-a904-3cebeb989057
+    WARNING: POST /agents status code changed from 201 to 200
+PR10-skill#3 | done | blockers=0 | score=88 | grounding=1/1 passed | skills_tok=914 | all files: served by Parasail | run=af11b5a6-6b3d-442f-ab1f-c44bc8052d12
+    WARNING: New `Finding` field uses `.optional()` instead of `.nullish()`
+PR11-skill#3 TIMEOUT
+PR8-skill#3 | done | blockers=0 | score=88 | grounding=1/1 passed | skills_tok=914 | all files: served by Parasail | run=af95ccff-73b8-4952-9323-0a1a8b24bd46
+    WARNING: Create agent handler returns 200 instead of 201

@@ -58,6 +58,18 @@ The rule is caught every time. There is no false positive, and PR #6 holds. The 
 v1.0.0 showed on AtlasCloud is gone, as it is for the API Contract skill. The misnamed-test
 case is not a rule yet (see above), and neither arm finds it reliably.
 
+In the app, with repo map, callers and provider routing, on demo PR #12
+(`demo/conventions-model-override-test`, based on `feat/agent-skills`), a new integration test
+whose mock is registered under `openrouter` only:
+
+| | Without skills | v1.1.0 |
+|---|---|---|
+| Names the one-provider mock | 0 / 3 | **3 / 3** (2 warnings, 1 suggestion) |
+
+Without the skill, every run senses the gap and reports the generic "the test does not prove
+the scan uses the resolved model", once as a CRITICAL, but never names the mechanism. Log:
+`docs/handoff/2026-09-21-skills-deep-analysis/rebuild/app-runs/6-tq-v1.1-prompt-v5.txt`.
+
 ### History: v1.0.0 under the previous agent prompt
 
 Two providers: Parasail (where reviews are routed) and AtlasCloud (a reasoning fallback).

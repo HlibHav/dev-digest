@@ -1,0 +1,22 @@
+PR8-v1.4#1 | done | blockers=0 | score=85 | grounding=2/2 passed | skills_tok=899 | all files: served by Parasail | run=eda5a62c-bdac-4d78-8589-19f42e33bc00
+    WARNING: Create handler response status changed from 201 to 200
+    SUGGESTION: `tag` field accepted in request body but never persisted
+PR8-v1.4#2 | done | blockers=0 | score=88 | grounding=1/1 passed | skills_tok=899 | all files: served by Parasail | run=80389fef-64c9-4f18-a3c1-dc52846f08d8
+    WARNING: Create agent response status changed from 201 to 200
+PR8-v1.4#3 | done | blockers=1 | score=65 | grounding=1/1 passed | skills_tok=899 | all files: served by Parasail | run=65d4aa3e-a7ee-4015-b86e-96a59aa31db8
+    CRITICAL: Create agent handler response status changed from 201 to 200
+PR8-v1.4#4 | done | blockers=1 | score=65 | grounding=1/1 passed | skills_tok=899 | all files: served by Parasail | run=4c9c3590-cdee-4c81-856b-5a561a3859ad
+    CRITICAL: Create agent response status changed from 201 to 200
+PR8-v1.4#5 | done | blockers=1 | score=65 | grounding=1/1 passed | skills_tok=899 | all files: served by Parasail | run=27e23a6c-3ea9-47e9-a0f1-dafb93289764
+    CRITICAL: Create agent response status changed from 201 to 200
+PR8-v1.4#6 | done | blockers=1 | score=65 | grounding=1/1 passed | skills_tok=899 | all files: served by Parasail | run=6e18e340-86e0-4eaf-a364-75c2f70b5382
+    CRITICAL: Create agent response status changed from 201 to 200
+PR10-v1.4#1 | done | blockers=0 | score=88 | grounding=1/1 passed | skills_tok=899 | all files: served by Parasail | run=9fc71208-af80-4ee7-9638-c0046972f521
+    WARNING: New field uses `.optional()` instead of `.nullish()` in `Finding` schema
+PR11-v1.4#1 | done | blockers=0 | score=85 | grounding=2/2 passed | skills_tok=899 | all files: served by Parasail | run=6f48385b-8b9d-4445-b167-8ebd9ff3588c
+    WARNING: downloadFindingsCsv throws plain Error instead of ApiError on non-2xx response
+    SUGGESTION: Import of `notify` from `../../../../../../../lib/toast` may not exist
+PR10-v1.4#2 | done | blockers=0 | score=88 | grounding=1/1 passed | skills_tok=899 | all files: served by Parasail | run=09c19b5e-3c4b-4f54-904f-13a118101b7e
+    WARNING: New field in `Finding` uses `.optional()` instead of `.nullish()`
+PR11-v1.4#2 | done | blockers=0 | score=88 | grounding=1/1 passed | skills_tok=899 | all files: served by Parasail | run=80e7d69f-70ef-4ae0-aa57-1dd9a15c5541
+    WARNING: Client CSV download error path throws plain Error instead of ApiError

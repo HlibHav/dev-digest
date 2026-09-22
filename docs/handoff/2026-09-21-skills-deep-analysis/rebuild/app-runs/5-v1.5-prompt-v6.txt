@@ -1,0 +1,27 @@
+PR8-v1.5#1 | done | blockers=1 | score=65 | grounding=1/1 passed | skills_tok=873 | all files: served by Parasail | run=6ec1003e-158d-44c7-8a35-8b427fb4d1a8
+    CRITICAL: POST /agents response status changed from 201 to 200
+PR8-v1.5#2 | done | blockers=1 | score=65 | grounding=1/1 passed | skills_tok=873 | all files: served by Parasail | run=02f1ec09-2be1-4b96-9a2a-d36327b0e538
+    CRITICAL: POST /agents response status changed from 201 to 200
+PR8-v1.5#3 | done | blockers=1 | score=65 | grounding=1/1 passed | skills_tok=873 | all files: served by Parasail | run=b0684301-efe8-4c5f-96c7-572a87536714
+    CRITICAL: Create agent endpoint now returns 200 instead of 201
+PR8-v1.5#4 | done | blockers=1 | score=65 | grounding=1/1 passed | skills_tok=873 | all files: served by Parasail | run=1c1f0702-331b-4bc5-95ba-ea810fd34071
+    CRITICAL: Create-agent response status changed from 201 to 200
+PR8-v1.5#5 | done | blockers=1 | score=65 | grounding=1/1 passed | skills_tok=873 | all files: served by Parasail | run=6ea1dbfc-659a-4d8a-99e5-ac8acfdaabcd
+    CRITICAL: Create agent handler now returns 200 instead of 201
+PR8-v1.5#6 | done | blockers=0 | score=88 | grounding=1/1 passed | skills_tok=873 | all files: served by Parasail | run=f34a1749-52f1-44cc-a393-36f4c0a7c516
+    WARNING: Create agent endpoint changed from 201 to 200
+PR10-v1.5#1 | done | blockers=0 | score=76 | grounding=2/2 passed | skills_tok=873 | all files: served by Parasail | run=2f2b2d47-715d-49ed-a16b-9ff27843188a
+    WARNING: New field in `Finding` uses `.optional()` instead of `.nullish()`
+    WARNING: New field in `Finding` uses `.optional()` instead of `.nullish()`
+PR11-v1.5#1 | done | blockers=0 | score=85 | grounding=2/2 passed | skills_tok=873 | all files: served by Parasail | run=7700255a-71d5-4b24-a78b-bc3cca864c4d
+    WARNING: downloadFindingsCsv throws plain Error instead of ApiError on non-2xx response
+    SUGGESTION: No test for error path in downloadFindingsCsv
+PR10-v1.5#2 | done | blockers=0 | score=88 | grounding=1/1 passed | skills_tok=873 | all files: served by Parasail | run=5c50aa48-f00e-4bde-8fa2-fd5a32f79d82
+    WARNING: New field uses `.optional()` instead of `.nullish()`
+PR11-v1.5#2 | done | blockers=1 | score=53 | grounding=2/2 passed | skills_tok=873 | all files: served by Parasail | run=004cc06d-febd-4fc7-b0ec-27fe71b2e048
+    CRITICAL: downloadFindingsCsv omits authentication headers/credentials
+    WARNING: downloadFindingsCsv throws plain Error instead of ApiError on non-2xx
+PR10-v1.5#3 | done | blockers=0 | score=88 | grounding=1/1 passed | skills_tok=873 | all files: served by Parasail | run=db11a67b-85b1-4074-b4fe-0a286f87a920
+    WARNING: New field in `Finding` uses `.optional()` instead of `.nullish()`
+PR11-v1.5#3 | done | blockers=0 | score=88 | grounding=1/1 passed | skills_tok=873 | all files: served by Parasail | run=97c53596-d428-446a-8e98-5acddd3f383e
+    WARNING: downloadFindingsCsv throws plain Error on non-2xx instead of ApiError

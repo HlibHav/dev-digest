@@ -1,0 +1,20 @@
+detach 200
+PR12-noskills#1 | done | blockers=0 | score=88 | grounding=1/1 passed | skills_tok=none | all files: served by Parasail | run=79d3acd6-2b1b-4aea-9c1c-e290310eac36
+    WARNING: Test does not verify that the scan uses the resolved model in the LLM call
+PR12-noskills#2 | done | blockers=1 | score=47 | grounding=4/4 passed | skills_tok=none | all files: served by Parasail | run=57bf537a-2ae8-446b-aae6-7a0d07dced8d
+    CRITICAL: Test does not verify that the scan actually uses the resolved feature model
+    WARNING: Tests are order-dependent due to persistent workspace override
+    SUGGESTION: No verification that the workspace override is correctly associated with the workspace
+    SUGGESTION: Missing edge cases: invalid model override, removal of override, missing settings
+PR12-noskills#3 | done | blockers=0 | score=79 | grounding=4/4 passed | skills_tok=none | all files: served by Parasail | run=b85d2823-00fe-43ad-bd9e-9839e7e13e7b
+    WARNING: Test does not prove the scan uses the resolved model
+    SUGGESTION: Polling loop may cause flaky timeouts
+    SUGGESTION: Shared database state between tests without cleanup
+    SUGGESTION: Missing corner cases for workspace override
+attach 200
+PR12-skill#1 | done | blockers=0 | score=88 | grounding=1/1 passed | skills_tok=482 | all files: served by Parasail | run=c9005266-5a2a-428d-8593-1dbd4a08a192
+    WARNING: MockLLMProvider registered only under `openrouter`, not all three provider ids
+PR12-skill#2 | done | blockers=0 | score=97 | grounding=1/1 passed | skills_tok=482 | all files: served by Parasail | run=52612ed5-1828-47bf-8c14-11f77e618856
+    SUGGESTION: Mock LLM provider registered under only one provider id instead of all three
+PR12-skill#3 | done | blockers=0 | score=88 | grounding=1/1 passed | skills_tok=482 | all files: served by Parasail | run=9c978291-4b0d-4e99-8b08-8823a253a60f
+    WARNING: Mock LLM provider registered under only one provider id

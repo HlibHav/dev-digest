@@ -1,0 +1,22 @@
+detach 200
+PR10-noskills#1 | done | blockers=0 | score=100 | grounding=0/0 passed | skills_tok=none | all files: served by Parasail | run=ff85b35f-146a-4764-b0b0-7d48bb85057b
+PR11-noskills#1 | done | blockers=0 | score=100 | grounding=0/0 passed | skills_tok=none | all files: served by Parasail | run=3518fea4-36eb-43fc-960a-259125991cc1
+PR10-noskills#2 | done | blockers=0 | score=97 | grounding=1/1 passed | skills_tok=none | all files: served by Parasail | run=fd12dbba-35d6-4ad4-b7af-9e9a41fc7c1b
+    SUGGESTION: New optional field uses `optional()` while sibling fields use `nullish()`
+PR11-noskills#2 | done | blockers=1 | score=65 | grounding=1/1 passed | skills_tok=none | all files: served by Parasail | run=8b0d171f-702c-443b-a0db-457138f5137a
+    CRITICAL: Missing credentials in downloadFindingsCsv breaks authenticated callers
+PR10-noskills#3 | done | blockers=0 | score=100 | grounding=0/0 passed | skills_tok=none | all files: served by Parasail | run=ec203f43-be3d-4abc-bc7b-491678eb277a
+PR11-noskills#3 | done | blockers=0 | score=100 | grounding=0/0 passed | skills_tok=none | all files: served by Parasail | run=426bdb5a-8b5f-4e88-8389-987622dd5c68
+attach 200
+PR10-skill#1 | done | blockers=0 | score=88 | grounding=1/1 passed | skills_tok=914 | all files: served by Parasail | run=dea4fe8c-b678-4088-bee1-caa077c8de2b
+    WARNING: New field uses `.optional()` instead of `.nullish()`
+PR11-skill#1 | done | blockers=0 | score=88 | grounding=1/1 passed | skills_tok=914 | all files: served by Parasail | run=bde3421a-a141-4e8b-8f1a-9e4fb383fc9b
+    WARNING: Client CSV download throws plain Error instead of ApiError on non-2xx response
+PR10-skill#2 | done | blockers=0 | score=88 | grounding=1/1 passed | skills_tok=914 | all files: served by Parasail | run=e9882214-b824-4a81-bbba-ec63b88b6d29
+    WARNING: New field in `Finding` uses `.optional()` instead of `.nullish()`
+PR11-skill#2 | done | blockers=0 | score=88 | grounding=1/1 passed | skills_tok=914 | all files: served by StreamLake | run=7ff3656e-db7d-4ea4-8bef-64ec27ad73c0
+    WARNING: downloadFindingsCsv throws plain Error instead of ApiError on non-2xx
+PR10-skill#3 | done | blockers=0 | score=88 | grounding=1/1 passed | skills_tok=914 | all files: served by Parasail | run=8429219b-995a-4b6f-bd45-a3675e9253e8
+    WARNING: New field uses `.optional()` instead of `.nullish()`
+PR11-skill#3 | done | blockers=0 | score=88 | grounding=1/1 passed | skills_tok=914 | all files: served by Parasail | run=3186fa06-f134-42a8-a272-bd190e88ba6b
+    WARNING: CSV download error path throws plain Error instead of ApiError
