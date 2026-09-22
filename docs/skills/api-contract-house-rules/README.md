@@ -1,4 +1,4 @@
-# api-contract-house-rules — v1.2.0
+# api-contract-house-rules — v1.5.0
 
 A DevDigest skill for the **API Contract Reviewer**. It holds three contract rules about this
 repository that a diff does not reveal, and nothing else. It replaces the reviewer's previous
@@ -12,9 +12,9 @@ records why the skill looks the way it does, how it was measured, and every sour
 
 | # | Rule | Why a model misses it | Severity | Evidence |
 |---|---|---|---|---|
-| 1 | Fields in `Review` / `Finding` use `.nullish()`, not `.optional()` | The schemas double as the strict LLM output schema. An optional field reads as safe; under `strict: true` it becomes required | warning | `.claude/rules/shared-contracts.md:15-18`, `server/src/vendor/shared/contracts/findings.ts:56`, `reviewer-core/src/llm/openrouter.ts:76` |
-| 2 | A shared contract changes in both copies in the same diff | The client copy is a hand mirror with no sync script, and a one-sided change looks complete | warning | `.claude/rules/shared-contracts.md:9-14`, `client/AGENTS.md:24-25` |
-| 3 | Client requests surface errors as `ApiError` | Pages branch on `instanceof ApiError`, which the diff does not show | warning | `client/src/lib/api.ts:44-58`, `client/src/app/repos/[repoId]/pulls/page.tsx:111` |
+| 1 | Fields in `Review` / `Finding` use `.nullish()`, not `.optional()` | The schemas double as the strict LLM output schema. An optional field reads as safe; under `strict: true` it becomes required | warning (agent band) | `.claude/rules/shared-contracts.md:15-18`, `server/src/vendor/shared/contracts/findings.ts:56`, `reviewer-core/src/llm/openrouter.ts:123` |
+| 2 | A shared contract changes in both copies in the same diff | The client copy is a hand mirror with no sync script, and a one-sided change looks complete | warning (agent band) | `.claude/rules/shared-contracts.md:9-14`, `client/AGENTS.md:24-25` |
+| 3 | Client requests surface errors as `ApiError` | Pages branch on `instanceof ApiError`, which the diff does not show | warning (agent band) | `client/src/lib/api.ts:44-58`, `client/src/app/repos/[repoId]/pulls/page.tsx:111` |
 
 Rule 1 was checked in code. `toJsonSchema` (`reviewer-core/src/llm/structured.ts:19`) puts a
 `.optional()` field into `required` with no `nullable`, and the OpenAI SDK only prints a
@@ -22,8 +22,11 @@ warning. Rule 3 is the rule the Conventions Extractor produced as `repo-conventi
 as a check with its reason and its one legitimate exception (non-JSON responses such as
 downloads).
 
-All three are warnings, because none breaks a deployed caller. The skill makes the reviewer
-**find** these defects. It does not make it block the merge.
+The skill names no severity. The agent's own bands grade all three as warnings: none breaks a
+deployed caller, and its WARNING band names "the two shared contract copies disagreeing"
+outright. When the skill wrote "warning" under each rule, the model carried that grade over to
+unrelated findings (iterations 1.3.0–1.5.0 below). The skill makes the reviewer **find** these
+defects. It does not make it block the merge.
 
 ## Why three rules, not a catalogue
 
@@ -90,6 +93,41 @@ Design rules, each traced to sources:
 
 ## Evaluation
 
+### Current configuration: v1.5.0, agent prompt v6, reviews routed to Parasail
+
+On the harness, Parasail, n = 6, with the agent's current system prompt. Found (blocks); for
+the clean case, false positives.
+
+| Case | No skills | v1.5.0 |
+|---|---|---|
+| `.optional()` in a strict LLM schema | 0 (0) / 6 | **6 (0) / 6** |
+| client request bypasses `ApiError` | 0 (0) / 6 | **6 (0) / 6** |
+| contract changed in the server copy only | 3 (0) / 6 | **5 (0) / 6** |
+| PR #8, status code 201 → 200 | 6 (6) / 6 | 6 (6) / 6 |
+| clean change, false positives | 0 / 5 | 0 / 6 |
+| new enum member, server copy only | 6 (4) / 6 | 6 (2) / 6 |
+| `res.json()` on a 204 | 4 (4) / 5 | 6 (6) / 6 |
+| `GET /pulls/:id` stops syncing | 5 (2) / 6 | 5 (0) / 6 |
+| camelCase field among snake_case | 6 (0) / 6 | 6 (0) / 6 |
+
+In the app, which adds repo map and callers to the prompt, with provider routing on. Every run
+logged the provider that answered: Parasail, and StreamLake as a fallback.
+
+| PR | No skills | v1.5.0 |
+|---|---|---|
+| #10 `demo/finding-related-ids` (`.optional()` in `Finding`) | 0/2 | **3/3** found |
+| #11 `demo/findings-csv-export` (plain `Error`, not `ApiError`) | 0/2 | **3/3** found |
+| #8 status code 201 → 200 | found and blocks 2/2 | found 6/6, blocks 5/6 |
+
+On #11, both arms sometimes add a CRITICAL claiming the download "omits authentication
+headers". This app has no request authentication, and the claim appears without the skill too.
+
+All pre-registered criteria are met on Parasail. The 150 s request deadline and the provider
+routing are in `reviewer-core/src/llm/openrouter.ts` (ADR
+`../decisions/2026-09-21-openrouter-provider-routing.md`, outside the repo).
+
+### History: v1.0.0–v1.2.0 under the previous agent prompt
+
 Setup: the API Contract Reviewer's real system prompt and the real `assemblePrompt`, with
 repo map and callers left out. `deepseek/deepseek-v4-flash`, temperature 0, pinned to
 Parasail (reasons before answering) and OpenInference (does not reason, and pastes the JSON
@@ -151,6 +189,22 @@ On Parasail, 1.2.0 is the better version. On OpenInference it is a trade, not a 
 baseline" fails on OpenInference for both. **1.2.0 was chosen** (Glib, 2026-09-21). The
 decision record is `../decisions/2026-09-21-api-contract-skill-rebuild.md`, outside the repo.
 
+Later the same day a check in the app itself, with repo map and callers, found a severity
+regression. That check led to 1.3.0–1.5.0 and to the agent prompt change:
+
+- **1.3.0.** With 1.2.0, PR #8 blocked in 1 of 3 app runs against 3 of 3 without it: the model
+  applied the rules' "warning" to the status-code finding. The opening now says general
+  findings keep their grade, which gave 3 of 4.
+- **Agent prompt v5 → v6** (approved by Glib). "Read them and apply exactly those: they are
+  the review" became "apply every one of them on top of your own review, never instead of it".
+  On the harness this removed most of the narrowing: new enum member 9/11 → 6/6, camelCase
+  5/6 → 6/6. Its first wording, "unless a skill sets its own", let a skill's severity spread
+  (PR #8 blocked 0 of 3). Scoping it to "applies to that rule only" gave 2 of 4.
+- **1.4.0.** The opening's reason "they are warnings because none breaks a deployed caller" was
+  removed, because the model applied that reasoning to the status code. PR #8: 4 of 6.
+- **1.5.0.** The per-rule "Severity: warning" lines were removed; every finding is graded by
+  the agent's bands. PR #8: 5 of 6, and the two demo PRs are unchanged.
+
 Grading note: the grader for the `.optional()` case first required the field name. Two v1.0.0
 findings were titled "New field in `Finding` uses `.optional()` instead of `.nullish()`"
 without naming it, so the pattern was widened. The diff adds exactly one field, and no
@@ -163,16 +217,15 @@ written for this evaluation, so these are not real PRs.
 
 ## Using it in DevDigest
 
-- **Not applied to the dev database yet.** The database is staged for the homework demo.
+- **Applied on 2026-09-21.** The skill was created as a manual skill, so it renders trusted.
+  It is the API Contract Reviewer's only skill. The old five, `repo-conventions` included,
+  stay in the library unlinked. The agent runs on system prompt v6.
 - **Import.** Zip this folder and import it on `/skills`. The importer takes `SKILL.md` and
   lists every other file without processing it (`server/src/modules/skills/import.ts:64-71`),
   and it ignores the `version` key in the front matter. An imported skill is stored with
   `imported_url` provenance, lands disabled, and is rendered inside `<untrusted>` under the
   trust model of 2026-09-20. In earlier measurements a skill behaved differently wrapped that
-  way than rendered trusted. To render it trusted, create it as a manual skill with this body.
-  Which route to use is an open decision.
-- **After the demo:** link this skill to the API Contract Reviewer in place of the five, and
-  unlink `repo-conventions` from this agent, since its `ApiError` rule is rule 3 here.
+  way than rendered trusted. That is why it was created manually, with this body.
 
 ## Re-running the evaluation
 
@@ -190,6 +243,9 @@ which one answers. Temperature 0 is not deterministic, even on one provider.
 
 ## Changelog
 
+- **1.5.0** (2026-09-21): no per-rule severity; every finding is graded by the agent's bands.
+- **1.4.0** (2026-09-21): the opening no longer gives a reason for the rules' grade.
+- **1.3.0** (2026-09-21): the opening says general findings keep their usual grade.
 - **1.2.0** (2026-09-21): the opening covers everything a no-skills review would report,
   and a satisfied rule is not a finding. Rule 2 flags a server-only contract change directly.
 - **1.1.0** (2026-09-21): opening line keeping the general review on; rule 2 as an explicit

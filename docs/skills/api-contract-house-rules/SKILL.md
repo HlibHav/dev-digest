@@ -2,17 +2,18 @@
 name: api-contract-house-rules
 description: Three contract rules specific to this repo that a diff does not reveal — strict LLM-output schemas, the hand-mirrored shared contracts, and client errors surfaced as ApiError.
 type: convention
-version: 1.2.0
+version: 1.5.0
 ---
 
 # API contract house rules
 
 Review the change exactly as you would with no skills attached. Everything you would report
-then is still a finding: a change that breaks a caller, a field or shape inconsistent with
-the rest of the contract, anything else. This skill adds three facts about this repository
-that a diff alone does not show. Report a rule only when its flag condition holds; a rule
-that the diff satisfies is not a finding. None of the rules narrows or cancels anything else
-you report. Cite the added line in the diff (a `+` line) that breaks the rule.
+then is still a finding, and a field or shape inconsistent with the rest of the contract is
+still reported. This skill adds three facts about this repository that a diff alone does not
+show. Grade every finding, these included, by the severity levels in your instructions.
+Report a rule only when its flag condition holds; a rule that the diff satisfies is not a
+finding. None of the rules narrows or cancels anything else you report. Cite the added line
+in the diff (a `+` line) that breaks the rule.
 
 ## 1. Fields in `Review` and `Finding` use `.nullish()`, not `.optional()`
 
@@ -24,7 +25,6 @@ and will invent one. `.nullish()` lets it answer `null`. The only symptom is a c
 
 - Flag: a field added to or changed in `Review` or `Finding`, in either copy of
   `contracts/findings.ts`, that uses `.optional()`.
-- Severity: warning.
 - How the repo does it, `server/src/vendor/shared/contracts/findings.ts:56`:
 
 ```ts
@@ -45,7 +45,6 @@ new optional field.
 - Flag: a diff that changes files under `server/src/vendor/shared/` and no file under
   `client/src/vendor/shared/`, or the reverse. Also flag a path changed in one copy and not
   in the other, or changed differently.
-- Severity: warning.
 - Only the lines this diff changes count. The two copies already differ in places, and those
   older differences are not this PR's finding.
 
@@ -59,7 +58,6 @@ generic message and loses the status and the code.
 
 - Flag: client code under `client/src/` that calls the engine with `fetch` directly and, on a
   non-2xx response, throws anything other than `ApiError` or returns the error body as data.
-- Severity: warning.
 - A response that is not JSON, such as a file download, may call `fetch` directly. Its error
   path still throws `ApiError` with the status, and with the code and message read from the
   error body.
