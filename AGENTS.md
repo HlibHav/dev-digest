@@ -52,12 +52,13 @@ Ports and machine-specific overrides live in `CLAUDE.local.md` when present.
 
 | Package | Typecheck | Tests |
 |---|---|---|
-| `server/` | `pnpm typecheck` | `pnpm exec vitest run --exclude '**/*.it.test.ts'` (unit) · `pnpm exec vitest run .it.test` (integration, needs Docker) |
+| `server/` | `pnpm typecheck` · `pnpm lint:boundaries` | `pnpm exec vitest run --exclude '**/*.it.test.ts'` (unit) · `pnpm exec vitest run .it.test` (integration, needs Docker) |
 | `client/` | `pnpm typecheck` | `pnpm test` |
 | `reviewer-core/` | `npm run typecheck` | `npm test` |
 | `e2e/` | `npm run typecheck` | `npm run e2e:hermetic` |
 
-No linter or formatter is configured in any package: typecheck + tests are the gate. A change in
+No linter or formatter is configured in any package: typecheck + tests are the gate, plus
+`server/`'s import-boundary check (`pnpm lint:boundaries`, dependency-cruiser). A change in
 `reviewer-core/` must also pass `server/`'s checks.
 
 ## Naming conventions
@@ -108,9 +109,10 @@ No linter or formatter is configured in any package: typecheck + tests are the g
 - Agent prompt templates, model choice → `docs/agent-prompts/`
 - Whether a skill actually changes a review → `docs/skills-control-experiment.md`
 - Adding or changing backend code (`server/src/**`, `reviewer-core/src/**`) → the
-  `onion-architecture` skill: which ring the change belongs to, which way the imports point,
-  and the per-tool rules for Drizzle, Fastify and zod. Don't skip it; "no extra ring here" is a
-  valid outcome. The always-on guardrail is `.claude/rules/onion-boundaries.md`.
+  `onion-architecture` skill: which layer the change belongs to (route → service → domain,
+  adapters at the edge), which way the imports point, and what `pnpm lint:boundaries` cannot
+  see. Don't skip it; "no extra layer here" is a valid outcome. The always-on guardrail is
+  `.claude/rules/onion-boundaries.md`.
 - Placing a new file under `client/src` — which folder, when to promote to shared, import
   directions → `frontend-ui-architecture`
 - Finishing a non-trivial task → `engineering-insights` to record what was learned in the touched

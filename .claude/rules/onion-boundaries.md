@@ -2,29 +2,26 @@
 paths:
   - "server/src/modules/**"
   - "server/src/adapters/**"
-  - "server/src/platform/container.ts"
+  - "server/src/platform/**"
   - "reviewer-core/src/**"
 ---
 
 # Onion boundaries
 
-- Imports point inward: `routes.ts` → `service.ts` → `repository*` / adapters. A module never
-  imports another module's internals — cross-module work goes through the container or a port.
-- `service.ts` imports neither `fastify`, nor `drizzle-orm`, nor `db/schema`, nor a vendor SDK.
-  No service does today; the first one that does is a defect, not a precedent.
-- The query builder and the `db` handle stop at `repository.ts` / `repository/*.repo.ts`.
-  Row types (`AgentRow`, `$inferSelect`) don't travel outward into application signatures.
-- The service decides what is atomic. The ORM transaction handle never appears in its signature —
-  express the boundary as a callback port, not as a threaded `tx` argument.
-- A vendor SDK is imported only under `src/adapters/**` (and `src/db/` for `postgres`), and every
-  adapter gets a matching double in `src/adapters/mocks.ts`. An adapter with no double is unfinished.
-- Construction belongs to `src/platform/container.ts`. A new service takes the ports it calls, not
-  the whole `Container` — passing the container removes the seam and forces `as never` in tests
-  (`test/repo-intel-facade-degraded.test.ts:23-38`). Existing services take `Container`; that is
-  the current wiring, not a defect to report.
-- Secrets only through `container.secrets`, never `process.env` or `AppConfig` directly.
-- `reviewer-core/` stays pure: no database, GitHub, filesystem or env access. Anything needing I/O
-  belongs in `server`.
-- `pulls/`, `polling/`, `settings/` and `workspace/` keep SQL in `routes.ts`. Grandfathered: don't
-  copy the pattern into new code, and don't migrate them unless asked.
-- Full procedure, the ring table and the per-tool rules: the `onion-architecture` skill.
+These hold for new and changed code even when the `onion-architecture` skill has not loaded.
+`pnpm lint:boundaries` (in `server/`) checks the import rules; its config,
+`server/.dependency-cruiser.cjs`, is the source of truth for them.
+
+- A route handler parses, calls a service and maps the result. It runs no query and calls no
+  adapter (`container.github()`, `.git`, `.codeIndex`, `.secrets`, `.llm`, `.embedder`). The
+  check cannot see container members, so this one is on you.
+- Application code (a service and its helpers) imports no `fastify`, `drizzle-orm`, `src/db/**`
+  or adapter, and gets other modules only as ports. Vendor SDKs are imported only under
+  `src/adapters/**` (and `src/db/` for `postgres`), and every new adapter gets a double in
+  `src/adapters/mocks.ts`.
+- `reviewer-core/` imports nothing from `server/` except the shared contracts
+  (`@devdigest/shared`).
+- Code that predates these rules is grandfathered: the import edges are in
+  `server/.dependency-cruiser-known-violations.json`, and the rest is listed in the skill's
+  `reference.md`. Don't copy it, don't migrate it unless asked, and never edit the config or the
+  baseline to get a green run.
