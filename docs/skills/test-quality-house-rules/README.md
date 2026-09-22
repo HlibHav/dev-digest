@@ -111,6 +111,10 @@ branches without any skill. `branch-coverage-gate` makes the findings sharper, o
 including the "not old enough" boundary, but the control experiment's "misses without, catches
 with" is PR #12. Skills block: 1,219 tokens.
 
+Same-day paired check, 2026-09-22 (skills detached for the no-skills runs, restored after):
+#12 names the one-provider mock 0/3 without (every run reports only the generic "the test does
+not verify the scan uses the resolved model"), 3/3 with; #6 3/3 without, 2/2 with.
+
 ## Changelog
 
 - **1.1.0** (2026-09-21): no per-rule severity; every finding is graded by the agent's bands.

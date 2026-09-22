@@ -232,6 +232,10 @@ written for this evaluation, so these are not real PRs.
   Measured in the app: #10 found 3/3, #11 found 3/3, #8 found 4/4 and blocked 4/4, now also
   flagging the missing version bump. The veto that sank the five skills on 2026-09-21 did not
   come back under system prompt v6 with provider routing. Skills block: 2,687 tokens.
+- **Same-day paired check, 2026-09-22.** The no-skills arm re-run the same day, skills
+  detached for the runs and restored after: #10 0/3 without, 3/3 with; #11 0/3 without, 3/3
+  with; #8 found and blocked 3/3 without, 4/4 with. The skills add the repo-specific catches
+  (#10, #11) and cost nothing on the general one (#8).
 - **Import.** Zip this folder and import it on `/skills`. The importer takes `SKILL.md` and
   lists every other file without processing it (`server/src/modules/skills/import.ts:64-71`),
   and it ignores the `version` key in the front matter. An imported skill is stored with
