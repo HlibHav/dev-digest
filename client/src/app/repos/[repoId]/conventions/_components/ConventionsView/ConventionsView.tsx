@@ -20,6 +20,7 @@ import {
 } from "@/lib/hooks/conventions";
 import { CandidateCard } from "./_components/CandidateCard";
 import { CreateSkillModal } from "./_components/CreateSkillModal";
+import { ScanButtons } from "./_components/ScanButtons";
 import { acceptedCandidates, pendingCandidates, rejectedCount } from "./helpers";
 import { s } from "./styles";
 
@@ -88,17 +89,11 @@ export function ConventionsView() {
             <p style={s.subtitle}>{t("page.subtitle")}</p>
           </div>
           <div style={s.actions}>
-            {/* Two buttons on purpose: the first run and a re-run read
-                differently to someone looking at a page full of decisions. */}
-            <Button
-              kind="primary"
-              size="sm"
-              icon={hasScanned ? "RefreshCw" : "Play"}
-              onClick={() => extract.mutate(repoId)}
-              disabled={scanning || extract.isPending}
-            >
-              {hasScanned ? t("page.rescan") : t("page.runScan")}
-            </Button>
+            <ScanButtons
+              hasScanned={hasScanned}
+              busy={scanning || extract.isPending}
+              onScan={() => extract.mutate(repoId)}
+            />
           </div>
         </div>
 
