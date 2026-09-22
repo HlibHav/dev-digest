@@ -191,6 +191,7 @@ export class Container {
       return new OpenRouterProvider(key, {
         estimateCost: (model, tokensIn, tokensOut) =>
           this.priceBook.estimate(model, tokensIn, tokensOut),
+        routing: this.config.openrouterRouting,
       });
     }
     const key = await this.secrets.get('ANTHROPIC_API_KEY');

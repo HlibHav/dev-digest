@@ -184,6 +184,7 @@ export async function reviewPullRequest(input: ReviewInput): Promise<ReviewOutco
     costUsd = costUsd == null || res.costUsd == null ? null : costUsd + res.costUsd;
     raws.push(res.raw);
     partials.push(res.data);
+    if (res.servedBy) emit('info', `${chunk.label}: served by ${res.servedBy}`);
     emit('result', `${chunk.label}: ${res.data.findings.length} candidate finding(s)`);
   }
 

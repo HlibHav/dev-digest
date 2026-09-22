@@ -135,4 +135,41 @@ describe('reviewPullRequest (engine)', () => {
     expect(seen.length).toBeGreaterThan(0);
     expect(seen.every((s) => s === 'sess-abc')).toBe(true);
   });
+
+  it('logs which upstream provider served each call when the transport reports it', async () => {
+    const served: LLMProvider = {
+      id: 'openrouter',
+      async completeStructured<T>(req): Promise<StructuredResult<T>> {
+        return {
+          data: fixture as unknown as T,
+          model: req.model,
+          tokensIn: 0,
+          tokensOut: 0,
+          costUsd: 0,
+          raw: '',
+          attempts: 1,
+          servedBy: 'Parasail',
+        };
+      },
+      async listModels() {
+        return [];
+      },
+      async complete() {
+        throw new Error('not used');
+      },
+      async embed() {
+        return [];
+      },
+    };
+    const diff = await new MockGitClient().diff();
+
+    const withProvider: string[] = [];
+    await reviewPullRequest({ systemPrompt: 's', model: 'm', diff, llm: served, onEvent: (e) => withProvider.push(e.msg) });
+    expect(withProvider.some((m) => m.endsWith('served by Parasail'))).toBe(true);
+
+    const without: string[] = [];
+    const llm = new MockLLMProvider('openai', { structured: fixture });
+    await reviewPullRequest({ systemPrompt: 's', model: 'm', diff, llm, onEvent: (e) => without.push(e.msg) });
+    expect(without.some((m) => m.includes('served by'))).toBe(false);
+  });
 });

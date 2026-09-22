@@ -71,6 +71,12 @@ export interface StructuredResult<T> {
   costUsd: number | null;
   raw: string;
   attempts: number;
+  /**
+   * The upstream provider that served the call, when the transport reports one
+   * (OpenRouter's `provider` field). The same prompt can get a different verdict
+   * from a different provider, so the run log records it.
+   */
+  servedBy?: string;
 }
 
 export interface LLMProvider {
