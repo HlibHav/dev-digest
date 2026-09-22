@@ -229,7 +229,7 @@ v1 names as not to be copied. A route-level rule in the config (routes may not i
 | T4. Description optimisation | Deferred to the evals module |
 | T5. Shrink `onion-boundaries.md`; update the catalog line in `.claude/skills/README.md` and the root `CLAUDE.md` line. These are the files that conflicted last time | **Done 2026-09-22** (`CLAUDE.md` is a symlink to `AGENTS.md` on this branch; `server/AGENTS.md` updated too) |
 | T6. If D1 = A: config, script, baseline, CI step, planted-violation proof; ADR in `../decisions/` | **Done 2026-09-22**: 34 known violations, criterion f proved on three planted edges. The graph cannot see adapter calls through `container.<member>` in routes; that rule stays with the skill and `pr-self-review` |
-| T7. Check `pr-self-review` still routes backend surfaces to this skill; record in `server/INSIGHTS.md` through `engineering-insights` | Routing verified; insight recorded or "nothing worth recording" |
+| T7. Check `pr-self-review` still routes backend surfaces to this skill; record in `server/INSIGHTS.md` through `engineering-insights` | **Done 2026-09-22**: the skill name is unchanged, so `pr-self-review` still routes `server/**` and `reviewer-core/**` to it; one Tool & Library Notes entry recorded |
 
 Definition of done on this branch (evals deferred): criteria d and f hold, every `file:line` in
 v2 is verified on the branch, and `server/` typecheck and unit tests stay green. Criteria a, b, c

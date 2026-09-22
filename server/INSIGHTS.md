@@ -23,6 +23,8 @@ fixed — add to the one that fits.
 
 ## Tool & Library Notes
 
+- **2026-09-22** — dependency-cruiser 17.4.3 rejects a rule whose regex nests quantifiers, e.g. `node_modules/(\.pnpm/[^/]+/node_modules/)?drizzle-orm/`, with `has an unsafe regular expression. Bailing out.`, and rejects `enhancedResolveOptions.extensionAlias` with `must NOT have additional properties`. Neither is needed: a plain `node_modules/(pkg)/` matches pnpm-resolved paths, and TS `.js` imports resolve to `.ts` with only `tsConfig` set. Its exit code is the violation count (3 planted edges → 3, one → 1), so treat any non-zero as a failure. Evidence: `server/.dependency-cruiser.cjs:25`, `server/package.json:11`
+
 - **2026-09-20** — A test whose code resolves its provider from the **shared registry** (`resolveFeatureModel`) must register its `MockLLMProvider` under **every** provider id, not the one the feature defaults to today. Pinning the mock to `openai` and later moving the registry default to `openrouter` routed the scan past the mock into a real, paid OpenRouter call; the test then asserted against whatever the live model returned and failed on the count, with nothing in the output saying a network call had happened. Tests that create their own agent row with an explicit `provider` are not exposed. Evidence: `server/test/conventions.it.test.ts:89`, `server/src/modules/settings/feature-models.ts:51`
 
 - **2026-09-20** — Structured output is where cheap OpenRouter models diverge, and the failures do not look alike. On the conventions extraction (a strict `json_schema` call, ~24k chars of prompt): `google/gemini-2.5-flash` answers `400 Provider returned error` in seconds, `deepseek/deepseek-v4-flash` accepts it and then runs past a 100s budget without returning, and `openai/gpt-4.1-mini` completes in ~12s. Pick a model for a structured feature by trying it, not by price — and keep the failure visible, because a timeout and a schema rejection arrive through completely different paths. Evidence: `server/src/modules/conventions/constants.ts:47`, `server/src/modules/conventions/service.ts:160`
@@ -32,6 +34,8 @@ fixed — add to the one that fits.
 ## Recurring Errors & Fixes
 
 ## Session Notes
+
+- **2026-09-22** — onion-architecture skill v2 plus the `pnpm lint:boundaries` import check (dependency-cruiser, 34 known violations as the baseline) → Tool & Library Notes. Evidence: `server/.dependency-cruiser.cjs:34`
 
 - **2026-09-20** — Conventions Extractor (sample by code → one model call → verify evidence by code → human triage) plus the four API-contract skills → What Doesn't Work, Tool & Library Notes ×2. Evidence: `server/src/modules/conventions/service.ts:1`
 
