@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { eq } from 'drizzle-orm';
 import { startPg, dockerAvailable, type PgFixture } from './helpers/pg.js';
-import { waitForPrRuns } from './helpers/runs.js';
+import { waitForPrRuns, waitForRunTrace } from './helpers/runs.js';
 import { buildApp } from '../src/app.js';
 import { loadConfig } from '../src/platform/config.js';
 import { seed } from '../src/db/seed.js';
@@ -145,11 +144,8 @@ d('skills reaching the review prompt', () => {
     const runId = res.json().runs[0].run_id as string;
     await waitForPrRuns(pg.handle.db, prId, { expected: 1 });
 
-    const [row] = await pg.handle.db
-      .select()
-      .from(t.runTraces)
-      .where(eq(t.runTraces.runId, runId));
-    const trace = row!.trace as { prompt_assembly: { skills: string | null; user: string } };
+    const row = await waitForRunTrace(pg.handle.db, runId);
+    const trace = row.trace as { prompt_assembly: { skills: string | null; user: string } };
     return trace.prompt_assembly;
   }
 
