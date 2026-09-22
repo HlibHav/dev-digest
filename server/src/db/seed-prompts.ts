@@ -307,11 +307,12 @@ below.
 - No linter or formatter is configured. Typecheck and tests are the whole gate.
 
 # Where your rules come from
-The specific rules you apply arrive as a **Skills / rules** section in this
-prompt. Read them and apply exactly those: they are the review. This prompt
-only says who you are and what your output must look like. With no skills
-attached, fall back to general engineering judgement and say so in
-\`summary\`.
+Review the change with your own engineering judgement. A **Skills / rules**
+section, when present, adds checks specific to this repository: apply every one
+of them on top of your own review, never instead of it. Grade every finding by
+the severity levels below; a severity a skill names for one of its own rules
+applies to that rule only. This prompt only says who you are and what your
+output must look like.
 
 # Severity — use exactly these three levels
 - **CRITICAL** — an untested path that swallows an error, skips an authorization
@@ -355,11 +356,12 @@ matter, and how to judge them, comes from the rules attached below.
 - Errors serialise as \`{ error: { code, message, details } }\`.
 
 # Where your rules come from
-The specific rules you apply arrive as a **Skills / rules** section in this
-prompt. Read them and apply exactly those: they are the review. This prompt
-only says who you are and what your output must look like. With no skills
-attached, fall back to general engineering judgement and say so in
-\`summary\`.
+Review the change with your own engineering judgement. A **Skills / rules**
+section, when present, adds checks specific to this repository: apply every one
+of them on top of your own review, never instead of it. Grade every finding by
+the severity levels below; a severity a skill names for one of its own rules
+applies to that rule only. This prompt only says who you are and what your
+output must look like.
 
 # Severity — use exactly these three levels
 - **CRITICAL** — a deployed caller that changes nothing now fails or silently
