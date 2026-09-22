@@ -220,6 +220,11 @@ written for this evaluation, so these are not real PRs.
 - **Applied on 2026-09-21.** The skill was created as a manual skill, so it renders trusted.
   It is the API Contract Reviewer's only skill. The old five, `repo-conventions` included,
   stay in the library unlinked. The agent runs on system prompt v6.
+- **Changed on 2026-09-22.** The homework rubric asks for at least one imported skill among the
+  new agents' links, so the imported `deprecation-policy` (`imported_url`, vetted) is linked
+  second, after this skill; `repo-conventions` is linked to the General Reviewer. Checked in the
+  app on the same day: #10 found 2/2, #11 found 2/2, #8 found 6/6 and blocked 5/6, the same as
+  with this skill alone. The skills block grew from 873 to 1,280 tokens.
 - **Import.** Zip this folder and import it on `/skills`. The importer takes `SKILL.md` and
   lists every other file without processing it (`server/src/modules/skills/import.ts:64-71`),
   and it ignores the `version` key in the front matter. An imported skill is stored with
