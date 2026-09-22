@@ -8,7 +8,7 @@ import { Icon, Badge, Toggle } from "@devdigest/ui";
 import type { Agent } from "@devdigest/shared";
 import { useDeleteAgent } from "../../../../lib/hooks/agents";
 import { ConfirmModal } from "../../../../components/confirm-modal";
-import { modelColor } from "./helpers";
+import { modelColor, shortModel } from "./helpers";
 import { s } from "./styles";
 
 export function AgentCard({
@@ -75,8 +75,8 @@ export function AgentCard({
       </div>
       <div style={s.description}>{ag.description || t("card.noDescription")}</div>
       <div style={s.metaRow}>
-        <span className="mono" style={s.modelChip(color)}>
-          {ag.model}
+        <span className="mono" style={s.modelChip(color)} title={ag.model}>
+          {shortModel(ag.model)}
         </span>
         {skillCount != null && (
           <Badge color="var(--text-secondary)" icon="Sparkles">

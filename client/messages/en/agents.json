@@ -48,6 +48,7 @@
     "createFromScratch": "Create from scratch",
     "disabled": "disabled",
     "runOnPr": "Run on a PR…",
+    "runReview": "Run Review",
     "tabs": {
       "config": "Config",
       "skills": "Skills",

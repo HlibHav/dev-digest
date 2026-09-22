@@ -31,8 +31,8 @@ export const NAV: NavGroup[] = [
     // a skill is built from.
     section: "SKILLS LAB",
     items: [
-      { key: "agents", label: "Agents", icon: "Cpu", href: "/agents", gKey: "a" },
       { key: "skills", label: "Skills", icon: "Sparkles", href: "/skills", gKey: "s" },
+      { key: "agents", label: "Agents", icon: "Cpu", href: "/agents", gKey: "a" },
       { key: "conventions", label: "Conventions", icon: "FileText", href: "/repos/:repoId/conventions", gKey: "c" },
     ],
   },

@@ -51,7 +51,11 @@ export function SkillRow({
           <Icon.Menu size={14} />
         </button>
       ) : (
-        <span style={s.handlePlaceholder} />
+        // Shown so every row reads the same, but only an attached skill has a
+        // position in the prompt, so this one cannot be dragged.
+        <span data-drag-handle="inactive" aria-hidden style={s.handleInactive}>
+          <Icon.Menu size={14} />
+        </span>
       )}
 
       <Checkbox checked={attached} onChange={onToggle} />
