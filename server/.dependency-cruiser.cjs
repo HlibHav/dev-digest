@@ -21,10 +21,10 @@ const NOT_APPLICATION = [
   '^src/modules/_shared/',
 ];
 
-/** Vendor SDKs that only adapters (and src/db for postgres) may import. */
 /** An npm package, whether resolved flat or through pnpm's `.pnpm/<id>/node_modules/` store. */
 const npm = (names) => `node_modules/(${names})/`;
 
+/** Vendor SDKs that only adapters (and src/db for postgres) may import. */
 const VENDOR_SDK = npm(
   'openai|@anthropic-ai/sdk|octokit|@octokit|simple-git|@ast-grep/napi|postgres|dependency-cruiser|graphology|graphology-metrics|js-tiktoken|@vscode/ripgrep',
 );
@@ -70,6 +70,15 @@ module.exports = {
       severity: 'error',
       from: { path: APPLICATION, pathNot: NOT_APPLICATION },
       to: { path: '^src/adapters/' },
+    },
+    {
+      name: 'application-no-jobs-or-bus',
+      comment:
+        'A job is an entry point and the run bus belongs to the SSE edge: application code enqueues ' +
+        'through container.jobs and publishes run events through platform/run-logger.',
+      severity: 'error',
+      from: { path: APPLICATION, pathNot: NOT_APPLICATION },
+      to: { path: '^src/platform/(jobs|sse)\\.ts$' },
     },
     {
       name: 'application-no-cross-module',

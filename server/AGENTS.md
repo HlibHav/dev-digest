@@ -5,6 +5,7 @@
 ```sh
 pnpm dev                                          # tsx watch, :3001 (or $API_PORT)
 pnpm typecheck
+pnpm lint:boundaries                              # onion import rules (dependency-cruiser)
 pnpm exec vitest run --exclude '**/*.it.test.ts'  # unit, hermetic
 pnpm exec vitest run .it.test                     # integration, needs Docker
 pnpm db:generate && pnpm db:migrate               # after any schema change
@@ -23,15 +24,17 @@ rewritten by `tsc`. Run the API through `tsx` (`pnpm dev`) everywhere.
 
 ## Boundaries
 
-- routes → service → repository. `pulls/` and `polling/` keep SQL directly in
-  routes — don't copy that pattern into new modules.
+- routes → service → repository. `pulls/`, `polling/`, `settings/`,
+  `workspace/` and `conventions/` keep SQL directly in routes — recorded in
+  `.dependency-cruiser-known-violations.json`; don't copy that pattern.
 - Review logic (prompt assembly, grounding, score) lives in `reviewer-core`.
   This package owns I/O, persistence, and streaming only.
 - Secrets only through `container.secrets`, never `process.env` or
   `AppConfig` directly.
 - These are the onion's rings. The ring table, the known leaks and the
   per-tool rules live in the `onion-architecture` skill; the always-on
-  guardrail is `.claude/rules/onion-boundaries.md`.
+  guardrail is `.claude/rules/onion-boundaries.md`, and `pnpm lint:boundaries`
+  checks the import rules.
 
 ## Async model
 
