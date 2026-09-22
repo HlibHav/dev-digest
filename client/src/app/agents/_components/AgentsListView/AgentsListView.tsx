@@ -11,7 +11,7 @@ import { useAgents, useUpdateAgent } from "../../../../lib/hooks/agents";
 import { AgentCard } from "../AgentCard";
 import { CreateAgentModal } from "./_components/CreateAgentModal";
 import { TEMPLATES } from "./constants";
-import { filterAgents } from "./helpers";
+import { filterAgents } from "../../helpers";
 import { s } from "./styles";
 
 export function AgentsListView() {

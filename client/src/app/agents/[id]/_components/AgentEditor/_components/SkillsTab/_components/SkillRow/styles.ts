@@ -25,7 +25,13 @@ export const s = {
     display: "inline-flex",
     touchAction: "none",
   } satisfies CSSProperties,
-  handlePlaceholder: { width: 18, display: "inline-block" } satisfies CSSProperties,
+  handleInactive: {
+    padding: 2,
+    color: "var(--text-muted)",
+    opacity: 0.35,
+    display: "inline-flex",
+    cursor: "default",
+  } satisfies CSSProperties,
   name: (inert: boolean): CSSProperties => ({
     flex: 1,
     minWidth: 0,

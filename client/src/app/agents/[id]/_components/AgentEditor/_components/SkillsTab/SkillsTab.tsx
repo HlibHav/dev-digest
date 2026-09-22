@@ -19,7 +19,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { ErrorState, Icon, Skeleton } from "@devdigest/ui";
+import { Badge, ErrorState, Icon, Skeleton } from "@devdigest/ui";
 import type { Agent } from "@devdigest/shared";
 import { useAgentSkills, useSetAgentSkills } from "../../../../../../../lib/hooks/agents";
 import { useSkills } from "../../../../../../../lib/hooks/skills";
@@ -77,9 +77,10 @@ export function SkillsTab({ agent }: { agent: Agent }) {
     <div style={s.panel}>
       <div style={s.header}>
         <h2 style={s.h2}>{t("skills.title")}</h2>
-        <span style={s.count}>
+        <Badge color="var(--accent)">
           {t("skills.enabledCount", { linked: attached.length, total: skills.length })}
-        </span>
+        </Badge>
+        <span style={s.spacer} />
         <div style={s.search}>
           <Icon.Search size={13} style={s.searchIcon} />
           <input

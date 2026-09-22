@@ -2,10 +2,10 @@ import type { CSSProperties } from "react";
 
 /** Co-located styles for SkillsTab. */
 export const s = {
-  panel: { padding: "20px 24px 40px", maxWidth: 820, display: "flex", flexDirection: "column", gap: 10 } satisfies CSSProperties,
+  panel: { padding: "20px 28px 40px", display: "flex", flexDirection: "column", gap: 10 } satisfies CSSProperties,
   header: { display: "flex", alignItems: "center", gap: 12 } satisfies CSSProperties,
   h2: { fontSize: 16, fontWeight: 650 } satisfies CSSProperties,
-  count: { fontSize: 12.5, color: "var(--text-muted)", flex: 1 } satisfies CSSProperties,
+  spacer: { flex: 1 } satisfies CSSProperties,
   search: {
     display: "flex",
     alignItems: "center",
@@ -14,7 +14,7 @@ export const s = {
     borderRadius: 7,
     border: "1px solid var(--border)",
     background: "var(--bg-surface)",
-    width: 190,
+    width: 220,
   } satisfies CSSProperties,
   searchIcon: { color: "var(--text-muted)" } satisfies CSSProperties,
   searchInput: {
