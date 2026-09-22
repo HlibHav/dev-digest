@@ -42,6 +42,11 @@ describe("AgentCard (smoke)", () => {
     expect(screen.getByText("3 skills")).toBeInTheDocument();
   });
 
+  it("says 1 skill, not 1 skills", () => {
+    renderWithIntl(<AgentCard ag={AGENT} skillCount={1} />);
+    expect(screen.getByText("1 skill")).toBeInTheDocument();
+  });
+
   it("falls back to a translated placeholder when description is empty", () => {
     renderWithIntl(<AgentCard ag={{ ...AGENT, description: "" }} />);
     expect(screen.getByText("No description")).toBeInTheDocument();
