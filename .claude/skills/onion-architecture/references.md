@@ -39,7 +39,7 @@ Size: v1's `SKILL.md` plus `reference.md` came to 12,449 characters; v2's come t
 |---|---|
 | A route runs no query | `lint:boundaries` (`route-no-db`) |
 | A route imports no adapter | `lint:boundaries` (`route-no-adapter-import`) |
-| A route calls no adapter through `container.<member>` | the skill, and `pr-self-review` on every `server/**` diff; an import graph cannot see a property access |
+| A route calls no adapter through `container.<member>` | `test/route-adapter-calls.test.ts` (TypeScript AST over every `routes.ts`, grandfathered counts in `GRANDFATHERED`), since an import graph cannot see a property access |
 | Application code imports no Fastify, Drizzle, `src/db/**` or adapter | `lint:boundaries` (`application-no-framework-or-db`, `application-no-adapter-import`) |
 | Application code imports no `JobRunner` or run bus | `lint:boundaries` (`application-no-jobs-or-bus`) |
 | Other modules reach application code only as ports | `lint:boundaries` (`application-no-cross-module`); routes may compose (decision D4) |
@@ -52,6 +52,8 @@ The check recorded 34 known violations when it was introduced. It was proved on 
 three at once failed it with exit code 3 and a fourth alone with exit code 1 (depcruise exits
 with the error count), each named by rule; it passed again after every revert. The
 ADR lives outside the repo, in the course workspace: `decisions/2026-09-22-onion-boundary-enforcement.md`.
+The route test was proved the same way: an adapter call planted in `agents/routes.ts` and an extra
+one in `pulls/routes.ts` failed it with both `file:line`s, and it passed after the revert.
 
 ## Verification status
 

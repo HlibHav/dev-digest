@@ -18,11 +18,11 @@ Paths are under `server/src/` unless they start with `reviewer-core/` or `test/`
 
 The 34 import edges that predate the check, including two added by PR #7 (queries in
 `conventions/routes.ts`, a row type in `skills/helpers.ts`), are in
-`.dependency-cruiser-known-violations.json`; they are not precedent. The check cannot see these:
+`.dependency-cruiser-known-violations.json`; they are not precedent. Adapter calls in route
+handlers are counted in `GRANDFATHERED` in `test/route-adapter-calls.test.ts`: `container.github()`
+at `polling/routes.ts:28` and `pulls/routes.ts:38,216,314,337`; `settings/routes.ts:43,80,83`
+(`secrets`), `:87` (`github`), `:91` (`llm`). Neither check sees these:
 
-- Adapter calls in route handlers: `container.github()` at `polling/routes.ts:28` and
-  `pulls/routes.ts:38,216,314,337`; `settings/routes.ts:43,80,83` (`secrets`), `:87` (`github`),
-  `:91` (`llm`).
 - Services that take the whole `Container` and build their own repository:
   `reviews/service.ts:34-35`, `repos/service.ts:36-37`, `agents/service.ts:55-56`,
   `repo-intel/service.ts:104-105`, `reviews/diff-loader.ts:12`. The cost: faking one needs
@@ -61,5 +61,6 @@ invariant to protect. The repository itself stays: it is the floor.
 
 `server/.dependency-cruiser.cjs` follows import edges, type-only ones included, across
 `server/src` and `reviewer-core/src`; a failure prints the rule, its reason and the edge. It
-cannot see a container member call. After removing a recorded edge, regenerate the baseline with
+cannot see a container member call; `test/route-adapter-calls.test.ts` parses every `routes.ts`
+for those and fails on one inside a route registration, printing `file:line container.<member>`. After removing a recorded edge, regenerate the baseline with
 `pnpm lint:boundaries:baseline`; never regenerate it to absorb a new one.
