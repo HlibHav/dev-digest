@@ -225,6 +225,13 @@ written for this evaluation, so these are not real PRs.
   second, after this skill; `repo-conventions` is linked to the General Reviewer. Checked in the
   app on the same day: #10 found 2/2, #11 found 2/2, #8 found 6/6 and blocked 5/6, the same as
   with this skill alone. The skills block grew from 873 to 1,280 tokens.
+- **Then all four API Contract skills, 2026-09-22.** The lab expects the reviewer to carry
+  `breaking-change`, `response-schema`, `semver-discipline` and `deprecation-policy`, so they
+  are linked in that order with this skill last (a key skill placed last held up best in the
+  2026-09-21 analysis). Pre-registered bar: #10 and #11 found at least 2/3, #8 at least 3/4.
+  Measured in the app: #10 found 3/3, #11 found 3/3, #8 found 4/4 and blocked 4/4, now also
+  flagging the missing version bump. The veto that sank the five skills on 2026-09-21 did not
+  come back under system prompt v6 with provider routing. Skills block: 2,687 tokens.
 - **Import.** Zip this folder and import it on `/skills`. The importer takes `SKILL.md` and
   lists every other file without processing it (`server/src/modules/skills/import.ts:64-71`),
   and it ignores the `version` key in the front matter. An imported skill is stored with
