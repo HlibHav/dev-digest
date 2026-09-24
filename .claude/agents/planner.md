@@ -77,11 +77,15 @@ One to four questions.
   typecheck and the unit test command from the root `CLAUDE.md` Check table (for `server/`, the
   command that excludes `*.it.test.ts`), plus the `server` checks after a `reviewer-core` change.
   Everything else goes under **Checks for reviewers**, even when a skill tells the author to run
-  it:
-  - `pnpm lint:boundaries` and the onion-architecture step 9 report;
-  - integration tests (`*.it.test.ts`, Docker) and e2e;
-  - acceptance verification.
+  it, and each check names its one owner:
+  - `architecture-reviewer`: `pnpm lint:boundaries`, the onion-architecture step 9 report and
+    the route-adapter-calls test;
+  - `plan-verifier`: acceptance verification and the integration tests (`*.it.test.ts`,
+    Docker);
+  - main session: e2e, `pr-self-review` and `/security-review`.
   The implementer's scope is set by its agent definition, not by the skills it loads.
+- When a criterion can be tested before the code exists, say so under **Risks & open
+  questions**: the caller may run `test-writer` in red-first mode before the implementer.
 
 ## Output — the Development Plan
 
@@ -122,10 +126,13 @@ Status: ready
 - <package>: `<typecheck command>` · `<unit test command>`   (nothing else — see Step 4)
 
 ## Checks for reviewers
-- <lint:boundaries, route test, integration tests (Docker), e2e — whichever apply>
+- architecture-reviewer: <lint:boundaries, step 9 report, route-adapter-calls test — whichever apply>
+- plan-verifier: <acceptance criteria 1–n; integration tests (Docker) — whichever apply>
+- main session: <e2e, pr-self-review, /security-review — whichever apply>
 
 ## Out of scope
-- Architecture review, security review and acceptance verification (separate agents)
+- Architecture review (architecture-reviewer), acceptance verification (plan-verifier),
+  security review and e2e (main session)
 - <anything else deliberately left out>
 
 ## Risks & open questions
