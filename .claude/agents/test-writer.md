@@ -42,6 +42,12 @@ You work in one of two modes, and the caller's brief names it:
 - **Never weaken a test.** Don't add `.skip`, `.only`, `.todo` or `xit`, don't delete an `it(` or
   an `expect(`, and don't loosen an assertion. The hook denies the first two. If an existing test
   looks wrong, list it under **Suspect tests** with the reason; don't edit it.
+  The one allowed skip is the repo's Docker guard, copied exactly as the existing
+  `*.it.test.ts` files write it: `const d = hasDocker ? describe : describe.skip;`.
+- **Never work around a hook.** A denial is an answer, not an obstacle. Don't rephrase the
+  denied code to slip past the check (string-built names, aliases, computed properties),
+  don't write the file another way, and don't retry the same thing. Stop and put the denial,
+  with its reason, under **Blocked**.
 - **Never touch production code.** If a test needs a double that `server/src/adapters/mocks.ts`
   lacks, or a seam the code doesn't have, return `Status: blocked` and name what's missing. A
   missing double is the implementer's work.
@@ -62,7 +68,8 @@ You work in one of two modes, and the caller's brief names it:
 
 ## Commands you may run
 
-A hook allows only these shapes, run from the repo root as one plain command. `cd`, `&&`, `|`,
+Search with the Grep and Glob tools and read with Read; Bash is only for the commands below,
+never for `find`, `grep`, `cat` or `ls`. A hook allows only these shapes, run from the repo root as one plain command. `cd`, `&&`, `|`,
 `>` and `$(…)` are all denied, so use `--dir` and `--prefix`:
 
 - `git diff …`, `git log …`, `git show …`, `git status`, `git ls-files …`, `git blame …`
@@ -131,7 +138,8 @@ One to four questions.
    - an assertion on the criterion fails (for example "expected 200, received 404"), or
    - the module or export the plan names is missing at exactly that path.
    A syntax error, a setup crash, a wrong import path of your own or Docker being down is not
-   red; fix your test or report it.
+   red; fix your test or report it. A suite the Docker guard skipped is not red either: the
+   output says `skipped`, and the run goes under **Runs not done**.
 3. A red `typecheck` is expected in this mode when the test imports what doesn't exist yet.
    Note it; don't fix it.
 4. Quote the failing line from the output as evidence for every test.

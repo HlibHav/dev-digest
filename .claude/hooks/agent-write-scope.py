@@ -15,6 +15,8 @@ Profiles:
   tests .. test-writer: test files, server test helpers, e2e flow specs. Denies any edit that
            adds `.skip`/`.only`/`.todo` (or x-prefixed) or leaves an existing file with fewer
            `it(`/`test(`/`expect(` calls than before — a weakened test is reported, not written.
+           The repo's Docker guard line (`const d = hasDocker ? describe : describe.skip;`) is
+           the one allowed skip.
   docs ... doc-writer: package `docs/` and `specs/`, root `docs/` (minus product prompts and
            house-rules skills). Never INSIGHTS.md, CLAUDE.md, AGENTS.md or the root README.
 
@@ -54,7 +56,17 @@ DOCS_DENY = (
     re.compile(r"^README\.md$"),
 )
 
-SKIP_RX = re.compile(r"\b(?:it|test|describe|suite)\s*\.\s*(?:skip|only|todo|skipIf|runIf)\b|\bx(?:it|describe|test)\s*\(")
+# The repo's Docker guard in every *.it.test.ts (`const d = hasDocker ? describe : describe.skip;`)
+# is the one sanctioned skip; it is removed before counting.
+DOCKER_GUARD_RX = re.compile(
+    r"^[ \t]*const[ \t]+\w+[ \t]*=[ \t]*hasDocker[ \t]*\?[ \t]*describe[ \t]*:[ \t]*describe\.skip[ \t]*;?[ \t]*$",
+    re.M,
+)
+# `.skip`/`.only`/`.todo`/`.skipIf`/`.runIf`, `xit(`, and computed access such as
+# `describe[String('sk' + 'ip')]` — seen live on 2026-09-24 as a way around this check.
+SKIP_RX = re.compile(
+    r"\b(?:it|test|describe|suite)\s*(?:\.\s*(?:skip|only|todo|skipIf|runIf)\b|\[)|\bx(?:it|describe|test)\s*\("
+)
 TEST_CALL_RX = re.compile(r"\b(?:it|test)\s*(?:\.each\s*\([^)]*\)\s*)?\(")
 EXPECT_RX = re.compile(r"\bexpect\s*[.(]")
 
@@ -96,7 +108,8 @@ def check_tests(rel: str, tool: str, tool_input: dict, target: Path) -> str | No
         )
     old = target.read_text(encoding="utf-8") if target.is_file() else ""
     new = resulting_text(tool, tool_input, old)
-    if len(SKIP_RX.findall(new)) > len(SKIP_RX.findall(old)):
+    skips = lambda text: len(SKIP_RX.findall(DOCKER_GUARD_RX.sub("", text)))
+    if skips(new) > skips(old):
         return "adding .skip/.only/.todo (or xit/xdescribe) is not allowed"
     if old:
         for name, rx in (("it()/test()", TEST_CALL_RX), ("expect()", EXPECT_RX)):

@@ -42,7 +42,9 @@ item to the code and every changed hunk back to the plan, and you give no advice
 
 ## Commands you may run
 
-One plain command at a time, from the repo root. `cd`, `&&`, `|`, `>` and `$(…)` are denied:
+Search with the Grep and Glob tools and read with Read; Bash is only for the commands below,
+never for `find`, `grep`, `cat` or `ls`. A denied command is final: don't rephrase it to get
+past the hook. One plain command at a time, from the repo root. `cd`, `&&`, `|`, `>` and `$(…)` are denied:
 
 - `git diff <base>...<head>`, `git diff --stat …`, `git diff` (uncommitted), `git log …`,
   `git show <ref>:<path>`, `git status --porcelain`, `git ls-files …`, `git merge-base …`

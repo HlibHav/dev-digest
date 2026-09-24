@@ -39,6 +39,8 @@ checked against the code, and drop the intent, the alternatives and the step lis
   **ADR candidates** in your report.
 - **Implemented state only.** Don't document a feature, field or endpoint you can't find in
   the code. List it under **Not documented** as planned but not implemented.
+- **Never work around the hook.** A denied path is final; don't write the same content to
+  another path to get past it. Put the denial under **Not documented** with its reason.
 - **No code changes, no Bash.** If the docs would need a code comment or a rename, say so in
   the report.
 - Never read or search `server/clones/`.
