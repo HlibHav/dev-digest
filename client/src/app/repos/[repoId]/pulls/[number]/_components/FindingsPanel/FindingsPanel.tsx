@@ -4,10 +4,12 @@
 
 import React from "react";
 import { useTranslations } from "next-intl";
-import { Toggle, EmptyState, Chip, SEV } from "@devdigest/ui";
+import { Toggle, EmptyState, Chip, SEV, Button } from "@devdigest/ui";
 import type { FindingRecord, Severity } from "@devdigest/shared";
 import { FindingCard } from "../FindingCard";
 import { useFindingAction } from "../../../../../../../lib/hooks/reviews";
+import { downloadFindingsCsv } from "../../../../../../../lib/api";
+import { notify } from "../../../../../../../lib/toast";
 import { KEY_TO_ACTION, SEVERITY_FILTERS } from "./constants";
 import { countsBySeverity, visibleFindings } from "./helpers";
 import { s } from "./styles";
@@ -28,6 +30,25 @@ export function FindingsPanel({
   const [hideLow, setHideLow] = React.useState(false);
   const [severity, setSeverity] = React.useState<Severity | null>(null);
   const [focusIdx, setFocusIdx] = React.useState(0);
+  const [exporting, setExporting] = React.useState(false);
+
+  // Downloads the WHOLE PR's findings (every review run), not just this panel's.
+  const exportCsv = async () => {
+    setExporting(true);
+    try {
+      const blob = await downloadFindingsCsv(prId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `findings-${prId}.csv`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    } catch {
+      notify.error(t("panel.exportCsvError"));
+    } finally {
+      setExporting(false);
+    }
+  };
 
   // Counts come from the unfiltered-by-severity list so every pill stays clickable.
   const base = React.useMemo(() => visibleFindings(findings, hideLow), [findings, hideLow]);
@@ -88,6 +109,9 @@ export function FindingsPanel({
         <div style={s.toggleGroup}>
           {t("panel.hideLowConfidence")}
           <Toggle on={hideLow} onChange={changeHideLow} size={16} />
+          <Button kind="ghost" size="sm" icon="Download" loading={exporting} onClick={exportCsv}>
+            {t("panel.exportCsv")}
+          </Button>
         </div>
       </div>
 

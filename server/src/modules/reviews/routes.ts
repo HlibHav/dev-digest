@@ -13,6 +13,7 @@ import { ReviewService } from './service.js';
  *   GET    /runs/:id/events                            → SSE stream of RunEvent (replay-first)
  *   GET    /runs/:id/trace                             → the single-document RunTrace
  *   GET    /pulls/:id/reviews                          → persisted reviews + findings for a PR
+ *   GET    /pulls/:id/findings.csv                     → that PR's findings (every review), as CSV
  *   POST   /findings/:id/(accept|dismiss)              → finding actions
  */
 const FINDING_ACTIONS = ['accept', 'dismiss'] as const;
@@ -129,6 +130,15 @@ export default async function reviewsRoutes(appBase: FastifyInstance) {
   app.get('/pulls/:id/reviews', { schema: { params: IdParams } }, async (req) => {
     const { workspaceId } = await getContext(container, req);
     return service.reviewsForPull(workspaceId, req.params.id);
+  });
+
+  // ---- CSV export of a PR's findings (every review run) -------------------
+  app.get('/pulls/:id/findings.csv', { schema: { params: IdParams } }, async (req, reply) => {
+    const { workspaceId } = await getContext(container, req);
+    const csv = await service.findingsCsvForPull(workspaceId, req.params.id);
+    reply.header('content-type', 'text/csv; charset=utf-8');
+    reply.header('content-disposition', `attachment; filename="findings-${req.params.id}.csv"`);
+    return csv;
   });
 
   // ---- Delete a whole review run (one agent's pass) + its findings --------
