@@ -73,8 +73,12 @@ export const FEATURE_MODELS: FeatureModelDef[] = [
     id: 'conventions',
     label: 'Conventions',
     description: 'Extracts coding conventions from the repo.',
-    defaultProvider: 'openai',
-    defaultModel: 'gpt-5.4',
+    // openrouter, like the seeded agents: it is the one key this app ships a
+    // default for, so an untouched workspace can scan without configuring a
+    // second provider first. gpt-4.1-mini because the extraction is a strict
+    // json_schema call and several cheap models reject or stall on one.
+    defaultProvider: 'openrouter',
+    defaultModel: 'openai/gpt-4.1-mini',
   },
 ];
 

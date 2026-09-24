@@ -1,0 +1,87 @@
+diff --git a/server/src/modules/reviews/routes.ts b/server/src/modules/reviews/routes.ts
+index 2b6f9c1..a874e2d 100644
+--- a/server/src/modules/reviews/routes.ts
++++ b/server/src/modules/reviews/routes.ts
+@@ -13,5 +13,6 @@
+  *   GET    /runs/:id/events                            → SSE stream of RunEvent (replay-first)
+  *   GET    /runs/:id/trace                             → the single-document RunTrace
+  *   GET    /pulls/:id/reviews                          → persisted reviews + findings for a PR
+  *   POST   /findings/:id/(accept|dismiss)              → finding actions
++ *   POST   /pulls/:id/findings/dismiss-suggestions      → bulk-dismiss all suggestion findings
+  */
+ const FINDING_ACTIONS = ['accept', 'dismiss'] as const;
+ export default async function reviewsRoutes(appBase: FastifyInstance) {
+@@ -146,5 +147,12 @@ export default async function reviewsRoutes(appBase: FastifyInstance) {
+       return result;
+     });
+   }
++
++  // ---- Bulk-dismiss every suggestion-level finding on a PR ----------------
++  app.post('/pulls/:id/findings/dismiss-suggestions', { schema: { params: IdParams } }, async (req, reply) => {
++    const { workspaceId } = await getContext(container, req);
++    await service.dismissAllSuggestions(workspaceId, req.params.id);
++    reply.code(204);
++  });
+ }
+diff --git a/client/src/lib/hooks/reviews.ts b/client/src/lib/hooks/reviews.ts
+index 8e21ac0..1f5d9bb 100644
+--- a/client/src/lib/hooks/reviews.ts
++++ b/client/src/lib/hooks/reviews.ts
+@@ -156,6 +156,20 @@ export function useFindingAction() {
+   });
+ }
+
++/** Bulk-dismiss every suggestion-level finding on a PR in one click. */
++export function useDismissAllSuggestions() {
++  const qc = useQueryClient();
++  return useMutation({
++    mutationFn: async (prId: string) => {
++      const res = await fetch(`${API_BASE}/pulls/${prId}/findings/dismiss-suggestions`, {
++        method: "POST",
++      });
++      return res.json();
++    },
++    onSuccess: (_data, prId) => {
++      qc.invalidateQueries({ queryKey: ["reviews", prId] });
++    },
++  });
++}
++
+ /**
+  * Subscribe to a run's SSE event stream. Returns the accumulated RunEvents and a
+  * `running` flag (true until the stream closes). Live status for the
+diff --git a/client/src/app/repos/[repoId]/pulls/[number]/_components/FindingsPanel/FindingsPanel.tsx b/client/src/app/repos/[repoId]/pulls/[number]/_components/FindingsPanel/FindingsPanel.tsx
+index 6a91d4e..9d3aa41 100644
+--- a/client/src/app/repos/[repoId]/pulls/[number]/_components/FindingsPanel/FindingsPanel.tsx
++++ b/client/src/app/repos/[repoId]/pulls/[number]/_components/FindingsPanel/FindingsPanel.tsx
+@@ -7,7 +7,7 @@ import { useTranslations } from "next-intl";
+ import { Toggle, EmptyState, Chip, SEV } from "@devdigest/ui";
+ import type { FindingRecord, Severity } from "@devdigest/shared";
+ import { FindingCard } from "../FindingCard";
+-import { useFindingAction } from "../../../../../../../lib/hooks/reviews";
++import { useFindingAction, useDismissAllSuggestions } from "../../../../../../../lib/hooks/reviews";
+ import { KEY_TO_ACTION, SEVERITY_FILTERS } from "./constants";
+ import { countsBySeverity, visibleFindings } from "./helpers";
+ import { s } from "./styles";
+@@ -24,6 +24,7 @@ export function FindingsPanel({
+ }) {
+   const t = useTranslations("prReview");
+   const action = useFindingAction();
++  const dismissSuggestions = useDismissAllSuggestions();
+   const [hideLow, setHideLow] = React.useState(false);
+   const [severity, setSeverity] = React.useState<Severity | null>(null);
+   const [focusIdx, setFocusIdx] = React.useState(0);
+@@ -85,6 +86,14 @@ export function FindingsPanel({
+         <div style={s.toggleGroup}>
+           {t("panel.hideLowConfidence")}
+           <Toggle on={hideLow} onChange={changeHideLow} size={16} />
++          <button
++            type="button"
++            disabled={dismissSuggestions.isPending}
++            onClick={() => dismissSuggestions.mutate(prId)}
++          >
++            {t("panel.dismissAllSuggestions")}
++          </button>
+         </div>
+       </div>
+

@@ -24,6 +24,21 @@ import { toJsonSchema, parseWithRepair } from './structured.js';
 
 const NOT_SUPPORTED = 'OpenRouterProvider only implements completeStructured';
 
+/**
+ * Which upstream providers OpenRouter may use for a model, sent as the request's
+ * `provider` object. Slugs are OpenRouter's (`parasail`, `open-inference`). The
+ * same prompt can get a different verdict from a different provider, so reviews
+ * pin where they run.
+ */
+export interface OpenRouterRouting {
+  /** Providers to try first, in order. */
+  order?: string[];
+  /** Whether OpenRouter may fall back to other providers when `order` fails. */
+  allowFallbacks?: boolean;
+  /** Providers never to use, fallbacks included. */
+  ignore?: string[];
+}
+
 export interface OpenRouterProviderOptions {
   /** OpenAI-compatible base URL (default: OpenRouter). */
   baseURL?: string;
@@ -34,6 +49,30 @@ export interface OpenRouterProviderOptions {
   maxRetries?: number;
   /** Injected cost estimator; returns USD or null when the model is unknown. */
   estimateCost?: (model: string, tokensIn: number, tokensOut: number) => number | null;
+  /** Provider routing; unset lets OpenRouter route freely. Ignored when `id` is 'openai'. */
+  routing?: OpenRouterRouting;
+  /**
+   * Wall-clock limit for one call, response body included (default 150 s).
+   * OpenRouter answers 200 at once and keeps the body open with whitespace while
+   * the provider works, so the SDK's `timeoutMs` (time to headers) never fires on
+   * a provider that stalls mid-answer.
+   */
+  requestDeadlineMs?: number;
+  /** How many times a call that hit the deadline is retried (default 1). */
+  stallRetries?: number;
+  /** The fetch the SDK uses. Tests pass a fake; production leaves it unset. */
+  fetch?: typeof fetch;
+}
+
+/** `OpenRouterRouting` in the wire shape OpenRouter expects, or undefined when empty. */
+function providerPreferences(routing: OpenRouterRouting | undefined) {
+  if (!routing) return undefined;
+  const prefs = {
+    ...(routing.order?.length ? { order: routing.order } : {}),
+    ...(routing.allowFallbacks !== undefined ? { allow_fallbacks: routing.allowFallbacks } : {}),
+    ...(routing.ignore?.length ? { ignore: routing.ignore } : {}),
+  };
+  return Object.keys(prefs).length > 0 ? prefs : undefined;
 }
 
 export class OpenRouterProvider implements LLMProvider {
@@ -42,17 +81,24 @@ export class OpenRouterProvider implements LLMProvider {
   private baseURL: string;
   private apiKey: string;
   private estimateCost?: OpenRouterProviderOptions['estimateCost'];
+  private providerPrefs?: ReturnType<typeof providerPreferences>;
+  private deadlineMs: number;
+  private stallRetries: number;
 
   constructor(apiKey: string, opts: OpenRouterProviderOptions = {}) {
     this.id = opts.id ?? 'openrouter';
     this.apiKey = apiKey;
     this.baseURL = opts.baseURL ?? 'https://openrouter.ai/api/v1';
     this.estimateCost = opts.estimateCost;
+    this.providerPrefs = this.id === 'openrouter' ? providerPreferences(opts.routing) : undefined;
+    this.deadlineMs = opts.requestDeadlineMs ?? 150_000;
+    this.stallRetries = opts.stallRetries ?? 1;
     this.client = new OpenAI({
       apiKey,
       baseURL: this.baseURL,
       timeout: opts.timeoutMs ?? 90_000,
       maxRetries: opts.maxRetries ?? 2,
+      ...(opts.fetch ? { fetch: opts.fetch } : {}),
     });
   }
 
@@ -64,9 +110,10 @@ export class OpenRouterProvider implements LLMProvider {
     let tokensOut = 0;
     let costFromApi: number | null = null;
     let lastRaw = '';
+    let servedBy: string | undefined;
 
     for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
-      const res = await this.client.chat.completions.create({
+      const res = await this.withDeadline((signal) => this.client.chat.completions.create({
         model: req.model,
         messages,
         temperature: req.temperature ?? 0,
@@ -81,7 +128,13 @@ export class OpenRouterProvider implements LLMProvider {
         // OpenRouter usage accounting — ask it to return the REAL generation
         // cost (USD) in `usage.cost`, instead of estimating from a price book.
         ...(this.id === 'openrouter' ? { usage: { include: true } } : {}),
-      });
+        // OpenRouter provider routing (order / allow_fallbacks / ignore).
+        ...(this.providerPrefs ? { provider: this.providerPrefs } : {}),
+      }, { signal }));
+      // `provider` names the upstream that served the call — an OpenRouter
+      // extension, absent from the OpenAI SDK type.
+      const provider = (res as unknown as { provider?: unknown }).provider;
+      if (typeof provider === 'string' && provider) servedBy = provider;
 
       // OpenRouter can return HTTP 200 with no `choices` (an upstream provider
       // error / moderation / free-tier limit in the body) — surface it.
@@ -107,12 +160,32 @@ export class OpenRouterProvider implements LLMProvider {
           costUsd: costFromApi ?? this.estimateCost?.(req.model, tokensIn, tokensOut) ?? null,
           raw: lastRaw,
           attempts: attempt,
+          ...(servedBy ? { servedBy } : {}),
         };
       }
       messages.push({ role: 'assistant', content: lastRaw });
       messages.push({ role: 'user', content: parsed.repromptMessage });
     }
     throw new Error(`OpenRouter structured output failed schema validation for ${req.schemaName}`);
+  }
+
+  /**
+   * Run one SDK call under a deadline that also covers reading the response body,
+   * retrying a call that stalled. A stall is retried rather than failed at once:
+   * it is rare, and a fresh request usually lands on a healthy provider.
+   */
+  private async withDeadline<R>(call: (signal: AbortSignal) => Promise<R>): Promise<R> {
+    for (let attempt = 0; ; attempt++) {
+      const signal = AbortSignal.timeout(this.deadlineMs);
+      try {
+        return await call(signal);
+      } catch (err) {
+        if (!signal.aborted) throw err;
+        if (attempt >= this.stallRetries) {
+          throw new Error(`OpenRouter call did not finish within ${this.deadlineMs} ms (${attempt + 1} attempt(s))`);
+        }
+      }
+    }
   }
 
   /**

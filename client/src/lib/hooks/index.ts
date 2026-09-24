@@ -3,6 +3,31 @@
    or from a domain file directly (e.g. "@/lib/hooks/reviews") — both resolve here. */
 export * from "./core";
 export * from "./agents";
+// Named, not `export *`: the eight star-exports above predate the rule that
+// forbids new ones (frontend-ui-architecture, rule 8).
+export {
+  useSkills,
+  useSkill,
+  useCreateSkill,
+  useUpdateSkill,
+  useDeleteSkill,
+  usePreviewSkillImport,
+  useSkillVersions,
+  type CreateSkillInput,
+  type UpdateSkillInput,
+  type SkillImportPreview,
+  type SkillVersion,
+  type SkippedEntry,
+} from "./skills";
 export * from "./reviews";
 export * from "./trace";
 export * from "./repo-intel";
+export {
+  useConventions,
+  useExtractConventions,
+  usePatchConvention,
+  useConventionSkillPreview,
+  useCreateConventionSkill,
+  type PatchConventionInput,
+  type CreateConventionSkillInput,
+} from "./conventions";

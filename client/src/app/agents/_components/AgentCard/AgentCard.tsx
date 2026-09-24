@@ -7,7 +7,8 @@ import { useTranslations } from "next-intl";
 import { Icon, Badge, Toggle } from "@devdigest/ui";
 import type { Agent } from "@devdigest/shared";
 import { useDeleteAgent } from "../../../../lib/hooks/agents";
-import { modelColor } from "./helpers";
+import { ConfirmModal } from "../../../../components/confirm-modal";
+import { modelColor, shortModel } from "./helpers";
 import { s } from "./styles";
 
 export function AgentCard({
@@ -25,9 +26,23 @@ export function AgentCard({
 }) {
   const t = useTranslations("agents");
   const del = useDeleteAgent();
+  const [confirming, setConfirming] = React.useState(false);
   const color = modelColor(ag.model);
   return (
     <div onClick={onClick} style={s.card(!!active, ag.enabled)}>
+      {confirming && (
+        <div onClick={(e) => e.stopPropagation()}>
+          <ConfirmModal
+            title={t("card.deleteTitle")}
+            body={t("card.deleteConfirm", { name: ag.name })}
+            confirmLabel={t("card.deleteAction")}
+            cancelLabel={t("card.deleteCancel")}
+            pending={del.isPending}
+            onConfirm={() => del.mutate(ag.id, { onSettled: () => setConfirming(false) })}
+            onClose={() => setConfirming(false)}
+          />
+        </div>
+      )}
       <div style={s.headerRow}>
         <div style={s.iconBox}>
           <Icon.Cpu size={15} />
@@ -41,11 +56,11 @@ export function AgentCard({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            if (window.confirm(`Delete agent "${ag.name}"? This cannot be undone.`)) del.mutate(ag.id);
+            setConfirming(true);
           }}
           disabled={del.isPending}
-          title="Delete agent"
-          aria-label="Delete agent"
+          title={t("card.delete")}
+          aria-label={t("card.delete")}
           style={{
             background: "none",
             border: "none",
@@ -60,8 +75,8 @@ export function AgentCard({
       </div>
       <div style={s.description}>{ag.description || t("card.noDescription")}</div>
       <div style={s.metaRow}>
-        <span className="mono" style={s.modelChip(color)}>
-          {ag.model}
+        <span className="mono" style={s.modelChip(color)} title={ag.model}>
+          {shortModel(ag.model)}
         </span>
         {skillCount != null && (
           <Badge color="var(--text-secondary)" icon="Sparkles">

@@ -1,0 +1,10 @@
+Decides whether a finished agent run is old enough for the nightly sweep.
+Blocking runs are kept regardless of age, and a run still in flight is never
+swept.
+
+Covered by a unit test.
+
+**Fixture PR** for the Test Quality Reviewer control experiment: the test
+covers the happy path only. Not intended to merge.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)

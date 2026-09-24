@@ -15,12 +15,43 @@
       "body": "Scan the repo to surface house-rules — naming, error handling, structure — each backed by evidence you can turn into a Skill.",
       "cta": "Run extraction"
     },
-    "candidateCount": "{count, plural, one {# candidate} other {# candidates}} · grounded against sampled files"
+    "candidateCount": "{count, plural, one {# candidate} other {# candidates}} · grounded against sampled files",
+    "runScan": "Run Scan",
+    "createSkill": "Create skill",
+    "pendingSection": "Awaiting your decision",
+    "acceptedSection": "Accepted",
+    "acceptedCount": "{count, plural, one {# accepted} other {# accepted}}",
+    "rejectedCount": "{count, plural, one {# rejected} other {# rejected}}",
+    "skillCreated": "Saved “{name}” as version {version}. It is in the Skills library."
   },
   "card": {
     "confidence": "Confidence",
     "accepted": "Accepted",
     "accepting": "Accepting…",
-    "acceptAsSkill": "Accept as Skill"
+    "acceptAsSkill": "Accept as Skill",
+    "accept": "Accept",
+    "reject": "Reject",
+    "edit": "Edit",
+    "save": "Save",
+    "cancel": "Cancel",
+    "ruleLabel": "Rule",
+    "categoryLabel": "Category"
+  },
+  "createModal": {
+    "title": "Create a skill from these conventions",
+    "intro": "This builds one skill from the {count, plural, one {# convention} other {# conventions}} you accepted. Rejected and undecided candidates are left out. Edit the text below — it is what the reviewing agent will read.",
+    "name": "Name",
+    "description": "Description",
+    "descriptionHint": "One line, shown on the skill card.",
+    "body": "Skill body",
+    "bodyHint": "Markdown. Generated from the accepted conventions — edit freely.",
+    "loadingBody": "Assembling the body…",
+    "agent": "Link to an agent",
+    "agentHint": "Optional. The skill is added to the end of that agent's prompt order.",
+    "agentNone": "Don't link it yet",
+    "create": "Create",
+    "creating": "Creating…",
+    "cancel": "Cancel",
+    "failed": "Could not create the skill."
   }
 }

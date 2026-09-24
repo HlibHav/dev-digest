@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { z } from 'zod';
 import { homedir } from 'node:os';
 import { join, isAbsolute, resolve } from 'node:path';
+import type { OpenRouterRouting } from '@devdigest/reviewer-core';
 
 /**
  * Central, zod-validated environment config. Loaded once at startup.
@@ -26,6 +27,13 @@ const EnvSchema = z.object({
   // Note: even when on, sections only populate once the repo is indexed; an
   // unindexed repo degrades gracefully. Per-agent override: agents.repo_intel.
   REPO_INTEL_ENABLED: z.string().optional(),
+  // OpenRouter provider routing for reviews: comma-separated OpenRouter provider
+  // slugs (e.g. `parasail`, `open-inference`). All unset → OpenRouter routes
+  // freely. The same prompt can get a different verdict from a different
+  // provider, which is why reviews pin where they run.
+  OPENROUTER_PROVIDER_ORDER: z.string().optional(),
+  OPENROUTER_PROVIDER_IGNORE: z.string().optional(),
+  OPENROUTER_ALLOW_FALLBACKS: z.string().optional(),
   API_PORT: z.coerce.number().int().default(3001),
   WEB_PORT: z.coerce.number().int().default(3000),
   DEVDIGEST_CLONE_DIR: z.string().optional(),
@@ -59,7 +67,28 @@ export type AppConfig = {
    * EXACTLY like the ripgrep-only baseline.
    */
   repoIntelEnabled: boolean;
+  /** OpenRouter provider routing for reviews; undefined lets OpenRouter route freely. */
+  openrouterRouting?: OpenRouterRouting;
 };
+
+/** `a, b,,c` → `['a', 'b', 'c']`; unset or blank → undefined. */
+function slugList(raw: string | undefined): string[] | undefined {
+  const list = (raw ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+  return list.length > 0 ? list : undefined;
+}
+
+function openrouterRouting(parsed: z.infer<typeof EnvSchema>): OpenRouterRouting | undefined {
+  const order = slugList(parsed.OPENROUTER_PROVIDER_ORDER);
+  const ignore = slugList(parsed.OPENROUTER_PROVIDER_IGNORE);
+  const fallbacks = parsed.OPENROUTER_ALLOW_FALLBACKS?.trim();
+  const allowFallbacks = fallbacks ? fallbacks !== 'false' : undefined;
+  if (!order && !ignore && allowFallbacks === undefined) return undefined;
+  return {
+    ...(order ? { order } : {}),
+    ...(ignore ? { ignore } : {}),
+    ...(allowFallbacks !== undefined ? { allowFallbacks } : {}),
+  };
+}
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const parsed = EnvSchema.parse(env);
@@ -77,5 +106,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     webOrigin: `http://localhost:${parsed.WEB_PORT}`,
     embeddingsEnabled: parsed.EMBEDDINGS_ENABLED === 'true',
     repoIntelEnabled: parsed.REPO_INTEL_ENABLED !== 'false',
+    openrouterRouting: openrouterRouting(parsed),
   };
 }

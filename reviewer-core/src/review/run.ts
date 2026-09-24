@@ -7,7 +7,7 @@ import type {
   UnifiedDiff,
 } from '@devdigest/shared';
 import { Review as ReviewSchema } from '@devdigest/shared';
-import { assemblePrompt } from '../prompt.js';
+import { assemblePrompt, type PromptSkill } from '../prompt.js';
 import { groundFindings, groundingSummary } from '../grounding.js';
 import { reduceReviews, scoreFromFindings, sliceDiff } from './reduce.js';
 
@@ -52,8 +52,8 @@ export interface ReviewInput {
   llm: LLMProvider;
   /** 'auto' (default) picks single-pass unless the diff is large + multi-file. */
   strategy?: ReviewStrategy;
-  /** Resolved skill bodies (NOT slugs). */
-  skills?: string[];
+  /** Resolved skills (NOT slugs), in the agent's order. */
+  skills?: readonly PromptSkill[];
   /** Curated memory items. */
   memory?: string[];
   /** Project-context spec chunks (untrusted; delimiter-wrapped downstream). */
@@ -184,6 +184,7 @@ export async function reviewPullRequest(input: ReviewInput): Promise<ReviewOutco
     costUsd = costUsd == null || res.costUsd == null ? null : costUsd + res.costUsd;
     raws.push(res.raw);
     partials.push(res.data);
+    if (res.servedBy) emit('info', `${chunk.label}: served by ${res.servedBy}`);
     emit('result', `${chunk.label}: ${res.data.findings.length} candidate finding(s)`);
   }
 

@@ -1,0 +1,30 @@
+{
+  "name": "Conventions: triage seeded candidates and turn an accepted one into a skill",
+  "description": "Reaches the Conventions page from the SKILLS LAB sidebar, confirms the seeded candidates render with their confidence and evidence path, accepts one, opens the Create-skill modal and creates repo-conventions, then confirms the skill is in the Skills library. Exercises GET /repos/:id/conventions, PATCH /conventions/:id, GET and POST /repos/:id/conventions/skill. The seed stands in for a finished scan — Run Scan is never pressed, so no model call.",
+  "steps": [
+    { "cmd": ["open", "{BASE}/"], "label": "load the app root" },
+    { "cmd": ["wait", "--url", "/pulls"], "label": "root redirects to the seeded repo" },
+    { "cmd": ["wait", "--load", "networkidle"], "label": "repo and PR fetches settle" },
+    { "cmd": ["wait", "--text", "#482"], "label": "the seeded PR row is visible, so the active repo has resolved" },
+    { "cmd": ["wait", "--text", "SKILLS LAB"], "label": "the SKILLS LAB sidebar section renders" },
+    { "cmd": ["wait", "--text", "Conventions"], "label": "the Conventions sidebar entry renders" },
+    { "cmd": ["find", "text", "Conventions", "click"], "label": "open Conventions from the sidebar" },
+    { "cmd": ["wait", "--url", "/conventions"], "label": "conventions route reached" },
+    { "cmd": ["wait", "--load", "networkidle"], "label": "candidates fetch settles" },
+    { "cmd": ["wait", "--text", "Conventions in acme/payments-api"], "label": "the page names the repo" },
+    { "cmd": ["wait", "--text", "Validate every route body with a zod schema"], "label": "the highest-confidence seeded candidate renders" },
+    { "cmd": ["wait", "--text", "Confidence 92%"], "label": "its confidence renders as a percentage" },
+    { "cmd": ["wait", "--text", "src/api/users.ts:12"], "label": "its evidence path and line render" },
+    { "cmd": ["wait", "--text", "Rate-limit rejections answer 429"], "label": "a second seeded candidate renders" },
+    { "cmd": ["find", "role", "button", "click", "--name", "Accept"], "label": "accept the first candidate" },
+    { "cmd": ["wait", "--text", "1 accepted"], "label": "the accepted counter moves" },
+    { "cmd": ["find", "role", "button", "click", "--name", "Create skill"], "label": "Create skill appears once something is accepted" },
+    { "cmd": ["wait", "--text", "Create a skill from these conventions"], "label": "the create-skill modal opens" },
+    { "cmd": ["wait", "--text", "builds one skill from the 1 convention you accepted"], "label": "the modal explains what it builds" },
+    { "cmd": ["find", "role", "button", "click", "--name", "Create", "--exact"], "label": "create the skill" },
+    { "cmd": ["wait", "--text", "Saved"], "label": "the page confirms the save" },
+    { "cmd": ["open", "{BASE}/skills"], "label": "go to the Skills library" },
+    { "cmd": ["wait", "--url", "/skills"], "label": "skills route reached" },
+    { "cmd": ["wait", "--text", "repo-conventions"], "label": "the new skill is in the library" }
+  ]
+}

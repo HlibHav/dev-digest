@@ -1,0 +1,18 @@
+200 arxiv.org/abs/2203.09095 [2203.09095] Automating Code Review Activities by Large-Scale Pre-training
+200 arxiv.org/html/2507.13499v1 AI-Assisted Fixes to Code Review Comments at Scale
+200 arxiv.org/html/2601.19072v3 HalluJudge: A Reference-Free Hallucination Detection for Context Misalignment in Code Review Automation
+200 arxiv.org/html/2606.31159v1 An Empirical Study of Security Calibration in Large Language Models for Code
+200 arxiv.org/html/2607.21997v1 “Go Home Copilot, You’re Drunk”: Understanding Developer Responses to Agent-Generated Code Review Commen
+200 arxiv.org/pdf/2505.17928 
+200 arxiv.org/pdf/2604.19049 
+404 devblogs.microsoft.com/engineering-at-microsoft/enhancing-code-quality-at-scale- 
+404 docs.coderabbit.ai/configuration/path- 
+404 docs.qodo.ai/qodo-documentation/code-review/qodo- 
+200 docs.sourcery.ai/reviews/review-rules/ 
+200 github.com/qodo-ai/pr-agent/wiki/.pr_agent_auto_best_practices 
+200 graphite.dev/guides/customizing-ai-code-review-tools 
+200 greptile.com/docs/code-review/custom-standards 
+200 greptile.com/docs/how-greptile- 
+200 qodo-merge-docs.qodo.ai/usage-guide/additional_configurations/ 
+200 research.google/blog/resolving-code-review-comments-with-ml/ 
+200 research.google/pubs/resolving-code-review-comments-with-machine-learning/ 

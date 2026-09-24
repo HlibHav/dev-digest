@@ -10,6 +10,10 @@ fixed — add to the one that fits.
 
 ## What Doesn't Work
 
+- **2026-09-20** — A review of a PR nobody has opened sees an **empty diff**, completes, and costs money: it reports 0 findings with `Reviewing 0 changed file(s)` in the run log. `loadDiff` tries `git diff base...head` in the clone first, but `fetchPullHead` has no production caller, so an unmerged PR's head sha is never in the clone and the call throws; the fallback reconstructs the diff from `pr_files.patch`, which only `GET /pulls/:id` fills (it refreshes from GitHub). Open the PR in the UI once — or call `GET /pulls/:id` — before measuring anything about a review. Evidence: `server/src/modules/reviews/diff-loader.ts:20`, `server/src/modules/pulls/routes.ts:227`, `server/src/adapters/git/simple-git.ts:72`
+
+- **2026-09-20** — A `JobRunner` handler that throws takes the **whole API process down**. `enqueue` records the failure on the `jobs` row and then rethrows (`jobs.ts:96`), which rejects `EnqueuedJob.done` — and no route awaits `done`, so it surfaces as an unhandled rejection and node exits. The trigger here was the timeout: providers apply `timeoutMs` **per attempt** inside their own retry loop, so `maxRetries: 1` at 90s overran the runner's 120s. A job handler that calls an LLM needs all three — bound the whole call below 120s yourself, catch inside the handler so the paid call is not retried, and `void job.done.catch(() => {})` at the enqueue site. Note the catch has a cost: the runner then sees the handler resolve and stamps `done` over your `failed`, so the truthful status has to be derived from the error column. Evidence: `server/src/platform/jobs.ts:96`, `server/src/adapters/llm/openai.ts:108`, `server/src/modules/conventions/routes.ts:118`
+
 - **2026-09-16** — In `*.it.test.ts`, `expect(row.newColumn).not.toBeNull()` passes before the column exists: a drizzle row has no such key, so the value is `undefined`, not `null`, and the test goes green without the feature. Assert the type instead (`toEqual(expect.any(String))`) or a value (`toBeGreaterThan(0)`). Evidence: `server/test/reviews.it.test.ts:214`
 
 ## Codebase Patterns
@@ -19,11 +23,23 @@ fixed — add to the one that fits.
 
 ## Tool & Library Notes
 
+- **2026-09-22** — dependency-cruiser 17.4.3 rejects a rule whose regex nests quantifiers, e.g. `node_modules/(\.pnpm/[^/]+/node_modules/)?drizzle-orm/`, with `has an unsafe regular expression. Bailing out.`, and rejects `enhancedResolveOptions.extensionAlias` with `must NOT have additional properties`. Neither is needed: a plain `node_modules/(pkg)/` matches pnpm-resolved paths, and TS `.js` imports resolve to `.ts` with only `tsConfig` set. Its exit code is the violation count (3 planted edges → 3, one → 1), so treat any non-zero as a failure. Evidence: `server/.dependency-cruiser.cjs:25`, `server/package.json:11`
+
+- **2026-09-20** — A test whose code resolves its provider from the **shared registry** (`resolveFeatureModel`) must register its `MockLLMProvider` under **every** provider id, not the one the feature defaults to today. Pinning the mock to `openai` and later moving the registry default to `openrouter` routed the scan past the mock into a real, paid OpenRouter call; the test then asserted against whatever the live model returned and failed on the count, with nothing in the output saying a network call had happened. Tests that create their own agent row with an explicit `provider` are not exposed. Evidence: `server/test/conventions.it.test.ts:89`, `server/src/modules/settings/feature-models.ts:51`
+
+- **2026-09-20** — Structured output is where cheap OpenRouter models diverge, and the failures do not look alike. On the conventions extraction (a strict `json_schema` call, ~24k chars of prompt): `google/gemini-2.5-flash` answers `400 Provider returned error` in seconds, `deepseek/deepseek-v4-flash` accepts it and then runs past a 100s budget without returning, and `openai/gpt-4.1-mini` completes in ~12s. Pick a model for a structured feature by trying it, not by price — and keep the failure visible, because a timeout and a schema rejection arrive through completely different paths. Evidence: `server/src/modules/conventions/constants.ts:47`, `server/src/modules/conventions/service.ts:160`
+
 - **2026-09-16** — drizzle's `sum()` helper returns a **string** (`sql\`sum(...)\`.mapWith(String)`), so a money or count total built with it breaks a `z.number()` contract and `toBeCloseTo`. Write the aggregate raw as `sql<number | null>\`sum(${col})\``: postgres-js already returns `double precision` as a number, and drizzle never runs a decoder on `null`, so an all-null sum stays `null` rather than `0`. Evidence: `server/node_modules/drizzle-orm/sql/functions/aggregate.js:17`, `server/src/modules/pulls/routes.ts:137`
 
 ## Recurring Errors & Fixes
 
 ## Session Notes
+
+- **2026-09-22** — onion-architecture skill v2 plus the `pnpm lint:boundaries` import check (dependency-cruiser, 34 known violations as the baseline) → Tool & Library Notes. Evidence: `server/.dependency-cruiser.cjs:34`
+
+- **2026-09-20** — Conventions Extractor (sample by code → one model call → verify evidence by code → human triage) plus the four API-contract skills → What Doesn't Work, Tool & Library Notes ×2. Evidence: `server/src/modules/conventions/service.ts:1`
+
+- **2026-09-20** — Skills for review agents: skills module, file/archive import, and the query that feeds an agent's prompt → What Doesn't Work. Evidence: `server/src/modules/agents/repository.ts:212`
 
 - **2026-09-16** — Run Cost Badge (persist `agent_runs.cost_usd` + `batch_id`, surface cost on PR list / timeline / trace) → What Doesn't Work, Codebase Patterns; e2e → Recurring Errors & Fixes
   - **2026-09-16** — Refined: the session's main code change, the run cost persisted when a run completes. Evidence: `server/src/modules/reviews/run-executor.ts:253`

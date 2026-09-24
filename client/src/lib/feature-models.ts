@@ -43,7 +43,8 @@ export const FEATURE_MODELS: FeatureModelDef[] = [
     id: "conventions",
     label: "Conventions",
     description: "Extracts coding conventions from the repo.",
-    defaultProvider: "openai",
-    defaultModel: "gpt-5.4",
+    // Keep in step with the shared registry — see the header note.
+    defaultProvider: "openrouter",
+    defaultModel: "openai/gpt-4.1-mini",
   },
 ];

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import type { Db } from '../../db/client.js';
 import * as t from '../../db/schema.js';
 import type { CiFailOn, Provider, ReviewStrategy } from '@devdigest/shared';
@@ -53,6 +53,18 @@ export class AgentsRepository {
 
   async list(workspaceId: string): Promise<AgentRow[]> {
     return this.db.select().from(t.agents).where(eq(t.agents.workspaceId, workspaceId));
+  }
+
+  /** How many skills each agent in this workspace links, keyed by agent id.
+      One grouped query rather than a count per tile. */
+  async skillCounts(workspaceId: string): Promise<Map<string, number>> {
+    const rows = await this.db
+      .select({ agentId: t.agentSkills.agentId, n: sql<number>`count(*)::int` })
+      .from(t.agentSkills)
+      .innerJoin(t.agents, eq(t.agents.id, t.agentSkills.agentId))
+      .where(eq(t.agents.workspaceId, workspaceId))
+      .groupBy(t.agentSkills.agentId);
+    return new Map(rows.map((r) => [r.agentId, r.n]));
   }
 
   async listEnabled(workspaceId: string): Promise<AgentRow[]> {
@@ -197,6 +209,47 @@ export class AgentsRepository {
       .where(eq(t.agentSkills.agentId, agentId))
       .orderBy(asc(t.agentSkills.order));
     return rows.map((r) => ({ skill: r.skill, order: r.order }));
+  }
+
+  /**
+   * The skills that actually reach this agent's prompt: linked AND enabled AND
+   * in the same workspace as the agent, in `order`.
+   *
+   * The workspace predicates are load-bearing, not decoration. `setSkills` and
+   * `linkSkill` validate the agent's workspace but a link row is just a pair of
+   * ids, so this is the last place that can keep another tenant's skill body out
+   * of a prompt. `linkedSkills` above stays unfiltered because the editor must
+   * still list skills that are attached but disabled.
+   */
+  async enabledSkillsForAgent(
+    workspaceId: string,
+    agentId: string,
+  ): Promise<LinkedSkillRow[]> {
+    const rows = await this.db
+      .select({ skill: t.skills, order: t.agentSkills.order })
+      .from(t.agentSkills)
+      .innerJoin(t.skills, eq(t.agentSkills.skillId, t.skills.id))
+      .innerJoin(t.agents, eq(t.agentSkills.agentId, t.agents.id))
+      .where(
+        and(
+          eq(t.agentSkills.agentId, agentId),
+          eq(t.skills.enabled, true),
+          eq(t.agents.workspaceId, workspaceId),
+          eq(t.skills.workspaceId, workspaceId),
+        ),
+      )
+      .orderBy(asc(t.agentSkills.order));
+    return rows.map((r) => ({ skill: r.skill, order: r.order }));
+  }
+
+  /** Of `skillIds`, the ones that exist in this workspace. Guards the link writes. */
+  async skillIdsInWorkspace(workspaceId: string, skillIds: string[]): Promise<Set<string>> {
+    if (skillIds.length === 0) return new Set();
+    const rows = await this.db
+      .select({ id: t.skills.id })
+      .from(t.skills)
+      .where(and(eq(t.skills.workspaceId, workspaceId), inArray(t.skills.id, skillIds)));
+    return new Set(rows.map((r) => r.id));
   }
 
   async skillIdsForAgent(agentId: string): Promise<string[]> {

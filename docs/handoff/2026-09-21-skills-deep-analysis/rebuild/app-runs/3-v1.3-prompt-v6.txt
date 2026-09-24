@@ -1,0 +1,32 @@
+attach 200
+PR8-skill#1 | done | blockers=1 | score=65 | grounding=1/1 passed | skills_tok=914 | all files: served by Parasail | run=12c992bb-1acd-47a5-a46e-933384668cb0
+    CRITICAL: Create agent handler changes response status from 201 to 200
+PR8-skill#2 | done | blockers=0 | score=88 | grounding=1/1 passed | skills_tok=914 | all files: served by Parasail | run=963b9429-d801-4cac-b0d3-b1d61d46667b
+    WARNING: Create agent endpoint changed from 201 to 200
+PR8-skill#3 | done | blockers=1 | score=65 | grounding=1/1 passed | skills_tok=914 | all files: served by Parasail | run=1a97f4d1-061a-4090-b6d1-439109bc80af
+    CRITICAL: Create agent handler now returns 200 instead of 201
+PR8-skill#4 | done | blockers=0 | score=88 | grounding=1/1 passed | skills_tok=914 | all files: served by Parasail | run=857e6dc8-7374-446f-bf47-2286fd50b5af
+    WARNING: Create agent handler now returns 200 instead of 201
+PR10-skill#1 | done | blockers=0 | score=88 | grounding=1/1 passed | skills_tok=914 | all files: served by Parasail | run=e387aa1a-98c0-4926-9c44-80417120b874
+    WARNING: New field in `Finding` uses `.optional()` instead of `.nullish()`
+PR11-skill#1 | done | blockers=0 | score=82 | grounding=3/3 passed | skills_tok=914 | all files: served by Parasail | run=c9e999e7-1969-4b69-8e21-bbd04881ead7
+    WARNING: downloadFindingsCsv throws plain Error instead of ApiError on non-2xx
+    SUGGESTION: findingsToCsv passes rationale to csvField without null handling
+    SUGGESTION: findingsToCsv converts start_line/end_line with String() without null guard
+PR10-skill#2 | done | blockers=0 | score=88 | grounding=1/1 passed | skills_tok=914 | all files: served by Parasail | run=c402a371-92bb-4b9a-963e-9b70229e6744
+    WARNING: New field uses `.optional()` instead of `.nullish()`
+PR11-skill#2 | done | blockers=0 | score=88 | grounding=1/1 passed | skills_tok=914 | all files: served by Parasail | run=1508b8a0-856a-4921-bf30-2c46f395549a
+    WARNING: downloadFindingsCsv throws plain Error instead of ApiError on non-2xx
+detach 200
+PR8-noskills#1 | done | blockers=1 | score=65 | grounding=1/1 passed | skills_tok=none | all files: served by Parasail | run=fa004d55-736e-449d-9561-87eeb50d2670
+    CRITICAL: Breaking change: POST /agents response status changed from 201 to 200
+PR10-noskills#1 | done | blockers=0 | score=100 | grounding=0/0 passed | skills_tok=none | all files: served by StreamLake | run=ed17374b-c8b1-484e-81d2-d5d3f14cff5c
+PR11-noskills#1 | done | blockers=0 | score=88 | grounding=1/1 passed | skills_tok=none | all files: served by Parasail | run=b520a93a-0485-4b4c-ad5d-cda7f2c7cde4
+    WARNING: Error responses from the new CSV endpoint will have `content-type: text/csv` but a JSON body
+PR8-noskills#2 | done | blockers=1 | score=65 | grounding=1/1 passed | skills_tok=none | all files: served by Parasail | run=b2acf8bc-6e2b-48b2-8120-ea280315b101
+    CRITICAL: Create agent endpoint changes HTTP status from 201 to 200
+PR10-noskills#2 | done | blockers=0 | score=100 | grounding=0/0 passed | skills_tok=none | all files: served by Parasail | run=addcd7db-7ee1-400e-87db-ddc9966f02b8
+PR11-noskills#2 | done | blockers=0 | score=85 | grounding=2/2 passed | skills_tok=none | all files: served by Parasail | run=47ee3f8e-32d2-4005-ae6e-a5d3eaf785a8
+    WARNING: Client fetch for CSV export omits credentials
+    SUGGESTION: Comment in `csvField` says 'every field is quoted defensively' but implementation quotes only when n
+reattach 200

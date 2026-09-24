@@ -118,6 +118,18 @@ export type SkillType = z.infer<typeof SkillType>;
 export const SkillSource = z.enum(['manual', 'imported_url', 'extracted', 'community']);
 export type SkillSource = z.infer<typeof SkillSource>;
 
+/**
+ * Sources whose body is third-party text: an imported or community skill is
+ * someone else's instructions arriving inside an agent's prompt. The server
+ * delimiter-wraps those bodies (`renderSkillsBlock`) and the client badges them
+ * as needing vetting, so the rule lives here rather than in either of them.
+ */
+export const UNTRUSTED_SKILL_SOURCES: readonly SkillSource[] = ['imported_url', 'community'];
+
+export function isSkillUntrusted(source: string): boolean {
+  return (UNTRUSTED_SKILL_SOURCES as readonly string[]).includes(source);
+}
+
 export const Skill = z.object({
   id: z.string(),
   name: z.string(),
@@ -128,6 +140,8 @@ export const Skill = z.object({
   enabled: z.boolean(),
   version: z.number().int(),
   evidence_files: z.array(z.string()).nullish(),
+  /** How many agents link this skill. Read-only, computed on list/read. */
+  agent_count: z.number().int().nullish(),
 });
 export type Skill = z.infer<typeof Skill>;
 
@@ -141,15 +155,38 @@ export const CommunitySkill = z.object({
 export type CommunitySkill = z.infer<typeof CommunitySkill>;
 
 // ---- Conventions ----
+// A candidate is a rule the extractor derived from sampled repo files, kept only
+// when its snippet was found in the named file. `evidence_line` is the VERIFIED
+// line, which is what the GitHub deep link points at.
+export const ConventionStatus = z.enum(['pending', 'accepted', 'rejected']);
+export type ConventionStatus = z.infer<typeof ConventionStatus>;
+
 export const ConventionCandidate = z.object({
   id: z.string(),
+  category: z.string(),
   rule: z.string(),
   evidence_path: z.string(),
+  evidence_line: z.number().int().positive().nullable(),
   evidence_snippet: z.string(),
   confidence: z.number().min(0).max(1),
-  accepted: z.boolean(),
+  status: ConventionStatus,
 });
 export type ConventionCandidate = z.infer<typeof ConventionCandidate>;
+
+/** Status of the latest extract job for a repo, read from the `jobs` table. */
+export const ConventionScan = z.object({
+  job_id: z.string(),
+  status: z.enum(['queued', 'running', 'done', 'failed']),
+  error: z.string().nullable(),
+  finished_at: z.string().nullable(),
+});
+export type ConventionScan = z.infer<typeof ConventionScan>;
+
+export const ConventionsPage = z.object({
+  candidates: z.array(ConventionCandidate),
+  scan: ConventionScan.nullable(),
+});
+export type ConventionsPage = z.infer<typeof ConventionsPage>;
 
 // ---- Agents ----
 export const Provider = z.enum(['openai', 'anthropic', 'openrouter']);
@@ -182,6 +219,9 @@ export const Agent = z.object({
   // Inject repo-intel context (repo skeleton + callers + rank note) into this
   // agent's review prompt. Default on; gated again by the global flag.
   repo_intel: z.boolean().default(true),
+  // How many skills are linked to this agent. Filled by the list endpoint for
+  // the agent tiles; absent where the count is not computed.
+  skill_count: z.number().int().nullish(),
 });
 export type Agent = z.infer<typeof Agent>;
 

@@ -9,3 +9,4 @@ targets.
 ## Contents
 
 - `run-cost-data-flow.md` — how a run's USD cost travels from the LLM response to `agent_runs`, the trace and the PR list; the index behind the list query.
+- `skills-prompt-injection.md` — how a skill body reaches the model: the query, the tenancy and injection guards, degradation and observability.

@@ -1,0 +1,43 @@
+diff --git a/server/src/vendor/shared/contracts/findings.ts b/server/src/vendor/shared/contracts/findings.ts
+--- a/server/src/vendor/shared/contracts/findings.ts
++++ b/server/src/vendor/shared/contracts/findings.ts
+@@ -56,6 +56,8 @@ export const Finding = z.object({
+   kind: FindingKind.nullish(),
+   // Lethal-trifecta variant fields (present only when kind === 'lethal_trifecta')
+   trifecta_components: z.array(TrifectaComponent).nullish(),
+   evidence: z.array(TrifectaEvidence).nullish(),
++  /** Optional free-form labels a reviewer or automation can attach, e.g. ["flaky", "needs-repro"]. */
++  tags: z.array(z.string()).max(5).nullish(),
+ });
+ export type Finding = z.infer<typeof Finding>;
+diff --git a/client/src/vendor/shared/contracts/findings.ts b/client/src/vendor/shared/contracts/findings.ts
+--- a/client/src/vendor/shared/contracts/findings.ts
++++ b/client/src/vendor/shared/contracts/findings.ts
+@@ -56,6 +56,8 @@ export const Finding = z.object({
+   kind: FindingKind.nullish(),
+   // Lethal-trifecta variant fields (present only when kind === 'lethal_trifecta')
+   trifecta_components: z.array(TrifectaComponent).nullish(),
+   evidence: z.array(TrifectaEvidence).nullish(),
++  /** Optional free-form labels a reviewer or automation can attach, e.g. ["flaky", "needs-repro"]. */
++  tags: z.array(z.string()).max(5).nullish(),
+ });
+ export type Finding = z.infer<typeof Finding>;
+diff --git a/client/src/app/repos/[repoId]/pulls/[number]/_components/FindingCard/FindingCard.tsx b/client/src/app/repos/[repoId]/pulls/[number]/_components/FindingCard/FindingCard.tsx
+--- a/client/src/app/repos/[repoId]/pulls/[number]/_components/FindingCard/FindingCard.tsx
++++ b/client/src/app/repos/[repoId]/pulls/[number]/_components/FindingCard/FindingCard.tsx
+@@ -60,6 +60,13 @@ export function FindingCard({
+           <div style={s.titleRow}>
+             <span style={s.title(muted, dismissed)}>{f.title}</span>
+             <CategoryTag category={f.category as Category} />
++            {f.tags?.length ? (
++              <span style={{ display: "flex", gap: 4 }}>
++                {f.tags.map((tag) => (
++                  <span key={tag} style={{ fontSize: 11, opacity: 0.7 }}>
++                    #{tag}
++                  </span>
++                ))}
++              </span>
++            ) : null}
+             {accepted && <span style={s.acceptedTag}>{t("finding.accepted")}</span>}
+             {dismissed && <span style={s.dismissedTag}>{t("finding.dismissed")}</span>}
+           </div>

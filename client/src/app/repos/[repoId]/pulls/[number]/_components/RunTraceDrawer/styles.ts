@@ -65,6 +65,15 @@ export const s = {
   promptHead: { display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", cursor: "pointer" } satisfies CSSProperties,
   promptDot: (color: string): CSSProperties => ({ width: 7, height: 7, borderRadius: 2, background: color }),
   promptLabel: { fontSize: 13, fontWeight: 600 } satisfies CSSProperties,
+  promptTokens: {
+    fontSize: 11.5,
+    fontWeight: 600,
+    color: "var(--text-muted)",
+    background: "var(--bg-surface)",
+    border: "1px solid var(--border)",
+    borderRadius: 5,
+    padding: "1px 6px",
+  } satisfies CSSProperties,
   promptToggle: { marginLeft: "auto", fontSize: 12, color: "var(--text-muted)" } satisfies CSSProperties,
   promptPre: {
     margin: 0,

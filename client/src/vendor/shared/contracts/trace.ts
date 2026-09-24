@@ -39,6 +39,11 @@ export type ToolCall = z.infer<typeof ToolCall>;
 export const PromptAssembly = z.object({
   system: z.string(),
   skills: z.string().nullish(),
+  /** Tokens contributed by the skills block ALONE, not the whole prompt.
+      `nullish` on purpose: traces written before this field existed are
+      returned from jsonb unparsed, so the client must treat `undefined` and
+      `null` the same way. */
+  skills_tokens: z.number().int().nullish(),
   memory: z.string().nullish(),
   specs: z.string().nullish(),
   /** Callers-of-changed-symbols digest (repo-intel); null when absent. */

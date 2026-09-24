@@ -8,3 +8,4 @@ scope. Not how the code works today (`docs/`) and not what we already tried
 
 - `run-cost.md` — run cost: data model, API fields, PR-list sum semantics, acceptance criteria.
 - `pr-list-findings.md` — `PrMeta.latest_findings` on the PR list: which review, what is counted, acceptance criteria.
+- `agent-skills.md` — Skills: data model, API, body-only versioning, import and trust, acceptance criteria.

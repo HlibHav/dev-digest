@@ -18,7 +18,7 @@
  */
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { readdirSync, readFileSync, mkdirSync } from "node:fs";
+import { readdirSync, readFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import {
@@ -81,9 +81,18 @@ async function runFlow(file: string, flow: Flow): Promise<FlowResult> {
       const msg = (e as Error).message.split("\n")[0];
       steps.push({ label, ok: false, detail: msg });
       console.log(`   ✗ ${label} — ${msg}`);
-      // Best-effort failure screenshot for the artifact upload.
+      // "Command failed" alone says nothing about WHY: agent-browser explains
+      // itself on stderr, so print that too, or a CI-only failure stays opaque.
+      const { stderr, stdout } = e as { stderr?: string; stdout?: string };
+      const why = (stderr || stdout || "").trim();
+      if (why) console.log(why.split("\n").map((l) => `        ${l}`).join("\n"));
+      // Best-effort failure artifacts: what the page looked like, and what the
+      // locators could see — the accessibility tree is what `find role` reads.
       mkdirSync(RESULTS_DIR, { recursive: true });
       await ab(["screenshot", join(RESULTS_DIR, `${id}-fail.png`)]).catch(() => {});
+      await ab(["snapshot", "-i", "-u"])
+        .then((tree) => writeFileSync(join(RESULTS_DIR, `${id}-fail.a11y.txt`), tree))
+        .catch(() => {});
       break;
     }
   }

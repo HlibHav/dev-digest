@@ -8,6 +8,7 @@ import type {
   Provider,
   ReviewStrategy,
 } from '@devdigest/shared';
+import { ValidationError } from '../../platform/errors.js';
 import { AgentsRepository } from './repository.js';
 import { toAgentDto, toAgentVersionDto } from './helpers.js';
 
@@ -56,8 +57,11 @@ export class AgentsService {
   }
 
   async list(workspaceId: string): Promise<Agent[]> {
-    const rows = await this.repo.list(workspaceId);
-    return rows.map(toAgentDto);
+    const [rows, counts] = await Promise.all([
+      this.repo.list(workspaceId),
+      this.repo.skillCounts(workspaceId),
+    ]);
+    return rows.map((row) => toAgentDto(row, counts.get(row.id) ?? 0));
   }
 
   async get(workspaceId: string, id: string): Promise<Agent | undefined> {
@@ -152,8 +156,22 @@ export class AgentsService {
   ): Promise<AgentSkillLink[] | undefined> {
     const agent = await this.repo.getById(workspaceId, agentId);
     if (!agent) return undefined;
+    await this.assertSkillsInWorkspace(workspaceId, skillIds);
     await this.repo.setSkills(agentId, skillIds);
     return this.skillLinks(agentId);
+  }
+
+  /**
+   * A link row is just a pair of ids, so nothing about it says which workspace
+   * the skill belongs to. Reject foreign ids here rather than let a skill body
+   * from another tenant be linked and rendered into this agent's prompt.
+   */
+  private async assertSkillsInWorkspace(workspaceId: string, skillIds: string[]): Promise<void> {
+    const known = await this.repo.skillIdsInWorkspace(workspaceId, skillIds);
+    const unknown = skillIds.filter((id) => !known.has(id));
+    if (unknown.length > 0) {
+      throw new ValidationError('Unknown skill for this workspace', { skill_ids: unknown });
+    }
   }
 
   /** Link a single skill (append or set order) — additive to existing links. */
@@ -165,6 +183,7 @@ export class AgentsService {
   ): Promise<AgentSkillLink[] | undefined> {
     const agent = await this.repo.getById(workspaceId, agentId);
     if (!agent) return undefined;
+    await this.assertSkillsInWorkspace(workspaceId, [skillId]);
     const existing = await this.repo.linkedSkills(agentId);
     const resolvedOrder = order ?? existing.length;
     await this.repo.linkSkill(agentId, skillId, resolvedOrder);

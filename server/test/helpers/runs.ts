@@ -32,3 +32,25 @@ export async function waitForPrRuns(
     await new Promise((r) => setTimeout(r, 25));
   }
 }
+
+/**
+ * A run is marked terminal before its trace is written (`completeAgentRun`, then
+ * `saveRunTrace`, two separate writes), so a test that reads `run_traces` right
+ * after `waitForPrRuns` can find no row under CI load. Poll for the trace itself.
+ */
+export async function waitForRunTrace(
+  db: PgFixture['handle']['db'],
+  runId: string,
+  opts: { timeoutMs?: number } = {},
+): Promise<typeof t.runTraces.$inferSelect> {
+  const { timeoutMs = 10_000 } = opts;
+  const start = Date.now();
+  for (;;) {
+    const [row] = await db.select().from(t.runTraces).where(eq(t.runTraces.runId, runId));
+    if (row) return row;
+    if (Date.now() - start > timeoutMs) {
+      throw new Error(`no run_traces row for run ${runId} after ${timeoutMs}ms`);
+    }
+    await new Promise((r) => setTimeout(r, 25));
+  }
+}

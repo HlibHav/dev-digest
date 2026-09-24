@@ -7,19 +7,23 @@
     "searchPlaceholder": "Search skills…",
     "loadError": "Could not load skills.",
     "menu": {
-      "fromFile": "Import from file",
-      "fromUrl": "Import from URL",
-      "community": "Search community skills…"
+      "create": "Create from scratch",
+      "import": "Import from a file or archive"
     },
     "empty": {
       "title": "No skills yet",
-      "body": "Import a skill from a file, a URL, or the community catalog.",
-      "cta": "Import from file"
+      "body": "A skill is reusable review guidance. Write one, or import a markdown file or an archive.",
+      "cta": "Create a skill"
     },
     "selectPrompt": {
       "title": "Select a skill",
       "body": "Pick a skill on the left to preview its body."
-    }
+    },
+    "count": "{count, plural, =1 {# skill} other {# skills}}",
+    "deleteConfirm": "Delete the skill \"{name}\"? Agents lose it from their prompt.",
+    "deleteTitle": "Delete this skill?",
+    "deleteAction": "Delete",
+    "deleteCancel": "Cancel"
   },
   "detail": {
     "crumbSkill": "Skill",
@@ -31,45 +35,16 @@
     }
   },
   "drawer": {
-    "title": "Add a skill",
-    "subtitle": "Import from a file, a URL, or search vetted community skills",
-    "tabs": {
-      "file": "From file",
-      "url": "From URL",
-      "community": "Community"
-    },
+    "title": "Import a skill",
+    "subtitle": "A markdown file, or an archive containing one",
     "importFailed": "Import failed"
   },
   "file": {
     "nameLabel": "Skill name",
-    "nameHint": "Optional — derived from the first heading if blank.",
+    "nameHint": "Optional — derived from the front matter or the first heading if blank.",
     "namePlaceholder": "pr-quality-rubric",
     "bodyLabel": "Skill body (Markdown)",
-    "bodyHint": "Pasted content is wrapped as untrusted data — never executed as instructions.",
-    "bodyPlaceholder": "# Rule\nDescribe the rule…",
-    "importing": "Importing…",
-    "import": "Import skill",
-    "success": "Imported \"{name}\" (stored as untrusted data)."
-  },
-  "url": {
-    "label": "Skill URL",
-    "hint": "Fetched server-side, stored as untrusted, and left disabled until vetted.",
-    "placeholder": "https://example.com/skills/security.md",
-    "fetching": "Fetching…",
-    "import": "Import from URL",
-    "success": "Imported \"{name}\". Disabled until you vet + enable it."
-  },
-  "community": {
-    "searchPlaceholder": "Search community skills (e.g. security)…",
-    "allLanguages": "All languages",
-    "loadError": "Could not load community skills",
-    "retry": "Retry",
-    "noMatch": {
-      "title": "No matching skills",
-      "body": "Try a different search term."
-    },
-    "importing": "Importing…",
-    "import": "Import"
+    "bodyHint": "Stored as data and wrapped in the prompt — never executed as instructions."
   },
   "listItem": {
     "needsVetting": "needs vetting",
@@ -96,6 +71,74 @@
     "untrustedNotice": "This skill came from an untrusted source. Its body is stored as data (delimiter-wrapped) and must be vetted before it is enabled for an agent.",
     "bodyLabel": "Skill body (Markdown)",
     "bodyHint": "Saving a changed body creates a new immutable version.",
-    "version": "v{version}"
+    "version": "v{version}",
+    "open": "Open"
+  },
+  "create": {
+    "title": "New skill",
+    "editTitle": "Edit skill",
+    "cancel": "Cancel",
+    "save": "Save skill",
+    "saving": "Saving…",
+    "fields": {
+      "name": "Name",
+      "namePlaceholder": "branch-coverage-gate",
+      "description": "Description",
+      "descriptionPlaceholder": "Flag every conditional a diff adds whose alternative path no test exercises.",
+      "descriptionHint": "This is the skill’s interface — what decides whether it applies. Write it as an instruction, not a topic: “Flag N+1 queries and missing indexes” beats “about performance”.",
+      "type": "Type",
+      "body": "Body (Markdown)",
+      "bodyHint": "Appended to the agent’s prompt as its own block, in the order the agent lists it.",
+      "bodyPlaceholder": "# Rule\n\nWhat to flag, how to report it, what not to flag."
+    }
+  },
+  "card": {
+    "noDescription": "No description",
+    "agents": "{count, plural, =0 {No agents} =1 {# agent} other {# agents}}",
+    "delete": "Delete skill",
+    "agentCount": "{count, plural, one {# agent} other {# agents}}"
+  },
+  "importer": {
+    "pick": "Choose a .md file or a .zip archive",
+    "picking": "Reading…",
+    "parsing": "Parsing…",
+    "previewTitle": "This is what would be saved",
+    "sourceFile": "Body taken from {path}",
+    "skippedTitle": "Not processed ({count})",
+    "skippedHint": "Only the skill’s markdown is read. Everything else in the archive is listed here and never decompressed — an imported skill cannot run anything.",
+    "reason": {
+      "not-markdown": "not markdown",
+      "too-large": "too large",
+      "additional-markdown": "additional markdown"
+    },
+    "trustTitle": "Someone else’s instructions",
+    "trustBody": "An imported skill goes into the prompt as data, wrapped like the diff, and stays disabled until you read it and enable it yourself.",
+    "confirm": "Save skill",
+    "confirming": "Saving…",
+    "saved": "Imported “{name}” — disabled until you enable it."
+  },
+  "detailPage": {
+    "tabs": {
+      "config": "Config",
+      "preview": "Preview",
+      "versioning": "Versioning"
+    },
+    "backToLibrary": "Back to library",
+    "bodyHint": "Markdown. Saving a changed body snapshots the previous one.",
+    "save": "Save",
+    "saving": "Saving…"
+  },
+  "versions": {
+    "subtitle": "{count, plural, one {# version} other {# versions}}. Every body edit snapshots the text it replaced.",
+    "none": "No versions recorded yet.",
+    "loadError": "Could not load this skill's history.",
+    "current": "Current",
+    "diff": "Diff",
+    "diffStat": "v{version} compared with the current v{current} — {added} added, {removed} removed.",
+    "restore": "Restore",
+    "restoreTitle": "Restore this version?",
+    "restoreConfirm": "Restore the body from v{version}? It is written forward as a new version, so nothing in the history is lost.",
+    "restoreAction": "Restore",
+    "restoreCancel": "Cancel"
   }
 }

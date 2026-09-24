@@ -42,6 +42,17 @@ describe("AgentCard (smoke)", () => {
     expect(screen.getByText("3 skills")).toBeInTheDocument();
   });
 
+  it("shows a vendor-prefixed model by its short name, with the full id on hover", () => {
+    renderWithIntl(<AgentCard ag={{ ...AGENT, model: "deepseek/deepseek-v4-flash" }} />);
+    const chip = screen.getByText("deepseek-v4-flash");
+    expect(chip).toHaveAttribute("title", "deepseek/deepseek-v4-flash");
+  });
+
+  it("says 1 skill, not 1 skills", () => {
+    renderWithIntl(<AgentCard ag={AGENT} skillCount={1} />);
+    expect(screen.getByText("1 skill")).toBeInTheDocument();
+  });
+
   it("falls back to a translated placeholder when description is empty", () => {
     renderWithIntl(<AgentCard ag={{ ...AGENT, description: "" }} />);
     expect(screen.getByText("No description")).toBeInTheDocument();

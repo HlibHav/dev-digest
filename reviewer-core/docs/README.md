@@ -9,3 +9,4 @@ targets.
 ## Contents
 
 - `cost-accounting.md` — how per-call cost is attributed (OpenRouter `usage.cost`, injected estimator) and folded into a run.
+- `skills-block.md` — the `## Skills / rules` section: PromptSkill, the trusted/untrusted split, and why the wrapper label is fixed.

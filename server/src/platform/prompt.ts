@@ -5,7 +5,9 @@
  */
 export {
   assemblePrompt,
+  renderSkillsBlock,
   wrapUntrusted,
   type PromptParts,
+  type PromptSkill,
   type AssembledPrompt,
 } from '@devdigest/reviewer-core';

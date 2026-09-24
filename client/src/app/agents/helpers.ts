@@ -1,6 +1,7 @@
 import type { Agent } from "@devdigest/shared";
 
-/** Case-insensitive filter over an agent's name + description. */
+/** Case-insensitive filter over an agent's name + description. Shared by the
+    /agents grid and the agent list beside the editor at /agents/:id. */
 export function filterAgents(agents: Agent[], search: string): Agent[] {
   const q = search.trim().toLowerCase();
   if (!q) return agents;

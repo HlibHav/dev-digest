@@ -9,14 +9,17 @@ Reusable AI skills that provide specialized knowledge and workflows. Canonical l
 | [fastify-best-practices](fastify-best-practices/SKILL.md) | Backend | Fastify routes, plugins, JSON-schema validation, error handling |
 | [drizzle-orm-patterns](drizzle-orm-patterns/SKILL.md) | Backend | Drizzle schema, queries, relations, transactions, migrations |
 | [postgresql-table-design](postgresql-table-design/SKILL.md) | Backend | Postgres schema design, data types, indexing, constraints |
+| [onion-architecture](onion-architecture/SKILL.md) | Backend | route → service → domain, adapters at the edge, inward imports; `pnpm lint:boundaries` checks them |
 | [next-best-practices](next-best-practices/SKILL.md) | Frontend | Next.js App Router, RSC boundaries, data fetching, optimization |
 | [react-best-practices](react-best-practices/SKILL.md) | Frontend | React anti-patterns, state management, hooks rules |
 | [react-testing-library](react-testing-library/SKILL.md) | Frontend | General-purpose React Testing Library guide with Vitest |
+| [frontend-ui-architecture](frontend-ui-architecture/SKILL.md) | Frontend | Where UI code goes under `client/src`: colocation, promotion, boundaries, barrels |
 | [zod](zod/SKILL.md) | Full-stack | Zod schema validation, parsing, error handling, type inference |
 | [typescript-expert](typescript-expert/SKILL.md) | Full-stack | Type-level programming, performance, tooling, migrations |
 | [security](security/SKILL.md) | Full-stack | OWASP Top 10:2025, auth, injection, uploads, secrets |
 | [mermaid-diagram](mermaid-diagram/SKILL.md) | Shared | Mermaid diagrams in markdown (flowcharts, sequence, ERD, …) |
 | [engineering-insights](engineering-insights/SKILL.md) | Shared | Read a package's INSIGHTS.md before work; record non-obvious findings after |
+| [pr-self-review](pr-self-review/SKILL.md) | Shared | Routes the pre-PR diff to the skills that own each surface; one critical finding blocks `gh pr create` |
 
 ## What Are Skills?
 
@@ -38,3 +41,6 @@ Each skill has:
 - `SKILL.md` — Main skill file with rules and conventions (required)
 - `examples.md` — Code examples showing good/bad patterns (recommended)
 - `references.md` — Sources and rationale (optional)
+- `reference.md` — Procedural depth behind a deliberately short `SKILL.md` (optional)
+- `README.md` — Provenance: how the sources were gathered, what each contributed, and which
+  decisions the skill had to settle where sources disagreed (optional)
