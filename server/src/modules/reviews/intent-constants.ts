@@ -11,7 +11,7 @@ export const INTENT_SCHEMA_NAME = 'PrIntentExtraction';
  * prompt change invalidates every cached intent instead of silently reusing a
  * classification made under the old wording. [D7]
  */
-export const INTENT_PROMPT_VERSION = 'v1';
+export const INTENT_PROMPT_VERSION = 'v2';
 
 /**
  * Whitespace runs in every untrusted source sent to the intent model are

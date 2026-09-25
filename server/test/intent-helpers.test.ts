@@ -17,7 +17,11 @@ import {
   docFromAddedPatch,
   intentInputHash,
 } from '../src/modules/reviews/intent-helpers.js';
-import { INTENT_MIN_BODY_CHARS, INTENT_DATAMARK } from '../src/modules/reviews/intent-constants.js';
+import {
+  INTENT_MIN_BODY_CHARS,
+  INTENT_DATAMARK,
+  INTENT_PROMPT_VERSION,
+} from '../src/modules/reviews/intent-constants.js';
 
 const REPO = { owner: 'acme', name: 'payments-api' };
 
@@ -434,5 +438,22 @@ describe('intentInputHash', () => {
     const a = intentInputHash('ab', 'c');
     const b = intentInputHash('a', 'bc');
     expect(a).not.toBe(b);
+  });
+
+  it('the real INTENT_PROMPT_VERSION (v2, bumped for the hardening iteration) invalidates a v1 cache key', () => {
+    // Mutant: server/src/modules/reviews/intent-constants.ts:14 — revert
+    // INTENT_PROMPT_VERSION to 'v1' and both assertions fail: the constant
+    // check directly, and the hash equality because a reverted version
+    // would then match the old cached key instead of invalidating it.
+    expect(INTENT_PROMPT_VERSION).toBe('v2');
+    const oldCacheKey = intentInputHash('gpt-4.1-mini', 'v1', 'title', 'body', 'user message');
+    const currentCacheKey = intentInputHash(
+      'gpt-4.1-mini',
+      INTENT_PROMPT_VERSION,
+      'title',
+      'body',
+      'user message',
+    );
+    expect(currentCacheKey).not.toBe(oldCacheKey);
   });
 });
