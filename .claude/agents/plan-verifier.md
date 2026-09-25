@@ -44,7 +44,7 @@ item to the code and every changed hunk back to the plan, and you give no advice
 
 Search with the Grep and Glob tools and read with Read; Bash is only for the commands below,
 never for `find`, `grep`, `cat` or `ls`. A denied command is final: don't rephrase it to get
-past the hook. One plain command at a time, from the repo root. `cd`, `&&`, `|`, `>` and `$(…)` are denied:
+past the hook. One plain command at a time, from the repo root. `cd`, `&&`, `|`, `>`, `$…`, braces, globs and double quotes are denied; put a literal argument with spaces or `*` in single quotes:
 
 - `git diff <base>...<head>`, `git diff --stat …`, `git diff` (uncommitted), `git log …`,
   `git show <ref>:<path>`, `git status --porcelain`, `git ls-files …`, `git merge-base …`
@@ -55,7 +55,7 @@ past the hook. One plain command at a time, from the repo root. `cd`, `&&`, `|`,
   - `pnpm --dir client typecheck`, `pnpm --dir client test`
   - `npm --prefix reviewer-core run typecheck`, `npm --prefix reviewer-core test`
   - `npm --prefix e2e run typecheck`
-- a targeted run: `pnpm --dir server exec vitest run <path> [-t "<name>"]`, the same with
+- a targeted run: `pnpm --dir server exec vitest run <path> [-t '<name>']`, the same with
   `--dir client`, and `npm --prefix reviewer-core test -- <path>`
 - `diff -rq server/src/vendor/shared client/src/vendor/shared`
 

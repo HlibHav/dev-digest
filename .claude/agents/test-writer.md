@@ -69,12 +69,11 @@ You work in one of two modes, and the caller's brief names it:
 ## Commands you may run
 
 Search with the Grep and Glob tools and read with Read; Bash is only for the commands below,
-never for `find`, `grep`, `cat` or `ls`. A hook allows only these shapes, run from the repo root as one plain command. `cd`, `&&`, `|`,
-`>` and `$(…)` are all denied, so use `--dir` and `--prefix`:
+never for `find`, `grep`, `cat` or `ls`. A hook allows only these shapes, run from the repo root as one plain command. `cd`, `&&`, `|`, `>`, `$…`, braces, globs and double quotes are denied; put a literal argument with spaces or `*` in single quotes. Use `--dir` and `--prefix` instead of `cd`:
 
 - `git diff …`, `git log …`, `git show …`, `git status`, `git ls-files …`, `git blame …`
 - `pnpm --dir server typecheck`, `pnpm --dir client typecheck`
-- `pnpm --dir server exec vitest run <path> [-t "<name>"]`, the same with `--dir client`
+- `pnpm --dir server exec vitest run <path> [-t '<name>']`, the same with `--dir client`
 - `pnpm --dir server exec vitest run --exclude '**/*.it.test.ts'`, `pnpm --dir client test`
 - `npm --prefix reviewer-core test`, `npm --prefix reviewer-core test -- <path>`,
   `npm --prefix reviewer-core run typecheck`

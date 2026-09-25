@@ -86,15 +86,26 @@ Scope splits that are easy to get wrong:
 Two PreToolUse hooks in `.claude/hooks/` are wired from agent frontmatter only, not from
 `settings.json`, so they apply to these agents and nothing else:
 
-- `agent-bash-allowlist.py <architecture | verify | test>` allows a command only when it parses
-  into one of the listed shapes. It denies shell metacharacters (`; & | < > $(` and backticks) and
-  anything it can't parse. Each agent's **Commands you may run** section lists the allowed forms.
+- `agent-bash-allowlist.py <architecture | verify | test>` splits the command into words itself
+  and allows it only when those words form one of the listed shapes. It refuses every character
+  the shell would expand or interpret (braces, `$`, globs, `\`, double quotes, operators), so the
+  program receives exactly the words that were checked; literal arguments go in single quotes.
+  Git long options are matched with git's abbreviation rule, and `--dir` / `--prefix` must be a
+  package of this repo or one of its worktrees, never a directory under `server/clones/`. Each
+  agent's **Commands you may run** section lists the allowed forms.
 - `agent-write-scope.py <tests | docs>` resolves the target path against `$CLAUDE_PROJECT_DIR`
   and allows only the profile's paths. `tests` also denies adding `.skip`/`.only`/`.todo` and
   removing `it(`/`test(`/`expect(` calls from an existing file. `docs` denies `INSIGHTS.md`,
   `CLAUDE.md`, `AGENTS.md`, the root README, `docs/skills/**` and the product prompts.
 
-Both deny with JSON (`permissionDecision: "deny"`) and exit 0, and both fail closed. They don't
+Both deny with JSON (`permissionDecision: "deny"`) and exit 0, and both fail closed: any error
+inside a hook is a deny. Regression tests for the Bash allowlist, including the bypasses found in
+the 2026-09-24 security review, run with
+`python3 -m unittest discover -s .claude/hooks/tests`.
+
+For test-writer, `agent-write-scope.py` guards against mistakes, not against a hostile agent:
+the tests it writes execute arbitrary code when vitest runs them, so it can reach any file that
+way. The boundary that matters for the read-only agents is the Bash allowlist. They don't
 rely on `permissionMode`, because the main session's `bypassPermissions`, `acceptEdits` and
 `auto` modes override a subagent's `permissionMode`. Test a hook by piping a PreToolUse JSON
 into it:
