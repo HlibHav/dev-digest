@@ -43,10 +43,13 @@ You work in one of two modes, and the caller's brief names it:
   - `*.test.ts(x)` under `server/src`, `server/test`, `reviewer-core/src`, `reviewer-core/test`
     and `client/src`;
   - `server/test/**/*.it.test.ts`;
-  - `server/test/helpers/*.ts`;
   - `e2e/specs/NN-name.flow.json`.
-  `server/test/route-adapter-calls.test.ts` (it holds `GRANDFATHERED`) and
-  `client/src/test/setup.ts` are denied too.
+  Denied too:
+  - `server/test/route-adapter-calls.test.ts` (it holds `GRANDFATHERED`) and
+    `client/src/test/setup.ts`;
+  - shared helpers under `server/test/helpers/`. The unsandboxed integration suite imports them,
+    so a helper you need goes inside your test file, or under **Blocked** if it must be shared;
+  - `.it.test` anywhere in a path except as the file's own `.it.test.ts` suffix.
 - **Never weaken a test.** Don't add `.skip`, `.only`, `.todo` or `xit`, don't delete an `it(` or
   an `expect(`, and don't loosen an assertion. The hook denies the first two. If an existing test
   looks wrong, list it under **Suspect tests** with the reason; don't edit it.
@@ -132,7 +135,8 @@ One to four questions.
      `mocks.ts` doubles and no Docker) and `fastify-best-practices` (routes are tested through
      `app.inject`), plus `drizzle-orm-patterns` when you write a `*.it.test.ts`.
 4. Read two or three existing tests next to your target and copy their setup: the app
-   builder, the helpers in `server/test/helpers/`, the render wrapper in client tests.
+   builder, the helpers in `server/test/helpers/` (read and import them; don't change them), the
+   render wrapper in client tests.
 
 ## Step 3 — How to write the tests
 

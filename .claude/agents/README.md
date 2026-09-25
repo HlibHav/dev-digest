@@ -97,12 +97,16 @@ nothing else:
   agent's **Commands you may run** section lists the allowed forms.
 - `agent-write-scope.py <tests | docs>` resolves the target path against `$CLAUDE_PROJECT_DIR`
   and allows only the profile's paths. `tests` also denies adding `.skip`/`.only`/`.todo` and
-  removing `it(`/`test(`/`expect(` calls from an existing file. `docs` denies `INSIGHTS.md`,
+  removing `it(`/`test(`/`expect(` calls from an existing file, and it keeps test-writer out of
+  `server/test/helpers/` and out of any path with `.it.test` before the file suffix, because
+  the unsandboxed integration suite imports the helpers and selects files by that substring.
+  `docs` denies `INSIGHTS.md`,
   `CLAUDE.md`, `AGENTS.md`, the root README, `docs/skills/**` and the product prompts.
 - `.claude/sandbox/run-tests.sh` runs every command that executes repo code — tests, and
   `lint:boundaries`, whose config is JavaScript — inside Anthropic's `srt`
   (`@anthropic-ai/sandbox-runtime`, `npm install -g`). The process may write only to a fresh temp
-  dir, vitest's caches and vite's config temp files (`test-run.srt.json`), and gets no network and
+  dir, vitest's results cache (`node_modules/.vite/vitest`, data only; vite's dependency cache,
+  which is code, stays read-only) and vite's config temp files (`test-run.srt.json`), and gets no network and
   no Unix sockets. That is what stops a test from writing where the write-scope hook can't see:
   a test is code, and `fs.writeFileSync` or `child_process` inside it never passes through
   Write/Edit. The allowlist refuses those runs without the wrapper. srt can't start inside
@@ -113,7 +117,10 @@ nothing else:
   PostToolUse hook on the `Agent` tool, registered in `.claude/settings.json` (profile
   `report`), hands any problem to the main session as `additionalContext`: a changed file
   outside the profile's paths, a moved HEAD, or an audited agent whose audit never ran (its
-  definition was loaded before its hooks existed). A SubagentStop `systemMessage` would not do:
+  definition was loaded before its hooks existed). A background call returns at launch, before
+  any result exists, so it leaves a marker and a `UserPromptSubmit` hook (also in
+  `settings.json`) reports when the agent's completion notification arrives. A SubagentStop
+  `systemMessage` would not do:
   it lands in the subagent's own transcript. The audit catches what the other mechanisms miss
   inside the repo; it can't see writes outside it.
 
@@ -124,9 +131,12 @@ including the bypasses found in the 2026-09-24 security review, run with
 
 **What stays open, deliberately.** Integration tests (`*.it.test.ts`) need Docker, and Docker
 access escapes any sandbox (a container can mount the host). So test-writer writes them but
-doesn't run them, and the main session reads each new or changed `*.it.test.ts` before anything
-runs it with Docker: its own red-first run, or plan-verifier's integration suite, which runs
-only when the brief says that reading happened.
+doesn't run them, and the main session reads every file test-writer added or changed before
+anything runs with Docker: its own red-first run, or plan-verifier's integration suite, which
+runs only when the brief says that reading happened, and only in this checkout (the allowlist
+refuses another worktree's `server` for it). Because test-writer can't write shared helpers or
+`.it.test` paths other than `*.it.test.ts`, the files that suite runs from test-writer are
+exactly its `*.it.test.ts` files and whatever test files those import.
 
 None of this relies on `permissionMode`, because the main session's `bypassPermissions`,
 `acceptEdits` and `auto` modes override a subagent's `permissionMode`. Test a hook by piping a

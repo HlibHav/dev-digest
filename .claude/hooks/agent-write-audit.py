@@ -15,6 +15,9 @@ Three hook calls per audited run, all running this script:
   3. PostToolUse, matcher "Agent", registered in `.claude/settings.json`, with profile `report`.
      It runs in the main session after the Agent tool returns, reads the result for the
      returned `agentId` and hands any problem to the main session as `additionalContext`.
+     A background call returns at launch (`status: async_launched`), before there is a result;
+     then it leaves a `.pending` marker, and UserPromptSubmit (same script, same profile, also
+     in settings.json) delivers the result when the completion notification arrives.
 
 Step 3 exists because a SubagentStop hook's `systemMessage` lands in the subagent's own
 transcript, never in the main session's (checked live on 2026-09-25, with the hook registered
@@ -57,7 +60,11 @@ def allowed(rel: str, profile: str) -> bool:
         return False
     scope = load_scope()
     if profile == "tests":
-        return rel not in scope.TEST_DENY and any(rx.match(rel) for rx in scope.TEST_ALLOW)
+        return (
+            rel not in scope.TEST_DENY
+            and not any(rx.search(rel) for rx in scope.TEST_DENY_RX)
+            and any(rx.match(rel) for rx in scope.TEST_ALLOW)
+        )
     if profile == "docs":
         return not any(rx.search(rel) for rx in scope.DOCS_DENY) and any(rx.match(rel) for rx in scope.DOCS_ALLOW)
     return False
@@ -144,14 +151,53 @@ def in_subagent(profile: str, payload: dict, root: Path) -> None:
         write_result(result, agent_type, [f"the audit failed ({exc.__class__.__name__}: {exc})"])
 
 
+def emit(event: str, lines: list[str]) -> None:
+    if lines:
+        print(json.dumps({"hookSpecificOutput": {"hookEventName": event, "additionalContext": "\n".join(lines)}}))
+
+
+def deliver_background(root: Path) -> None:
+    """UserPromptSubmit in the main session: report finished background runs, once each.
+
+    A background Agent call returns at launch (`status: async_launched`), before the agent's
+    SubagentStop has written a result, so step 3 leaves a `.pending` marker instead. The agent's
+    completion notification reaches the main session as a new prompt, and this runs then.
+    """
+    d = audit_dir(root)
+    lines = []
+    for pending in sorted(d.glob("*.pending")) if d.is_dir() else []:
+        result = pending.with_suffix(".result.json")
+        if not result.exists():
+            continue  # still running
+        data = json.loads(result.read_text())
+        problems = data.get("problems", [])
+        if problems:
+            lines.append(
+                f"agent-write-audit: background {data.get('agent_type', 'agent')} ({pending.stem}) "
+                + "; ".join(problems) + ". Check `git status` and `git diff` before using its report."
+            )
+        result.unlink()
+        pending.unlink()
+    emit("UserPromptSubmit", lines)
+
+
 def in_main_session(payload: dict, root: Path) -> None:
     """Step 3: PostToolUse(Agent) in the main session. Prints `additionalContext` or nothing."""
+    if payload.get("hook_event_name") == "UserPromptSubmit":
+        deliver_background(root)
+        return
     response = payload.get("tool_response") or {}
     agent_id = response.get("agentId") if isinstance(response, dict) else None
     agent_type = (response.get("agentType") if isinstance(response, dict) else None) or (
         payload.get("tool_input") or {}
     ).get("subagent_type", "")
     if agent_type not in AUDITED_AGENTS:
+        return
+    if isinstance(response, dict) and (response.get("isAsync") or response.get("status") == "async_launched"):
+        if agent_id:
+            pending = state_files(root, agent_id)[0].with_suffix(".pending")
+            pending.parent.mkdir(parents=True, exist_ok=True)
+            pending.write_text(agent_type)
         return
     problems: list[str]
     result = state_files(root, agent_id)[1] if agent_id else None

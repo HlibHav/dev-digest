@@ -164,6 +164,19 @@ class CodeRunsOnlyInTheSandbox(unittest.TestCase):
     def test_integration_suite_is_verify_only(self) -> None:
         self.assertEqual(decide("pnpm --dir server exec vitest run .it.test", "test"), "deny")
 
+    def test_integration_suite_only_in_this_checkout(self) -> None:
+        # It runs outside every sandbox, so only on code the main session has read: this checkout.
+        self.assertEqual(decide(f"pnpm --dir {ROOT}/server exec vitest run .it.test", "verify"), "allow")
+        other = next(
+            (line[len("worktree "):] for line in subprocess.run(
+                ["git", "-C", str(ROOT), "worktree", "list", "--porcelain"], capture_output=True, text=True
+            ).stdout.splitlines() if line.startswith("worktree ") and Path(line[len("worktree "):]).resolve() != ROOT.resolve()),
+            None,
+        )
+        if other is None:
+            self.skipTest("no second worktree to test against")
+        self.assertEqual(decide(f"pnpm --dir {other}/server exec vitest run .it.test", "verify", unsandboxed=True), "deny")
+
 
 class SessionSandboxEscape(unittest.TestCase):
     """`dangerouslyDisableSandbox` is accepted only where srt or Docker needs it."""

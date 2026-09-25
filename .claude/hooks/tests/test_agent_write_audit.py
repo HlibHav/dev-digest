@@ -55,6 +55,25 @@ def report(repo: Path, agent_id: str = "agent-1", agent_type: str = "test-writer
     return json.loads(out)["hookSpecificOutput"]["additionalContext"] if out else ""
 
 
+def launch_background(repo: Path, agent_id: str = "agent-1", agent_type: str = "test-writer") -> str:
+    """PostToolUse(Agent) for a background run: the tool returns at launch (status async_launched)."""
+    payload = {"hook_event_name": "PostToolUse", "tool_name": "Agent", "cwd": str(repo),
+               "tool_input": {"subagent_type": agent_type, "run_in_background": True},
+               "tool_response": {"isAsync": True, "status": "async_launched", "agentId": agent_id}}
+    out = run_hook(repo, "report", payload)
+    return json.loads(out)["hookSpecificOutput"]["additionalContext"] if out else ""
+
+
+def next_prompt(repo: Path) -> str:
+    """UserPromptSubmit in the main session, e.g. when the background agent's notification arrives."""
+    out = run_hook(repo, "report", {"hook_event_name": "UserPromptSubmit", "cwd": str(repo), "prompt": "x"})
+    if not out:
+        return ""
+    body = json.loads(out)["hookSpecificOutput"]
+    assert body["hookEventName"] == "UserPromptSubmit"
+    return body["additionalContext"]
+
+
 def finish(repo: Path, profile: str, agent_id: str = "agent-1", agent_type: str = "test-writer") -> str:
     stop(repo, profile, agent_id, agent_type)
     return report(repo, agent_id, agent_type)
@@ -131,6 +150,21 @@ class AuditTest(unittest.TestCase):
 
     def test_other_agents_are_ignored(self) -> None:
         self.assertEqual(report(self.repo, agent_id="x", agent_type="Explore"), "")
+
+    def test_background_run_is_reported_on_the_next_prompt(self) -> None:
+        start(self.repo, "tests")
+        self.assertEqual(launch_background(self.repo), "")  # no "did not run" at launch
+        (self.repo / "server/src/app.ts").write_text("changed by a background agent\n")
+        self.assertEqual(next_prompt(self.repo), "")  # still running: nothing to say yet
+        stop(self.repo, "tests")
+        self.assertIn("server/src/app.ts", next_prompt(self.repo))
+        self.assertEqual(next_prompt(self.repo), "")  # delivered once
+
+    def test_clean_background_run_is_silent(self) -> None:
+        start(self.repo, "tests")
+        launch_background(self.repo)
+        stop(self.repo, "tests")
+        self.assertEqual(next_prompt(self.repo), "")
 
     def test_result_is_consumed_once(self) -> None:
         start(self.repo, "tests")

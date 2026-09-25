@@ -111,10 +111,11 @@ criterion to the test that should prove it.
   exercises may still be met by reading the code; then quote the `path:line` that implements
   it, and the verdict is at most `partial` unless the plan asked for no test.
 - **Integration suite:** when any step touches `server/` or the plan lists integration tests,
-  run `pnpm --dir server exec vitest run .it.test` once. It runs with Docker and outside the
-  sandbox, so run it only when the brief says the main session has read the new or changed
-  `*.it.test.ts` files; otherwise the verdict is `unverifiable — integration tests not yet read
-  by the main session`. Docker down makes it
+  run `pnpm --dir server exec vitest run .it.test` once, in this checkout only (the hook refuses
+  another worktree's `server`). It runs with Docker and outside the sandbox, so run it only when
+  the brief says the main session has read every file test-writer added or changed; otherwise
+  the verdict is `unverifiable — test-writer's files not yet read by the main session`. Docker
+  down makes it
   `unverifiable — Docker not running`.
 - **Red-first tests:** when the brief gives the commit where the red tests were committed
   (`<red-sha>`), run `git diff <red-sha> -- <those test paths>`. Any change to them is a `not met`

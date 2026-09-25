@@ -217,14 +217,20 @@ def code_run_allowed(words: list[str], profile: str) -> bool:
 
 def integration_suite(words: list[str], profile: str) -> bool:
     """plan-verifier's one Docker run. It can't be sandboxed: Docker access escapes any sandbox,
-    so the main session reads test-writer's integration tests before this suite runs them."""
-    return (
+    so the main session reads test-writer's integration tests before this suite runs them. For
+    the same reason it runs only in this checkout: another worktree's tests were read by nobody
+    (2026-09-25 security review)."""
+    if not (
         profile == "verify"
         and len(words) == 7
         and words[:2] == ["pnpm", "--dir"]
-        and pkg_dir(words[2], ("server",))
         and words[3:] == ["exec", "vitest", "run", ".it.test"]
-    )
+        and plain_path(words[2])
+    ):
+        return False
+    root = Path(os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()).resolve()
+    target = (Path(words[2]) if words[2].startswith("/") else root / words[2]).resolve()
+    return target == root / "server"
 
 
 def read_only_allowed(words: list[str]) -> bool:

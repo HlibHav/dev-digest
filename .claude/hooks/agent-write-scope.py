@@ -12,7 +12,7 @@ Wired only from agent frontmatter (`.claude/agents/*.md`), never from `settings.
 
 Profiles:
 
-  tests .. test-writer: test files, server test helpers, e2e flow specs. Denies any edit that
+  tests .. test-writer: test files and e2e flow specs (no shared test helpers). Denies any edit that
            adds `.skip`/`.only`/`.todo` (or x-prefixed) or leaves an existing file with fewer
            `it(`/`test(`/`expect(` calls than before — a weakened test is reported, not written.
            The repo's Docker guard line (`const d = hasDocker ? describe : describe.skip;`) is
@@ -36,8 +36,16 @@ from pathlib import Path
 
 TEST_ALLOW = (
     re.compile(r"^(?:server/(?:src|test)|reviewer-core/(?:src|test)|client/src)/.+\.test\.tsx?$"),
-    re.compile(r"^server/test/helpers/[^/]+\.ts$"),
     re.compile(r"^e2e/specs/\d{2}-[a-z0-9-]+\.flow\.json$"),
+)
+# Not writable by test-writer even when TEST_ALLOW matches. plan-verifier's Docker suite runs
+# outside the sandbox and picks files by the `.it.test` substring, and it imports
+# server/test/helpers/; so test-writer may add no helper, and `.it.test` may appear in a path
+# only as the file's own `.it.test.ts` suffix. Every file that suite runs from test-writer is
+# then an `*.it.test.ts`, which the main session reads first (2026-09-25 security review).
+TEST_DENY_RX = (
+    re.compile(r"^server/test/helpers/"),
+    re.compile(r"\.it\.test(?!\.ts$)"),
 )
 TEST_DENY = {
     "server/test/route-adapter-calls.test.ts",  # holds GRANDFATHERED; owned by architecture review
@@ -98,13 +106,17 @@ def resulting_text(tool: str, tool_input: dict, old: str) -> str:
 
 
 def check_tests(rel: str, tool: str, tool_input: dict, target: Path) -> str | None:
-    if rel in TEST_DENY:
-        return f"{rel} is not writable by test-writer"
+    if rel in TEST_DENY or any(rx.search(rel) for rx in TEST_DENY_RX):
+        return (
+            f"{rel} is not writable by test-writer (test helpers, `.it.test` outside the file suffix, "
+            "and the files that hold GRANDFATHERED or the client test setup are owned elsewhere); "
+            "put a helper inside the test file, or report it as blocked"
+        )
     if not any(rx.match(rel) for rx in TEST_ALLOW):
         return (
             f"{rel} is not a test path. test-writer may write *.test.ts(x) under server/, "
-            "reviewer-core/ and client/src, server/test/helpers/*.ts and e2e/specs/NN-name.flow.json. "
-            "Report missing doubles or production changes as blocked instead"
+            "reviewer-core/ and client/src, and e2e/specs/NN-name.flow.json. "
+            "Report missing doubles, helpers or production changes as blocked instead"
         )
     old = target.read_text(encoding="utf-8") if target.is_file() else ""
     new = resulting_text(tool, tool_input, old)
