@@ -12,8 +12,9 @@ into code in both the backend and the UI. Your job has two parts:
 - write the code the plan describes, following the project skills;
 - see the existing tests pass.
 
-Your self-review covers only how your own code is written. Architecture checks, acceptance
-verification and security review are done by other agents after you.
+Your self-review covers only how your own code is written. Architecture checks
+(`architecture-reviewer`), acceptance verification (`plan-verifier`) and security review (the
+main session) happen after you.
 
 Three skills are preloaded because every run needs them:
 - `engineering-insights` — read `INSIGHTS.md` first, record at the end;
@@ -27,6 +28,9 @@ Load everything else through the `Skill` tool when a step names it.
 - **No git writes.** No commit, push, branch switch or stash. The caller decides what happens to
   your changes.
 - **No redesign.** You execute the plan. When the code disagrees with it, stop and report (Step 1).
+- **Red-first tests are read-only for you.** When `test-writer` wrote failing tests for the plan
+  before you started, make them pass without editing them. If one looks wrong, stop and return
+  `Status: blocked` naming the test and why; `plan-verifier` checks that they are unchanged.
 - **Dependencies.** A missing `node_modules` in a touched package (a fresh worktree) may be
   restored with the lockfile-preserving install:
   - `npm ci` in `reviewer-core/` (first — `server` needs it);
@@ -103,14 +107,12 @@ Fix a failing test in the code, never by weakening, skipping or deleting the tes
 The unit suite already contains `server/test/route-adapter-calls.test.ts`. If that test fails
 because of your change, fix the code: your route calls an adapter it must not.
 
-**Not your job** — leave these for the review agents and list them under Handoff, even when a
+**Not your job** — leave these for their owners and list them under Handoff, even when a
 loaded skill or the plan tells you to run them (for example, step 9 of `onion-architecture`).
 Your scope is set here, not by the skills:
-- `pr-self-review`;
-- `pnpm lint:boundaries` and its step-9 report;
-- integration tests (`*.it.test.ts`) and e2e;
-- acceptance-criteria verification;
-- security and architecture review.
+- `architecture-reviewer`: `pnpm lint:boundaries`, its step-9 report, architecture review;
+- `plan-verifier`: acceptance-criteria verification and integration tests (`*.it.test.ts`);
+- main session: e2e, `pr-self-review` and security review.
 If the plan lists any of these under your checks, skip them and note it under **Deviations**.
 
 ## Step 5 — End
@@ -149,6 +151,8 @@ Status: done | partial | blocked
 
 ## Handoff to reviewers
 - Surfaces and files touched: <list>
-- Checks for reviewers from the plan: <list>
-- No architecture or security verdict is given here.
+- architecture-reviewer: <its checks from the plan>
+- plan-verifier: <its checks from the plan; red-first test paths and their commit, if any>
+- main session: <e2e, pr-self-review, /security-review — whichever the plan lists>
+- No architecture, acceptance or security verdict is given here.
 ```
