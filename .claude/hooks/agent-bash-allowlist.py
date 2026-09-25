@@ -66,6 +66,9 @@ GIT_FORBIDDEN_LONG = ("output", "ext-diff", "textconv", "exec-path", "git-dir", 
 
 PACKAGES = ("server", "client", "reviewer-core", "e2e")
 
+# Every command that executes repo code must be prefixed with this, verbatim, from the repo root.
+WRAPPER = ".claude/sandbox/run-tests.sh"
+
 
 class Refused(Exception):
     """The command is not on the allowlist; the message is the reason."""
@@ -175,57 +178,89 @@ def vitest_args_allowed(args: list[str]) -> bool:
         if re.fullmatch(r"--reporter=[a-z-]+", word):
             i += 1
             continue
-        if not plain_path(word):
+        if word == ".it.test" or not plain_path(word):
             return False
         i += 1
     return True
 
 
-def architecture_allowed(words: list[str]) -> bool:
-    if len(words) >= 4 and words[:2] == ["pnpm", "--dir"] and pkg_dir(words[2], ("server",)):
-        tail = words[3:]
-        return tail in (["lint:boundaries"], ["exec", "vitest", "run", "test/route-adapter-calls.test.ts"])
-    return False
+def code_run_allowed(words: list[str], profile: str) -> bool:
+    """Commands that execute repo code: tests, and lint (its config is JavaScript).
 
-
-def verify_allowed(words: list[str]) -> bool:
-    if len(words) >= 4 and words[:2] == ["pnpm", "--dir"]:
-        d, tail = words[2], words[3:]
-        if pkg_dir(d, ("server", "client")) and tail == ["typecheck"]:
-            return True
+    These run only inside `.claude/sandbox/run-tests.sh`, so `check` calls this on the words
+    after the wrapper and refuses a match that isn't wrapped.
+    """
+    if len(words) < 4:
+        return False
+    d, tail = words[2], words[3:]
+    if words[:2] == ["pnpm", "--dir"] and pkg_dir(d, ("server",)) and tail in (
+        ["lint:boundaries"],
+        ["exec", "vitest", "run", "test/route-adapter-calls.test.ts"],
+    ):
+        return True
+    if profile == "architecture":
+        return False
+    if words[:2] == ["pnpm", "--dir"]:
         if pkg_dir(d, ("client",)) and tail == ["test"]:
             return True
-        if pkg_dir(d, ("server",)) and tail in (
-            ["exec", "vitest", "run", "--exclude", "**/*.it.test.ts"],
-            ["exec", "vitest", "run", ".it.test"],
-        ):
+        if pkg_dir(d, ("server",)) and tail == ["exec", "vitest", "run", "--exclude", "**/*.it.test.ts"]:
             return True
         if pkg_dir(d, ("server", "client")) and tail[:3] == ["exec", "vitest", "run"] and len(tail) > 3:
             return vitest_args_allowed(tail[3:])
-    if len(words) >= 4 and words[:2] == ["npm", "--prefix"]:
-        d, tail = words[2], words[3:]
-        if pkg_dir(d, ("reviewer-core",)) and tail in (["test"], ["run", "typecheck"]):
+    if words[:2] == ["npm", "--prefix"] and pkg_dir(d, ("reviewer-core",)):
+        if tail == ["test"]:
             return True
-        if pkg_dir(d, ("e2e",)) and tail == ["run", "typecheck"]:
-            return True
-        if pkg_dir(d, ("reviewer-core",)) and tail[:2] == ["test", "--"] and len(tail) > 2:
+        if tail[:2] == ["test", "--"] and len(tail) > 2:
             return vitest_args_allowed(tail[2:])
-    return architecture_allowed(words)
+    return False
 
 
-def check(command: str, profile: str) -> None:
+def integration_suite(words: list[str], profile: str) -> bool:
+    """plan-verifier's one Docker run. It can't be sandboxed: Docker access escapes any sandbox,
+    so the main session reads test-writer's integration tests before this suite runs them."""
+    return (
+        profile == "verify"
+        and len(words) == 7
+        and words[:2] == ["pnpm", "--dir"]
+        and pkg_dir(words[2], ("server",))
+        and words[3:] == ["exec", "vitest", "run", ".it.test"]
+    )
+
+
+def read_only_allowed(words: list[str]) -> bool:
+    """Commands that read or type-check but execute no repo code."""
+    if words[0] == "git":
+        return git_allowed(words)
+    if words == ["diff", "-rq", "server/src/vendor/shared", "client/src/vendor/shared"]:
+        return True
+    if len(words) >= 4:
+        d, tail = words[2], words[3:]
+        if words[:2] == ["pnpm", "--dir"] and pkg_dir(d, ("server", "client")) and tail == ["typecheck"]:
+            return True
+        if words[:2] == ["npm", "--prefix"] and pkg_dir(d, ("reviewer-core", "e2e")) and tail == ["run", "typecheck"]:
+            return True
+    return False
+
+
+def check(command: str, profile: str, unsandboxed: bool) -> None:
     words = split_words(command)
     if not words:
         raise Refused("empty command")
-    if words[0] == "git" and git_allowed(words):
-        return
-    if words == ["diff", "-rq", "server/src/vendor/shared", "client/src/vendor/shared"]:
-        return
-    if profile == "architecture" and architecture_allowed(words):
-        return
-    if profile in ("verify", "test") and verify_allowed(words):
-        return
-    raise Refused(f"not on the `{profile}` allowlist")
+    if words[0] == WRAPPER:
+        if not code_run_allowed(words[1:], profile):
+            raise Refused(f"{WRAPPER} only wraps the test and lint runs of the `{profile}` profile")
+        return  # srt can't start inside another macOS sandbox, so this may run unsandboxed
+    if code_run_allowed(words, profile):
+        raise Refused(f"this runs repo code, so run it through the sandbox: {WRAPPER} {command}")
+    if integration_suite(words, profile):
+        return  # Docker can't run inside the session sandbox either
+    if not read_only_allowed(words):
+        raise Refused(f"not on the `{profile}` allowlist")
+    if unsandboxed:
+        raise Refused(
+            f"only {WRAPPER} and the integration suite may run outside the session sandbox; "
+            "run this command without dangerouslyDisableSandbox"
+        )
 
 
 def deny(reason: str) -> None:
@@ -250,10 +285,11 @@ def main() -> int:
         profile = sys.argv[1] if len(sys.argv) > 1 else ""
         if profile not in PROFILES:
             raise Refused(f"unknown profile {profile!r}")
-        command = json.load(sys.stdin)["tool_input"]["command"]
+        tool_input = json.load(sys.stdin)["tool_input"]
+        command = tool_input["command"]
         if not isinstance(command, str):
             raise Refused("command is not a string")
-        check(command.strip(), profile)
+        check(command.strip(), profile, tool_input.get("dangerouslyDisableSandbox") is True)
     except Refused as exc:
         deny(str(exc))
     except Exception as exc:  # anything unexpected must deny, never fall through to allow

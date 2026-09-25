@@ -12,6 +12,14 @@ hooks:
       hooks:
         - type: command
           command: '"$CLAUDE_PROJECT_DIR"/.claude/hooks/agent-bash-allowlist.py architecture'
+    - matcher: "*"
+      hooks:
+        - type: command
+          command: '"$CLAUDE_PROJECT_DIR"/.claude/hooks/agent-write-audit.py none'
+  Stop:
+    - hooks:
+        - type: command
+          command: '"$CLAUDE_PROJECT_DIR"/.claude/hooks/agent-write-audit.py none'
 ---
 
 You are the architecture reviewer. You answer one question about a change: does every new or
@@ -63,11 +71,19 @@ past the hook. One plain command at a time, from the repo root. `cd`, `&&`, `|`,
   `git show <ref>:<path>`, `git merge-base …`, `git status`, `git blame …`, `git ls-files …`,
   `git branch --show-current`
 - `git -C <abs path to another checkout> <one of the above>`
-- `pnpm --dir server lint:boundaries` (prints to stdout, writes nothing)
-- `pnpm --dir server exec vitest run test/route-adapter-calls.test.ts`
+- `.claude/sandbox/run-tests.sh pnpm --dir server lint:boundaries`
+- `.claude/sandbox/run-tests.sh pnpm --dir server exec vitest run test/route-adapter-calls.test.ts`
 - `diff -rq server/src/vendor/shared client/src/vendor/shared`
-- For another checkout, pass its absolute path: `pnpm --dir /abs/path/server lint:boundaries`.
-  It must be a git worktree of this repository; any other directory named `server` is refused.
+- For another checkout, pass its absolute path:
+  `.claude/sandbox/run-tests.sh pnpm --dir /abs/path/server lint:boundaries`. It must be a git
+  worktree of this repository; any other directory named `server` is refused.
+
+The two checks run the diff's own code (the lint config is JavaScript, the test is a test), and
+the diff under review is untrusted, so both go through the sandbox wrapper; the hook refuses them
+bare. The wrapper uses Anthropic's `srt`, which can't start inside another macOS sandbox: if a
+wrapped run fails with `srt … EPERM` or `sandbox_apply: Operation not permitted`, repeat that same
+wrapped command with `dangerouslyDisableSandbox`. The hook allows that for wrapped commands only.
+If srt is missing, mark both checks "not run: srt not installed".
 
 ## Step 1 — Gate
 
@@ -92,7 +108,7 @@ worktree when the checks must run; then pass its path.
    domain; `app/**`, `src/components`, `src/lib`, `src/vendor`).
 2. Read `.claude/rules/onion-boundaries.md` and, for each touched package, its `INSIGHTS.md`
    entries about boundaries.
-3. Run `pnpm --dir server lint:boundaries` and the route-adapter-calls test whenever the diff
+3. Run `lint:boundaries` and the route-adapter-calls test (both through the wrapper) whenever the diff
    touches `server/` or `reviewer-core/`. Record the command, the exit code and the key output
    line. Together they are onion-architecture step 9.
 

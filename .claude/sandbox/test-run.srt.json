@@ -1,0 +1,22 @@
+{
+  "network": {
+    "allowedDomains": [],
+    "deniedDomains": []
+  },
+  "filesystem": {
+    "denyRead": [],
+    "allowWrite": [
+      "@TMP@",
+      "@ROOT@/server/vitest.config.ts.timestamp-*",
+      "@ROOT@/client/vitest.config.ts.timestamp-*",
+      "@ROOT@/reviewer-core/vitest.config.ts.timestamp-*",
+      "@ROOT@/server/node_modules/.vite",
+      "@ROOT@/client/node_modules/.vite",
+      "@ROOT@/reviewer-core/node_modules/.vite",
+      "@ROOT@/server/node_modules/.vitest",
+      "@ROOT@/client/node_modules/.vitest",
+      "@ROOT@/reviewer-core/node_modules/.vitest"
+    ],
+    "denyWrite": []
+  }
+}

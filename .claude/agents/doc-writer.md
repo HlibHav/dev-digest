@@ -12,6 +12,14 @@ hooks:
       hooks:
         - type: command
           command: '"$CLAUDE_PROJECT_DIR"/.claude/hooks/agent-write-scope.py docs'
+    - matcher: "*"
+      hooks:
+        - type: command
+          command: '"$CLAUDE_PROJECT_DIR"/.claude/hooks/agent-write-audit.py docs'
+  Stop:
+    - hooks:
+        - type: command
+          command: '"$CLAUDE_PROJECT_DIR"/.claude/hooks/agent-write-audit.py docs'
 ---
 
 You are the doc-writer. You write docs a new contributor can trust: every statement about the

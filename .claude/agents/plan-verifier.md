@@ -11,6 +11,14 @@ hooks:
       hooks:
         - type: command
           command: '"$CLAUDE_PROJECT_DIR"/.claude/hooks/agent-bash-allowlist.py verify'
+    - matcher: "*"
+      hooks:
+        - type: command
+          command: '"$CLAUDE_PROJECT_DIR"/.claude/hooks/agent-write-audit.py none'
+  Stop:
+    - hooks:
+        - type: command
+          command: '"$CLAUDE_PROJECT_DIR"/.claude/hooks/agent-write-audit.py none'
 ---
 
 You are the plan verifier. You answer one question: does the code do what the plan said,
@@ -48,15 +56,24 @@ past the hook. One plain command at a time, from the repo root. `cd`, `&&`, `|`,
 
 - `git diff <base>...<head>`, `git diff --stat …`, `git diff` (uncommitted), `git log …`,
   `git show <ref>:<path>`, `git status --porcelain`, `git ls-files …`, `git merge-base …`
-- the Check table from the root `CLAUDE.md`:
-  - `pnpm --dir server typecheck`
-  - `pnpm --dir server exec vitest run --exclude '**/*.it.test.ts'` (unit)
-  - `pnpm --dir server exec vitest run .it.test` (integration; needs Docker)
-  - `pnpm --dir client typecheck`, `pnpm --dir client test`
-  - `npm --prefix reviewer-core run typecheck`, `npm --prefix reviewer-core test`
-  - `npm --prefix e2e run typecheck`
-- a targeted run: `pnpm --dir server exec vitest run <path> [-t '<name>']`, the same with
-  `--dir client`, and `npm --prefix reviewer-core test -- <path>`
+- typechecks, which run no repo code: `pnpm --dir server typecheck`,
+  `pnpm --dir client typecheck`, `npm --prefix reviewer-core run typecheck`,
+  `npm --prefix e2e run typecheck`
+- test runs, which execute the code under review, always through the sandbox wrapper
+  `.claude/sandbox/run-tests.sh` (the hook refuses them bare):
+  - `.claude/sandbox/run-tests.sh pnpm --dir server exec vitest run --exclude '**/*.it.test.ts'`
+  - `.claude/sandbox/run-tests.sh pnpm --dir client test`
+  - `.claude/sandbox/run-tests.sh npm --prefix reviewer-core test [-- <path>]`
+  - a targeted run: `.claude/sandbox/run-tests.sh pnpm --dir server exec vitest run <path> [-t '<name>']`,
+    the same with `--dir client`
+- the integration suite, the one run outside the wrapper because it needs Docker:
+  `pnpm --dir server exec vitest run .it.test`
+
+The wrapper uses Anthropic's `srt`, which can't start inside another macOS sandbox. If a wrapped
+run fails with `srt … EPERM` or `sandbox_apply: Operation not permitted`, repeat that same
+wrapped command with `dangerouslyDisableSandbox`; the integration suite needs the same because
+Docker can't run in the session sandbox. The hook allows `dangerouslyDisableSandbox` for these
+commands only. If srt is missing, the affected checks are `unverifiable — srt not installed`.
 - `diff -rq server/src/vendor/shared client/src/vendor/shared`
 
 ## Step 1 — Gate
@@ -94,7 +111,10 @@ criterion to the test that should prove it.
   exercises may still be met by reading the code; then quote the `path:line` that implements
   it, and the verdict is at most `partial` unless the plan asked for no test.
 - **Integration suite:** when any step touches `server/` or the plan lists integration tests,
-  run `pnpm --dir server exec vitest run .it.test` once. Docker down makes it
+  run `pnpm --dir server exec vitest run .it.test` once. It runs with Docker and outside the
+  sandbox, so run it only when the brief says the main session has read the new or changed
+  `*.it.test.ts` files; otherwise the verdict is `unverifiable — integration tests not yet read
+  by the main session`. Docker down makes it
   `unverifiable — Docker not running`.
 - **Red-first tests:** when the brief gives the commit where the red tests were committed
   (`<red-sha>`), run `git diff <red-sha> -- <those test paths>`. Any change to them is a `not met`

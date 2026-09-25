@@ -10,7 +10,7 @@ its own `.md` file, so read that file before you change the agent.
 |---|---|---|---|---|---|
 | [researcher](researcher.md) | Answers one concrete question from the repo or from external sources, with evidence and an explicit "not found" list | `sonnet` | Read-only in the repo (`Read, Grep, Glob`); `WebSearch`, `WebFetch`; NotebookLM create/add/query only (no delete, share or studio) | A question plus its scope (repo / external / both) and what it feeds | **Repo report** or **External report**, or clarifying questions |
 | [planner](planner.md) | Turns a request into a Development Plan that respects modules, skills, rules and `INSIGHTS.md` | `opus` | Read-only: `Read, Grep, Glob` (no `Skill`, `Bash`, `Write` or web) | A feature or change request (optionally a researcher report) | **Development Plan** (`Status: ready`) or clarifying questions (`needs-answers`) |
-| [test-writer](test-writer.md) | Writes tests for BE and UI in two modes: red-first from a plan's acceptance criteria, or backfill for existing code | `sonnet` | `Read, Grep, Glob, Edit, Write, Bash, Skill`; hooks limit writes to test paths and Bash to the `test` profile; no e2e runs | A plan (red-first) or named files (backfill) | **Test Report**: criterion → test → evidence, plus test files in the working tree |
+| [test-writer](test-writer.md) | Writes tests for BE and UI in two modes: red-first from a plan's acceptance criteria, or backfill for existing code | `sonnet` | `Read, Grep, Glob, Edit, Write, Bash, Skill`; hooks limit writes to test paths and Bash to the `test` profile; every test run inside `srt`; writes but doesn't run integration tests or e2e | A plan (red-first) or named files (backfill) | **Test Report**: criterion → test → evidence, plus test files in the working tree |
 | [implementer](implementer.md) | Executes the plan in the backend and the UI, self-reviews how its own code is written, and runs typecheck plus the existing unit tests | `sonnet` | `Read, Grep, Glob, Edit, Write, Bash, Skill`; preloads `engineering-insights`, `onion-architecture`, `frontend-ui-architecture`; no commit, push or research | A Development Plan with `Status: ready` | **Implementation Report** (`done` / `partial` / `blocked`) plus uncommitted changes in the working tree |
 | [architecture-reviewer](architecture-reviewer.md) | Checks a diff against the onion and client boundaries, runs `lint:boundaries` and the route test, reports what the lint can't see | `opus` | Read-only: `Read, Grep, Glob, Bash`; a hook limits Bash to the `architecture` profile; preloads both architecture skills | A target (`base..head`, branch or uncommitted tree) | **Architecture Review**: findings with severity, rule, `path:line` and evidence; `pass` / `fail` |
 | [plan-verifier](plan-verifier.md) | Checks finished code against every plan item and traces every hunk back to the plan; no advice | `sonnet` | Read-only: `Read, Grep, Glob, Bash`; a hook limits Bash to the `verify` profile | A plan, a target, optionally the Test Report | **Plan Verification**: a verdict with evidence per item, unmapped changes; `verified` / `gaps` |
@@ -60,7 +60,8 @@ The planner writes each check under *Checks for reviewers* with its owner, and t
 | typecheck and the existing unit tests of each touched package | implementer |
 | `pnpm lint:boundaries`, the onion-architecture step 9 report, `route-adapter-calls.test.ts` | architecture-reviewer |
 | acceptance verification | plan-verifier |
-| integration tests (`*.it.test.ts`, Docker) as a review check | plan-verifier; test-writer runs only the ones it wrote |
+| integration tests (`*.it.test.ts`, Docker) as a review check | plan-verifier, after the main session has read test-writer's new ones |
+| red-first run of test-writer's integration tests | main session (Docker can't run inside test-writer's sandbox) |
 | unchanged red-first tests | plan-verifier |
 | e2e (`npm run e2e:hermetic`) | main session: it rebuilds `client/.next` and breaks a running dev server (`e2e/INSIGHTS.md`), and its ports live in `CLAUDE.local.md` |
 | `pr-self-review` | main session: it writes a verdict artifact |
@@ -83,8 +84,9 @@ Scope splits that are easy to get wrong:
 
 ## How the limits are enforced
 
-Two PreToolUse hooks in `.claude/hooks/` are wired from agent frontmatter only, not from
-`settings.json`, so they apply to these agents and nothing else:
+Three layers, all wired from agent frontmatter only (not from `settings.json`), so they apply to
+these agents and nothing else. The hooks live in `.claude/hooks/`, the sandbox in
+`.claude/sandbox/`:
 
 - `agent-bash-allowlist.py <architecture | verify | test>` splits the command into words itself
   and allows it only when those words form one of the listed shapes. It refuses every character
@@ -97,18 +99,34 @@ Two PreToolUse hooks in `.claude/hooks/` are wired from agent frontmatter only, 
   and allows only the profile's paths. `tests` also denies adding `.skip`/`.only`/`.todo` and
   removing `it(`/`test(`/`expect(` calls from an existing file. `docs` denies `INSIGHTS.md`,
   `CLAUDE.md`, `AGENTS.md`, the root README, `docs/skills/**` and the product prompts.
+- `.claude/sandbox/run-tests.sh` runs every command that executes repo code — tests, and
+  `lint:boundaries`, whose config is JavaScript — inside Anthropic's `srt`
+  (`@anthropic-ai/sandbox-runtime`, `npm install -g`). The process may write only to a fresh temp
+  dir, vitest's caches and vite's config temp files (`test-run.srt.json`), and gets no network and
+  no Unix sockets. That is what stops a test from writing where the write-scope hook can't see:
+  a test is code, and `fs.writeFileSync` or `child_process` inside it never passes through
+  Write/Edit. The allowlist refuses those runs without the wrapper. srt can't start inside
+  another macOS sandbox, so in a session whose Bash is sandboxed the agent runs the wrapped
+  command with `dangerouslyDisableSandbox`, which the allowlist accepts for wrapped commands only.
+- `agent-write-audit.py <tests | docs | none>` records `git status` plus content hashes on the
+  agent's first tool call and compares at SubagentStop. Any changed file outside the profile's
+  paths, or a moved HEAD, is reported to the main session through `systemMessage`. It catches
+  what the other layers miss inside the repo; it can't see writes outside it.
 
-Both deny with JSON (`permissionDecision: "deny"`) and exit 0, and both fail closed: any error
-inside a hook is a deny. Regression tests for the Bash allowlist, including the bypasses found in
-the 2026-09-24 security review, run with
+The hooks deny with JSON (`permissionDecision: "deny"`) and exit 0, and fail closed: any error
+inside a hook is a deny (the audit instead reports that it could not check). Regression tests,
+including the bypasses found in the 2026-09-24 security review, run with
 `python3 -m unittest discover -s .claude/hooks/tests`.
 
-For test-writer, `agent-write-scope.py` guards against mistakes, not against a hostile agent:
-the tests it writes execute arbitrary code when vitest runs them, so it can reach any file that
-way. The boundary that matters for the read-only agents is the Bash allowlist. They don't
-rely on `permissionMode`, because the main session's `bypassPermissions`, `acceptEdits` and
-`auto` modes override a subagent's `permissionMode`. Test a hook by piping a PreToolUse JSON
-into it:
+**What stays open, deliberately.** Integration tests (`*.it.test.ts`) need Docker, and Docker
+access escapes any sandbox (a container can mount the host). So test-writer writes them but
+doesn't run them, and the main session reads each new or changed `*.it.test.ts` before anything
+runs it with Docker: its own red-first run, or plan-verifier's integration suite, which runs
+only when the brief says that reading happened.
+
+None of this relies on `permissionMode`, because the main session's `bypassPermissions`,
+`acceptEdits` and `auto` modes override a subagent's `permissionMode`. Test a hook by piping a
+PreToolUse JSON into it:
 
 ```sh
 echo '{"tool_name":"Bash","tool_input":{"command":"rm x"}}' | .claude/hooks/agent-bash-allowlist.py architecture
@@ -141,6 +159,9 @@ The other agents rest on these sources, checked on 2026-09-24:
 | same | A subagent inherits no history, invoked skills or permission approvals; it does get CLAUDE.md and CLAUDE.local.md | Self-contained plans and reports; every agent re-reads `INSIGHTS.md` itself |
 | same | The main session's permission mode overrides a subagent's `permissionMode`; frontmatter hooks (`PreToolUse`) apply to the subagent | The two hooks instead of `permissionMode: plan` |
 | same | `description` drives delegation; `maxTurns` bounds a run | Every description says when not to use the agent and names its neighbour |
+| [Claude Code — Sandboxing](https://code.claude.com/docs/en/sandboxing) | Subagents share the session's sandbox config (no per-agent sandbox); access to `docker.sock` is effectively a sandbox escape; the primitives ship as `@anthropic-ai/sandbox-runtime` | A per-command `srt` wrapper for test and lint runs; integration tests leave the sandbox only after the main session reads them |
+| [anthropics/sandbox-runtime](https://github.com/anthropics/sandbox-runtime) | `srt --settings <file> <cmd>`; writes and network denied unless listed; Seatbelt on macOS; beta | `.claude/sandbox/run-tests.sh` and `test-run.srt.json` |
+| [Claude Code — Hooks](https://code.claude.com/docs/en/hooks) | Hooks inside a subagent get `agent_id`; a frontmatter `Stop` hook becomes `SubagentStop`; `systemMessage` reaches the main session | `agent-write-audit.py`'s per-agent baseline and report |
 | [Claude Code — Skills](https://code.claude.com/docs/en/skills) | Progressive disclosure: a skill body loads only when it's used | Only what each agent needs is preloaded |
 | [Claude Code — Best practices](https://code.claude.com/docs/en/best-practices) | Explore → Plan → Implement → Commit; "if you could describe the diff in one sentence, skip the plan" | A read-only planner; the implementer never commits |
 | same | "Have one Claude write tests, then another write code to pass them"; "write a failing test that reproduces the issue, then fix it" | test-writer's red-first mode; red tests read-only for the implementer |

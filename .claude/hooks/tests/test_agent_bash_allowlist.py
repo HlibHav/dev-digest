@@ -21,8 +21,14 @@ ROOT = Path(__file__).resolve().parents[3]
 HOOK = ROOT / ".claude" / "hooks" / "agent-bash-allowlist.py"
 
 
-def decide(command: str, profile: str = "architecture") -> str:
-    payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": command}})
+W = ".claude/sandbox/run-tests.sh "  # the sandbox wrapper every test or lint run must go through
+
+
+def decide(command: str, profile: str = "architecture", unsandboxed: bool = False) -> str:
+    tool_input: dict = {"command": command}
+    if unsandboxed:
+        tool_input["dangerouslyDisableSandbox"] = True
+    payload = json.dumps({"tool_name": "Bash", "tool_input": tool_input})
     env = {**os.environ, "CLAUDE_PROJECT_DIR": str(ROOT)}
     out = subprocess.run(
         [sys.executable, str(HOOK), profile], input=payload, capture_output=True, text=True, env=env
@@ -77,10 +83,10 @@ class PackageDirectories(unittest.TestCase):
 
     def test_allowed(self) -> None:
         for cmd, profile in [
-            ("pnpm --dir server lint:boundaries", "architecture"),
-            (f"pnpm --dir {ROOT}/server lint:boundaries", "architecture"),
+            (W + "pnpm --dir server lint:boundaries", "architecture"),
+            (W + f"pnpm --dir {ROOT}/server lint:boundaries", "architecture"),
             ("pnpm --dir client typecheck", "verify"),
-            ("npm --prefix reviewer-core test", "verify"),
+            (W + "npm --prefix reviewer-core test", "verify"),
         ]:
             with self.subTest(cmd=cmd):
                 self.assertEqual(decide(cmd, profile), "allow")
@@ -99,10 +105,10 @@ class VitestArguments(unittest.TestCase):
 
     def test_allowed(self) -> None:
         for cmd in [
-            "pnpm --dir server exec vitest run --exclude '**/*.it.test.ts'",
+            W + "pnpm --dir server exec vitest run --exclude '**/*.it.test.ts'",
             "pnpm --dir server exec vitest run .it.test",
-            "pnpm --dir server exec vitest run test/agents-summary.it.test.ts -t 'returns 404'",
-            "npm --prefix reviewer-core test -- test/grounding.test.ts",
+            W + "pnpm --dir server exec vitest run test/agents-summary.it.test.ts -t 'returns 404'",
+            W + "npm --prefix reviewer-core test -- test/core.test.ts",
         ]:
             with self.subTest(cmd=cmd):
                 self.assertEqual(decide(cmd, "verify"), "allow")
@@ -124,6 +130,61 @@ class ReadOnlyGitStillWorks(unittest.TestCase):
         ]:
             with self.subTest(cmd=cmd):
                 self.assertEqual(decide(cmd), "allow")
+
+
+class CodeRunsOnlyInTheSandbox(unittest.TestCase):
+    """Anything that executes repo code (tests, the lint config) goes through run-tests.sh."""
+
+    def test_unwrapped_code_runs_denied(self) -> None:
+        for cmd, profile in [
+            ("pnpm --dir server exec vitest run test/x.test.ts", "test"),
+            ("pnpm --dir client test", "test"),
+            ("npm --prefix reviewer-core test", "verify"),
+            ("pnpm --dir server exec vitest run --exclude '**/*.it.test.ts'", "verify"),
+            ("pnpm --dir server lint:boundaries", "architecture"),
+            ("pnpm --dir server exec vitest run test/route-adapter-calls.test.ts", "architecture"),
+            ("./.claude/sandbox/run-tests.sh pnpm --dir client test", "test"),
+            (W + "git log", "test"),
+            (W + "pnpm --dir server exec vitest run .it.test", "test"),
+        ]:
+            with self.subTest(cmd=cmd):
+                self.assertEqual(decide(cmd, profile), "deny")
+
+    def test_wrapped_and_non_executing_allowed(self) -> None:
+        for cmd, profile in [
+            (W + "pnpm --dir server exec vitest run test/x.test.ts", "test"),
+            (W + "pnpm --dir client test", "test"),
+            (W + "pnpm --dir server exec vitest run test/route-adapter-calls.test.ts", "architecture"),
+            ("pnpm --dir server typecheck", "test"),
+            ("pnpm --dir server exec vitest run .it.test", "verify"),
+        ]:
+            with self.subTest(cmd=cmd):
+                self.assertEqual(decide(cmd, profile), "allow")
+
+    def test_integration_suite_is_verify_only(self) -> None:
+        self.assertEqual(decide("pnpm --dir server exec vitest run .it.test", "test"), "deny")
+
+
+class SessionSandboxEscape(unittest.TestCase):
+    """`dangerouslyDisableSandbox` is accepted only where srt or Docker needs it."""
+
+    def test_denied(self) -> None:
+        for cmd, profile in [
+            ("git log", "architecture"),
+            ("pnpm --dir server typecheck", "verify"),
+            ("git diff HEAD", "test"),
+        ]:
+            with self.subTest(cmd=cmd):
+                self.assertEqual(decide(cmd, profile, unsandboxed=True), "deny")
+
+    def test_allowed(self) -> None:
+        for cmd, profile in [
+            (W + "pnpm --dir server exec vitest run test/x.test.ts", "test"),
+            (W + "pnpm --dir server lint:boundaries", "architecture"),
+            ("pnpm --dir server exec vitest run .it.test", "verify"),
+        ]:
+            with self.subTest(cmd=cmd):
+                self.assertEqual(decide(cmd, profile, unsandboxed=True), "allow")
 
 
 class FailClosed(unittest.TestCase):
