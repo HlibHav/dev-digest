@@ -39,6 +39,16 @@ TMP=$(cd "$TMP" && pwd -P)
 SETTINGS="$TMP.srt.json"
 trap 'rm -rf "$TMP" "$SETTINGS"' EXIT
 
+# vitest writes only its results cache (node_modules/.vite/vitest/results.json, data, not code).
+# The rest of node_modules/.vite holds vite's dependency cache, which is code a later run outside
+# the sandbox would load, so the sandbox may write only the vitest subdirectory. srt can't create
+# that directory's parents, so it is created here, before the sandbox starts.
+for pkg in server client reviewer-core; do
+  if [ -d "$TARGET_ROOT/$pkg/node_modules" ]; then
+    mkdir -p "$TARGET_ROOT/$pkg/node_modules/.vite/vitest"
+  fi
+done
+
 sed -e "s#@ROOT@#$TARGET_ROOT#g" -e "s#@TMP@#$TMP#g" "$ROOT/.claude/sandbox/test-run.srt.json" > "$SETTINGS"
 
 cd "$ROOT"
