@@ -16,6 +16,9 @@ fixed — add to the one that fits.
 
 - **2026-09-16** — In `*.it.test.ts`, `expect(row.newColumn).not.toBeNull()` passes before the column exists: a drizzle row has no such key, so the value is `undefined`, not `null`, and the test goes green without the feature. Assert the type instead (`toEqual(expect.any(String))`) or a value (`toBeGreaterThan(0)`). Evidence: `server/test/reviews.it.test.ts:214`
 
+- **2026-09-25** — `test/route-adapter-calls.test.ts`'s `GRANDFATHERED` map is an exact-count assertion, so it breaks the same way on a LEGITIMATE fix as on a new violation: moving one `container.github()` call out of a grandfathered route file (e.g. `pulls/routes.ts` 4→3, extracting `GET /pulls/:id`'s refresh logic into a service per onion-architecture) fails the test just like adding one would, and the map itself is off-limits to edit (`.claude/skills/onion-architecture/SKILL.md` step 9: "never ... the test's `GRANDFATHERED` list"). A count-lowering refactor of a grandfathered file needs a human/architecture-reviewer to update that one entry — implementer agents cannot land it green on their own. Evidence: `server/test/route-adapter-calls.test.ts:150`, `server/src/modules/pulls/routes.ts:1`
+  - **2026-09-25** — Refined: a route file ABSENT from `GRANDFATHERED` must have zero adapter calls, so a `new XService({ adapter: () => container.adapter() })` written inline in two such route files (`pulls/routes.ts`, `reviews/routes.ts`) is safe to consolidate into one `build<X>Service(container)` factory in the owning module (e.g. `pulls/wiring.ts`) without touching the map — the factory file itself isn't scanned as a route, and `pulls/routes.ts`'s own grandfathered count is untouched because its 3 counted calls live in the route body, not in the service construction that moved out. Evidence: `server/src/modules/pulls/wiring.ts:1`, `server/src/modules/reviews/routes.ts:11`
+
 ## Codebase Patterns
 
 - **2026-09-16** — `GET /runs/:id/trace` returns the `run_traces.trace` jsonb as stored, with no zod parse, so a field added to `RunStats` is simply absent on traces written before the change. Declare it `.nullish()` and make the client treat `undefined` like `null` (e.g. `stats.cost_usd` → "—"). Evidence: `server/src/modules/reviews/repository/run.repo.ts:190`, `server/src/vendor/shared/contracts/trace.ts:69`
@@ -45,5 +48,9 @@ fixed — add to the one that fits.
   - **2026-09-16** — Refined: the session's main code change, the run cost persisted when a run completes. Evidence: `server/src/modules/reviews/run-executor.ts:253`
 - **2026-09-16** — PR-list cost switched to the sum of all completed runs (SQL `SUM … GROUP BY pr_id`), docs/specs written per package → Codebase Patterns, Tool & Library Notes
   - **2026-09-16** — Refined: the session's main code change, the per-PR `sum(cost_usd)` query. Evidence: `server/src/modules/pulls/routes.ts:155`
+
+- **2026-09-25** — Intent Layer (PR motivation → review prompt): `pr_intent` schema extension, `IntentService`, `GET /pulls/:id/intent`, `PullsService.refreshPullDetail` extraction [D6], `uses_intent` per agent [D5], reviewer-core `renderIntentBlock` → What Doesn't Work. Evidence: `server/src/modules/reviews/intent-service.ts:1`
+
+- **2026-09-25** — Intent Layer review-fix iteration (F1 derive gating, F1b hermetic mocks, F2 commit sanitising, F4 malformed-link handling, F5 pure input-hash helper, F7 one `PullsService` factory) → What Doesn't Work (comment). Evidence: `server/src/modules/pulls/wiring.ts:1`
 
 ## Open Questions

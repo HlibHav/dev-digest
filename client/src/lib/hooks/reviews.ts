@@ -4,10 +4,11 @@
 
 import React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, API_BASE } from "../api";
+import { api, API_BASE, ApiError } from "../api";
 import { notify } from "../toast";
 import type {
   FindingActionKind,
+  PrIntentRecord,
   PrReviewComment,
   ReviewRecord,
   ReviewRunResponse,
@@ -44,6 +45,24 @@ export function usePrRuns(prId: string | null | undefined) {
     enabled: !!prId,
     refetchInterval: (query) =>
       (query.state.data ?? []).some((r) => r.status === "running") ? 4000 : false,
+  });
+}
+
+// ---- Derived PR intent (Overview tab + trace) ----
+/** The PR's derived intent, or `null` when none has been derived yet (404). */
+export function usePrIntent(prId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["pr-intent", prId],
+    queryFn: async (): Promise<PrIntentRecord | null> => {
+      try {
+        return await api.get<PrIntentRecord>(`/pulls/${prId}/intent`);
+      } catch (e) {
+        if (e instanceof ApiError && e.status === 404) return null;
+        throw e;
+      }
+    },
+    enabled: !!prId,
+    retry: false,
   });
 }
 
