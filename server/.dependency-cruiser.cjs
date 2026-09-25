@@ -10,10 +10,11 @@
  * fixing a recorded edge.
  */
 
-/** Application files: everything in a module except its edge (routes) and its repository. */
+/** Application files: everything in a module except its edge (routes, wiring) and its repository. */
 const APPLICATION = '^src/modules/[^/]+/';
 const NOT_APPLICATION = [
   '/routes\\.ts$',
+  '/wiring\\.ts$',
   '/repository\\.ts$',
   '/repository/',
   '\\.repo\\.ts$',
@@ -38,7 +39,7 @@ module.exports = {
         'A route handler parses, calls a service and maps the result. Queries belong in the ' +
         "module's repository.",
       severity: 'error',
-      from: { path: '^src/modules/[^/]+/routes\\.ts$' },
+      from: { path: '^src/modules/[^/]+/(routes|wiring)\\.ts$' },
       to: { path: [npm('drizzle-orm'), '^src/db/'] },
     },
     {
@@ -50,7 +51,7 @@ module.exports = {
       comment:
         'A route never reaches an adapter directly; external I/O goes through a service and a port.',
       severity: 'error',
-      from: { path: '^src/modules/[^/]+/routes\\.ts$' },
+      from: { path: '^src/modules/[^/]+/(routes|wiring)\\.ts$' },
       to: { path: '^src/adapters/' },
     },
     {
