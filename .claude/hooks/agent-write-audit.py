@@ -1,35 +1,33 @@
 #!/usr/bin/env python3
 """After-the-fact check of what a subagent changed in the repo.
 
-Wired only from agent frontmatter, as two hooks with the same profile:
+Three hook calls per audited run, all running this script:
 
-  hooks:
-    PreToolUse:
-      - matcher: ".*"
-        hooks:
-          - type: command
-            command: '"$CLAUDE_PROJECT_DIR"/.claude/hooks/agent-write-audit.py tests'
-    Stop:                       # Claude Code turns a frontmatter Stop hook into SubagentStop
-      - hooks:
-          - type: command
-            command: '"$CLAUDE_PROJECT_DIR"/.claude/hooks/agent-write-audit.py tests'
+  1. PreToolUse, matcher "*", in the agent's frontmatter, with the agent's profile
+     (`tests`, `docs` or `none`). On the agent's first tool call it records a baseline, keyed by
+     `agent_id`: HEAD plus a hash of every file `git status` lists (tracked changes and untracked
+     files; ignored files are skipped). The first tool call runs before any of the agent's own
+     writes, so uncommitted work already in the tree, such as the implementer's, is in the
+     baseline and not blamed on the agent.
+  2. Stop in the agent's frontmatter (Claude Code turns it into SubagentStop), same profile.
+     It recomputes the snapshot and writes the result — every changed file outside the
+     profile's paths, and a moved HEAD — to `<git dir>/agent-audit/<agent_id>.result.json`.
+  3. PostToolUse, matcher "Agent", registered in `.claude/settings.json`, with profile `report`.
+     It runs in the main session after the Agent tool returns, reads the result for the
+     returned `agentId` and hands any problem to the main session as `additionalContext`.
 
-Profiles: `tests` (test-writer's paths), `docs` (doc-writer's paths), `none` (read-only agents).
-The path rules are the ones in agent-write-scope.py, loaded from that file.
+Step 3 exists because a SubagentStop hook's `systemMessage` lands in the subagent's own
+transcript, never in the main session's (checked live on 2026-09-25, with the hook registered
+both in frontmatter and in session settings). `additionalContext` from PostToolUse(Agent) does
+reach the main session. When one of the audited agents returns with no result at all, step 3
+says so: its frontmatter hooks did not run (for example, the session loaded the agent
+definition before they were added), so its changes were not checked.
 
-On the agent's first tool call (PreToolUse) it records a baseline, keyed by `agent_id`: HEAD
-plus a hash of every file `git status` lists (tracked changes and untracked files; ignored files
-are not tracked). The first tool call runs before any of the agent's own writes, so uncommitted
-work that was already in the tree, such as the implementer's, is part of the baseline and not
-blamed on the agent.
+The path rules are the ones in agent-write-scope.py, loaded from that file. Nothing here blocks:
+the agent's work is kept and the main session decides. It can't see writes outside the repo;
+test and lint runs are kept inside the srt sandbox (.claude/sandbox/run-tests.sh) for that.
 
-At SubagentStop it recomputes the same snapshot and reports, through `systemMessage` (shown to
-the main session), every file that changed and is outside the profile's paths, and a moved HEAD.
-It never blocks: the agent's work is kept and the main session decides. It can't see writes
-outside the repo; for test-writer those are stopped by the srt sandbox around every test run
-(.claude/sandbox/run-tests.sh).
-
-Stdin: the hook JSON. Stdout: nothing, or `{"systemMessage": ...}`. Exit code: always 0.
+Stdin: the hook JSON. Stdout: nothing, or the PostToolUse `additionalContext` JSON. Exit: 0.
 """
 
 from __future__ import annotations
@@ -92,10 +90,23 @@ def snapshot(root: Path) -> dict:
     return {"head": git(root, "rev-parse", "HEAD").strip(), "files": files}
 
 
-def state_file(root: Path, agent_id: str) -> Path:
-    git_dir = Path(git(root, "rev-parse", "--absolute-git-dir").strip())
+AUDITED_AGENTS = {"test-writer", "doc-writer", "architecture-reviewer", "plan-verifier"}
+
+
+def audit_dir(root: Path) -> Path:
+    return Path(git(root, "rev-parse", "--absolute-git-dir").strip()) / "agent-audit"
+
+
+def state_files(root: Path, agent_id: str) -> tuple[Path, Path]:
+    """(baseline, result) for one agent run."""
     safe = re.sub(r"[^A-Za-z0-9_.-]", "_", agent_id)
-    return git_dir / "agent-audit" / f"{safe}.json"
+    d = audit_dir(root)
+    return d / f"{safe}.json", d / f"{safe}.result.json"
+
+
+def write_result(result: Path, agent_type: str, problems: list[str]) -> None:
+    result.parent.mkdir(parents=True, exist_ok=True)
+    result.write_text(json.dumps({"agent_type": agent_type, "problems": problems}))
 
 
 def changed(before: dict, after: dict) -> list[str]:
@@ -105,27 +116,22 @@ def changed(before: dict, after: dict) -> list[str]:
     return sorted(p for p in paths if before["files"].get(p, "clean") != after["files"].get(p, "clean"))
 
 
-def main() -> int:
+def in_subagent(profile: str, payload: dict, root: Path) -> None:
+    """Steps 1 and 2: baseline on PreToolUse, result on SubagentStop. Prints nothing."""
+    agent_id = payload.get("agent_id") or "main"
+    agent_type = payload.get("agent_type") or "agent"
+    baseline, result = state_files(root, agent_id)
+    if payload.get("hook_event_name") == "PreToolUse":
+        if not baseline.exists():
+            baseline.parent.mkdir(parents=True, exist_ok=True)
+            baseline.write_text(json.dumps(snapshot(root)))
+        return
     try:
-        profile = sys.argv[1] if len(sys.argv) > 1 else ""
-        payload = json.load(sys.stdin)
-        agent_id = payload.get("agent_id") or "main"
-        agent_type = payload.get("agent_type") or "agent"
-        root = Path(os.environ.get("CLAUDE_PROJECT_DIR") or payload.get("cwd") or os.getcwd()).resolve()
-        store = state_file(root, agent_id)
-        event = payload.get("hook_event_name", "")
-
-        if event == "PreToolUse":
-            if not store.exists():
-                store.parent.mkdir(parents=True, exist_ok=True)
-                store.write_text(json.dumps(snapshot(root)))
-            return 0
-
-        if not store.exists():
-            print(json.dumps({"systemMessage": f"agent-write-audit: {agent_type} ({agent_id}) finished with no baseline, so its changes could not be checked. Review `git status` before using its work."}))
-            return 0
-        before = json.loads(store.read_text())
-        store.unlink()
+        if not baseline.exists():
+            write_result(result, agent_type, ["finished with no baseline, so its changes could not be checked"])
+            return
+        before = json.loads(baseline.read_text())
+        baseline.unlink()
         after = snapshot(root)
         problems = []
         if after["head"] != before["head"]:
@@ -133,10 +139,52 @@ def main() -> int:
         outside = [rel for rel in changed(before, after) if not allowed(rel, profile)]
         if outside:
             problems.append("changed files outside its allowed paths: " + ", ".join(outside))
-        if problems:
-            print(json.dumps({"systemMessage": f"agent-write-audit: {agent_type} ({agent_id}) " + "; ".join(problems) + ". Review these before using its report."}))
-    except Exception as exc:  # a broken audit must be visible, not silent
-        print(json.dumps({"systemMessage": f"agent-write-audit: the check failed ({exc.__class__.__name__}: {exc}); review `git status` by hand."}))
+        write_result(result, agent_type, problems)
+    except Exception as exc:  # a broken audit must be visible to the main session
+        write_result(result, agent_type, [f"the audit failed ({exc.__class__.__name__}: {exc})"])
+
+
+def in_main_session(payload: dict, root: Path) -> None:
+    """Step 3: PostToolUse(Agent) in the main session. Prints `additionalContext` or nothing."""
+    response = payload.get("tool_response") or {}
+    agent_id = response.get("agentId") if isinstance(response, dict) else None
+    agent_type = (response.get("agentType") if isinstance(response, dict) else None) or (
+        payload.get("tool_input") or {}
+    ).get("subagent_type", "")
+    if agent_type not in AUDITED_AGENTS:
+        return
+    problems: list[str]
+    result = state_files(root, agent_id)[1] if agent_id else None
+    if result is not None and result.exists():
+        problems = json.loads(result.read_text()).get("problems", [])
+        result.unlink()
+    else:
+        problems = [
+            "its write audit did not run (its frontmatter hooks were not loaded, for example because "
+            "the session loaded the agent definition before they were added, or the run crashed), so "
+            "nothing checked what it changed"
+        ]
+    if problems:
+        context = (
+            f"agent-write-audit: {agent_type} ({agent_id or 'unknown id'}) " + "; ".join(problems)
+            + ". Check `git status` and `git diff` before using its report."
+        )
+        print(json.dumps({"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": context}}))
+
+
+def main() -> int:
+    try:
+        profile = sys.argv[1] if len(sys.argv) > 1 else ""
+        payload = json.load(sys.stdin)
+        root = Path(os.environ.get("CLAUDE_PROJECT_DIR") or payload.get("cwd") or os.getcwd()).resolve()
+        if profile == "report":
+            in_main_session(payload, root)
+        elif profile in ("tests", "docs", "none"):
+            in_subagent(profile, payload, root)
+    except Exception as exc:  # never break the tool call; say what failed where it can be seen
+        if len(sys.argv) > 1 and sys.argv[1] == "report":
+            print(json.dumps({"hookSpecificOutput": {"hookEventName": "PostToolUse",
+                  "additionalContext": f"agent-write-audit: the report step failed ({exc.__class__.__name__}: {exc})."}}))
     return 0
 
 
