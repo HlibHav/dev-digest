@@ -14,7 +14,7 @@
 const APPLICATION = '^src/modules/[^/]+/';
 const NOT_APPLICATION = [
   '/routes\\.ts$',
-  '/wiring\\.ts$',
+  '^src/modules/[^/]+/wiring\\.ts$',
   '/repository\\.ts$',
   '/repository/',
   '\\.repo\\.ts$',
