@@ -1,0 +1,27 @@
+{
+  "title": "Stated intent",
+  "empty": "No intent derived yet — it's derived the next time a review runs.",
+  "lowHint": "Derived from indirect data (branch name, commits, changed paths) — no description or linked issue.",
+  "confidence": {
+    "high": "high confidence",
+    "medium": "medium confidence",
+    "low": "low confidence"
+  },
+  "changeType": {
+    "feature": "Feature",
+    "bugfix": "Bugfix",
+    "refactor": "Refactor",
+    "perf": "Performance",
+    "docs": "Docs",
+    "test": "Test",
+    "chore": "Chore",
+    "unknown": "Unknown"
+  },
+  "inScope": "In scope",
+  "outOfScope": "Out of scope",
+  "sources": {
+    "title": "Sources",
+    "used": "Used",
+    "missing": "Not found"
+  }
+}

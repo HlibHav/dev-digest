@@ -4,7 +4,7 @@ import { waitForPrRuns } from './helpers/runs.js';
 import { buildApp } from '../src/app.js';
 import { loadConfig } from '../src/platform/config.js';
 import { seed } from '../src/db/seed.js';
-import { MockLLMProvider, MockEmbedder, MockGitClient } from '../src/adapters/mocks.js';
+import { MockLLMProvider, MockEmbedder, MockGitClient, MockGitHubClient } from '../src/adapters/mocks.js';
 import * as t from '../src/db/schema.js';
 import { eq } from 'drizzle-orm';
 import type { Review } from '@devdigest/shared';
@@ -117,8 +117,18 @@ d('A2 reviews + agents (Testcontainers pg)', () => {
       overrides: {
         embedder: new MockEmbedder(),
         git: new MockGitClient({ diff: DIFF }),
+        // Hermetic against GitHub: the seeded PR body ("Closes #471.") would
+        // otherwise be parsed by an intent-capable path and reach the real
+        // GitHub API for the linked issue (server/INSIGHTS.md).
+        github: new MockGitHubClient(),
+        // Registered under every provider id, not just the one the review
+        // agent uses: `resolveFeatureModel` (review_intent) can route the
+        // intent call through any of them, and an unregistered id would fall
+        // through to a real, paid provider (server/INSIGHTS.md 2026-09-20).
         llm: {
-          [provider]: new MockLLMProvider(provider, { structured }),
+          openai: new MockLLMProvider('openai', { structured }),
+          anthropic: new MockLLMProvider('anthropic', { structured }),
+          openrouter: new MockLLMProvider('openrouter', { structured }),
         },
       },
     });

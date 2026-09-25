@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { Finding, Verdict } from './findings.js';
-import { Intent, SmartDiff } from './brief.js';
+import { Intent, IntentChangeType, IntentConfidence, IntentSource, SmartDiff } from './brief.js';
 
 /**
  * A2 — Review-Core API surface contracts. These extend the core
@@ -56,8 +56,22 @@ export const ReviewRunResponse = z.object({
 });
 export type ReviewRunResponse = z.infer<typeof ReviewRunResponse>;
 
-/** Intent persisted for a PR (the Intent plus the pr_id it scopes). */
-export const PrIntentRecord = Intent.extend({ pr_id: z.string() });
+/**
+ * Intent persisted for a PR: the Intent plus the pr_id it scopes and the
+ * code-derived fields the model never sets (confidence, sources) alongside
+ * what the model produced (change_type) and which model/commit it ran
+ * against. `.nullish()` throughout — a PR with no derived intent yet, or a
+ * trace/record written before a field existed, must still parse.
+ */
+export const PrIntentRecord = Intent.extend({
+  pr_id: z.string(),
+  change_type: IntentChangeType.nullish(),
+  confidence: IntentConfidence.nullish(),
+  sources: z.array(IntentSource).nullish(),
+  model: z.string().nullish(),
+  head_sha: z.string().nullish(),
+  updated_at: z.string().nullish(),
+});
 export type PrIntentRecord = z.infer<typeof PrIntentRecord>;
 
 /** Smart-diff response for a PR (the SmartDiff). */
