@@ -84,9 +84,9 @@ Scope splits that are easy to get wrong:
 
 ## How the limits are enforced
 
-Three layers, all wired from agent frontmatter only (not from `settings.json`), so they apply to
-these agents and nothing else. The hooks live in `.claude/hooks/`, the sandbox in
-`.claude/sandbox/`:
+Four mechanisms. The hooks live in `.claude/hooks/`, the sandbox in `.claude/sandbox/`. All but
+one step of the audit are wired from agent frontmatter, so they apply to these agents and
+nothing else:
 
 - `agent-bash-allowlist.py <architecture | verify | test>` splits the command into words itself
   and allows it only when those words form one of the listed shapes. It refuses every character
@@ -109,9 +109,13 @@ these agents and nothing else. The hooks live in `.claude/hooks/`, the sandbox i
   another macOS sandbox, so in a session whose Bash is sandboxed the agent runs the wrapped
   command with `dangerouslyDisableSandbox`, which the allowlist accepts for wrapped commands only.
 - `agent-write-audit.py <tests | docs | none>` records `git status` plus content hashes on the
-  agent's first tool call and compares at SubagentStop. Any changed file outside the profile's
-  paths, or a moved HEAD, is reported to the main session through `systemMessage`. It catches
-  what the other layers miss inside the repo; it can't see writes outside it.
+  agent's first tool call and compares at SubagentStop, writing the result to the git dir. A
+  PostToolUse hook on the `Agent` tool, registered in `.claude/settings.json` (profile
+  `report`), hands any problem to the main session as `additionalContext`: a changed file
+  outside the profile's paths, a moved HEAD, or an audited agent whose audit never ran (its
+  definition was loaded before its hooks existed). A SubagentStop `systemMessage` would not do:
+  it lands in the subagent's own transcript. The audit catches what the other mechanisms miss
+  inside the repo; it can't see writes outside it.
 
 The hooks deny with JSON (`permissionDecision: "deny"`) and exit 0, and fail closed: any error
 inside a hook is a deny (the audit instead reports that it could not check). Regression tests,
@@ -161,7 +165,7 @@ The other agents rest on these sources, checked on 2026-09-24:
 | same | `description` drives delegation; `maxTurns` bounds a run | Every description says when not to use the agent and names its neighbour |
 | [Claude Code — Sandboxing](https://code.claude.com/docs/en/sandboxing) | Subagents share the session's sandbox config (no per-agent sandbox); access to `docker.sock` is effectively a sandbox escape; the primitives ship as `@anthropic-ai/sandbox-runtime` | A per-command `srt` wrapper for test and lint runs; integration tests leave the sandbox only after the main session reads them |
 | [anthropics/sandbox-runtime](https://github.com/anthropics/sandbox-runtime) | `srt --settings <file> <cmd>`; writes and network denied unless listed; Seatbelt on macOS; beta | `.claude/sandbox/run-tests.sh` and `test-run.srt.json` |
-| [Claude Code — Hooks](https://code.claude.com/docs/en/hooks) | Hooks inside a subagent get `agent_id`; a frontmatter `Stop` hook becomes `SubagentStop`; `systemMessage` reaches the main session | `agent-write-audit.py`'s per-agent baseline and report |
+| [Claude Code — Hooks](https://code.claude.com/docs/en/hooks) | Hooks inside a subagent get `agent_id`; a frontmatter `Stop` hook becomes `SubagentStop`; PostToolUse `additionalContext` reaches the model (live check: a SubagentStop `systemMessage` stays in the subagent's transcript) | `agent-write-audit.py`'s per-agent baseline, result file and PostToolUse(Agent) report |
 | [Claude Code — Skills](https://code.claude.com/docs/en/skills) | Progressive disclosure: a skill body loads only when it's used | Only what each agent needs is preloaded |
 | [Claude Code — Best practices](https://code.claude.com/docs/en/best-practices) | Explore → Plan → Implement → Commit; "if you could describe the diff in one sentence, skip the plan" | A read-only planner; the implementer never commits |
 | same | "Have one Claude write tests, then another write code to pass them"; "write a failing test that reproduces the issue, then fix it" | test-writer's red-first mode; red tests read-only for the implementer |
