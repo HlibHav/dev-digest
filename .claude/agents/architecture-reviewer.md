@@ -117,7 +117,9 @@ worktree when the checks must run; then pass its path.
    entries about boundaries.
 3. Run `lint:boundaries` and the route-adapter-calls test (both through the wrapper) whenever the diff
    touches `server/` or `reviewer-core/`. Record the command, the exit code and the key output
-   line. Together they are onion-architecture step 9.
+   line. Together they are onion-architecture step 9. When the brief's *Checks already run*
+   table has that command with a sha equal to the target's head, quote its result line with
+   `brief` in the exit column instead of running it again.
 
 ## Step 3 — Review what the checks can't see
 
