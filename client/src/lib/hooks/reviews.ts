@@ -4,16 +4,18 @@
 
 import React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, API_BASE } from "../api";
+import { api, API_BASE, ApiError } from "../api";
 import { notify } from "../toast";
 import type {
   FindingActionKind,
+  PrIntentRecord,
   PrReviewComment,
   ReviewRecord,
   ReviewRunResponse,
   RunEvent,
   RunSummary,
 } from "@devdigest/shared";
+import type { SmartDiff } from "../types";
 
 // ---- Active (in-flight) runs — server-side source of truth ----
 export interface ActiveRun {
@@ -47,11 +49,54 @@ export function usePrRuns(prId: string | null | undefined) {
   });
 }
 
+// ---- Derived PR intent (Overview tab + trace) ----
+/** The PR's derived intent, or `null` when none has been derived yet (404). */
+export function usePrIntent(prId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["pr-intent", prId],
+    queryFn: async (): Promise<PrIntentRecord | null> => {
+      try {
+        return await api.get<PrIntentRecord>(`/pulls/${prId}/intent`);
+      } catch (e) {
+        if (e instanceof ApiError && e.status === 404) return null;
+        throw e;
+      }
+    },
+    enabled: !!prId,
+    retry: false,
+  });
+}
+
+/** Re-derive the PR's intent now (refreshes the PR from GitHub, then one model
+   call). A failure reaches the user through the global mutation toast. */
+export function useRederiveIntent(prId: string | null | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<PrIntentRecord>(`/pulls/${prId}/intent`),
+    onSuccess: (record) => {
+      qc.setQueryData(["pr-intent", prId], record);
+      // The refresh may have changed the body, files and commits too.
+      qc.invalidateQueries({ queryKey: ["pull", prId] });
+    },
+  });
+}
+
 // ---- Persisted reviews + findings for a PR ----
 export function usePrReviews(prId: string | null | undefined) {
   return useQuery({
     queryKey: ["reviews", prId],
     queryFn: () => api.get<ReviewRecord[]>(`/pulls/${prId}/reviews`),
+    enabled: !!prId,
+  });
+}
+
+/** Smart Diff — PR files grouped by role, with findings mapped onto them.
+   Pure path classification server-side; safe to fetch before any review
+   has run. */
+export function useSmartDiff(prId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["smart-diff", prId],
+    queryFn: () => api.get<SmartDiff>(`/pulls/${prId}/smart-diff`),
     enabled: !!prId,
   });
 }

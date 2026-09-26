@@ -6,6 +6,10 @@ import { getContext } from '../_shared/context.js';
 import { IdParams } from '../_shared/schemas.js';
 import { NotFoundError } from '../../platform/errors.js';
 import { ReviewService } from './service.js';
+import { IntentService } from './intent-service.js';
+import { loadDiff } from './diff-loader.js';
+import { resolveFeatureModel } from '../settings/feature-models.js';
+import { buildPullsService } from '../pulls/wiring.js';
 
 /**
  * reviews module.
@@ -13,13 +17,42 @@ import { ReviewService } from './service.js';
  *   GET    /runs/:id/events                            → SSE stream of RunEvent (replay-first)
  *   GET    /runs/:id/trace                             → the single-document RunTrace
  *   GET    /pulls/:id/reviews                          → persisted reviews + findings for a PR
+ *   GET    /pulls/:id/intent                           → derived PR intent (404 if not derived yet)
+ *   POST   /pulls/:id/intent                           → re-derive the intent now (refresh + model call)
  *   POST   /findings/:id/(accept|dismiss)              → finding actions
  */
 const FINDING_ACTIONS = ['accept', 'dismiss'] as const;
 export default async function reviewsRoutes(appBase: FastifyInstance) {
   const app = appBase.withTypeProvider<ZodTypeProvider>();
   const { container } = app;
-  const service = new ReviewService(container);
+
+  // [D6] the SAME refresh-from-GitHub logic `GET /pulls/:id` uses; intent
+  // calls it only when the stored PR body is empty.
+  const pullsService = buildPullsService(container, (message) => app.log.warn(message));
+
+  // Wiring adapters/repositories into the service's ports here is
+  // composition, not a route calling an adapter (onion-architecture skill,
+  // step 2) — matches `conventions/routes.ts`.
+  const intentService = new IntentService({
+    getPull: (workspaceId, prId) => container.reviewRepo.getPull(workspaceId, prId),
+    getIntent: (prId) => container.reviewRepo.getIntent(prId),
+    saveIntent: (prId, record) => container.reviewRepo.upsertIntent(prId, record),
+    refreshPullDetail: (workspaceId, prId) => pullsService.refreshPullDetail(workspaceId, prId),
+    listCommits: (prId) => container.reviewRepo.getPrCommits(prId),
+    listPrFiles: (prId) => container.reviewRepo.getPrFiles(prId),
+    getRepo: (repoId) => container.reviewRepo.getRepo(repoId),
+    loadDiff: async (workspaceId, pull) => {
+      const repo = await container.reviewRepo.getRepo(pull.repoId);
+      if (!repo) throw new NotFoundError('Repository not found');
+      return loadDiff(container, container.reviewRepo, workspaceId, pull, repo);
+    },
+    getIssue: (ref, n) => container.github().then((gh) => gh.getIssue(ref, n)),
+    readRepoFile: (ref, path) => container.git.readFile(ref, path),
+    resolveModel: (workspaceId) => resolveFeatureModel(container, workspaceId, 'review_intent'),
+    llm: (provider) => container.llm(provider),
+  });
+
+  const service = new ReviewService(container, intentService);
 
   // ---- Run a review (manual trigger) -------------------------------
   // Tight per-route limit: each call can fan out to expensive LLM runs.
@@ -130,6 +163,27 @@ export default async function reviewsRoutes(appBase: FastifyInstance) {
     const { workspaceId } = await getContext(container, req);
     return service.reviewsForPull(workspaceId, req.params.id);
   });
+
+  // ---- Derived PR intent (Overview tab + trace) ----------------------------
+  app.get('/pulls/:id/intent', { schema: { params: IdParams } }, async (req) => {
+    const { workspaceId } = await getContext(container, req);
+    const record = await intentService.getForPull(workspaceId, req.params.id);
+    if (!record) throw new NotFoundError('Intent not derived yet');
+    return record;
+  });
+
+  // Manual re-derive after the PR changed. One paid model call per request,
+  // so it gets the same tight per-route limit as a review run.
+  app.post(
+    '/pulls/:id/intent',
+    { schema: { params: IdParams }, config: { rateLimit: { max: 10, timeWindow: '1 minute' } } },
+    async (req) => {
+      const { workspaceId } = await getContext(container, req);
+      const record = await intentService.rederive(workspaceId, req.params.id, (msg) => req.log.info(msg));
+      if (!record) throw new NotFoundError('Pull request not found');
+      return record;
+    },
+  );
 
   // ---- Delete a whole review run (one agent's pass) + its findings --------
   app.delete('/reviews/:id', { schema: { params: IdParams } }, async (req) => {
