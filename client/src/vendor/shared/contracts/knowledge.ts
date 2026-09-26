@@ -219,6 +219,11 @@ export const Agent = z.object({
   // Inject repo-intel context (repo skeleton + callers + rank note) into this
   // agent's review prompt. Default on; gated again by the global flag.
   repo_intel: z.boolean().default(true),
+  // Receive the derived PR intent ("Stated intent (author's claim)") in this
+  // agent's review prompt. Default OFF — security/correctness agents must opt
+  // in deliberately; intent is context for scope only and never lowers a
+  // finding's severity (enforced in the prompt, not here).
+  uses_intent: z.boolean().default(false),
   // How many skills are linked to this agent. Filled by the list endpoint for
   // the agent tiles; absent where the count is not computed.
   skill_count: z.number().int().nullish(),

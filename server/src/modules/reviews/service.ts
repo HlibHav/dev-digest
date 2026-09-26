@@ -8,6 +8,7 @@ import { type ReviewDto, type ReviewDtoFinding } from './helpers.js';
 import { ReviewRunExecutor, type Logger } from './run-executor.js';
 import { actOnFinding as actOnFindingImpl } from './findings.js';
 import { reviewToDto } from './helpers.js';
+import type { IntentDeriver } from './intent-service.js';
 
 // Re-export DTO types + converters for backward-compatible imports from
 // './service.js' (these previously lived here; logic now in ./helpers.ts).
@@ -31,10 +32,13 @@ export class ReviewService {
   private agents: Container['agentsRepo'];
   private executor: ReviewRunExecutor;
 
-  constructor(private container: Container) {
+  constructor(
+    private container: Container,
+    private intent?: IntentDeriver,
+  ) {
     this.repo = new ReviewRepository(container.db);
     this.agents = container.agentsRepo;
-    this.executor = new ReviewRunExecutor(container, this.repo, this.agents);
+    this.executor = new ReviewRunExecutor(container, this.repo, this.agents, this.intent);
   }
 
   // ===========================================================================

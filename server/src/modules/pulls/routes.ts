@@ -8,6 +8,7 @@ import { getContext } from '../_shared/context.js';
 import { IdParams } from '../_shared/schemas.js';
 import { AppError, NotFoundError } from '../../platform/errors.js';
 import { deriveReviewStatus } from './status.js';
+import { buildPullsService } from './wiring.js';
 
 type FindingCounts = NonNullable<PrMeta['latest_findings']>['counts'];
 
@@ -24,6 +25,10 @@ type FindingCounts = NonNullable<PrMeta['latest_findings']>['counts'];
 export default async function pullsRoutes(appBase: FastifyInstance) {
   const app = appBase.withTypeProvider<ZodTypeProvider>();
   const { container } = app;
+
+  // [D6] — wiring adapters into the service's ports here is composition, not
+  // a route calling an adapter (onion-architecture skill, step 2).
+  const pullsService = buildPullsService(container, (message) => app.log.warn(message));
 
   app.get('/repos/:id/pulls', { schema: { params: IdParams } }, async (req): Promise<PrMeta[]> => {
     const { workspaceId } = await getContext(container, req);
@@ -194,98 +199,13 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
     });
   });
 
+  // [D6] Local-first: refresh detail from GitHub when a token is configured;
+  // otherwise serve the persisted files/commits/body (seeded or previously
+  // imported) so PR detail works offline. Logic lives in PullsService so the
+  // intent module can reuse it instead of duplicating it.
   app.get('/pulls/:id', { schema: { params: IdParams } }, async (req): Promise<PrDetail> => {
     const { workspaceId } = await getContext(container, req);
-    const [pr] = await container.db
-      .select()
-      .from(t.pullRequests)
-      .where(
-        and(eq(t.pullRequests.workspaceId, workspaceId), eq(t.pullRequests.id, req.params.id)),
-      );
-    if (!pr) throw new NotFoundError('Pull request not found');
-    const [repo] = await container.db
-      .select()
-      .from(t.repos)
-      .where(eq(t.repos.id, pr.repoId));
-    if (!repo) throw new NotFoundError('Repo not found');
-
-    // Local-first: refresh detail from GitHub when a token is configured;
-    // otherwise serve the persisted files/commits/body (seeded or previously
-    // imported) so PR detail works offline.
-    try {
-      const gh = await container.github();
-      const detail = await gh.getPullRequest({ owner: repo.owner, name: repo.name }, pr.number);
-
-      await container.db.delete(t.prFiles).where(eq(t.prFiles.prId, pr.id));
-      if (detail.files.length > 0) {
-        await container.db.insert(t.prFiles).values(
-          detail.files.map((f) => ({
-            prId: pr.id,
-            path: f.path,
-            additions: f.additions,
-            deletions: f.deletions,
-            patch: f.patch ?? null,
-          })),
-        );
-      }
-      await container.db.delete(t.prCommits).where(eq(t.prCommits.prId, pr.id));
-      if (detail.commits.length > 0) {
-        await container.db.insert(t.prCommits).values(
-          detail.commits.map((c) => ({
-            prId: pr.id,
-            sha: c.sha,
-            message: c.message,
-            author: c.author,
-            committedAt: c.committed_at ? new Date(c.committed_at) : null,
-          })),
-        );
-      }
-      await container.db
-        .update(t.pullRequests)
-        .set({
-          body: detail.body ?? null,
-          // Diff stats aren't on GitHub's PR-list payload — backfill them from
-          // the detail fetch so the Pull Requests list shows real size/files.
-          additions: detail.additions,
-          deletions: detail.deletions,
-          filesCount: detail.files_count,
-        })
-        .where(eq(t.pullRequests.id, pr.id));
-
-      return { ...detail, id: pr.id };
-    } catch (err) {
-      app.log.warn({ err }, 'GitHub PR detail refresh skipped (no token / offline); serving persisted detail');
-      const files = await container.db.select().from(t.prFiles).where(eq(t.prFiles.prId, pr.id));
-      const commits = await container.db.select().from(t.prCommits).where(eq(t.prCommits.prId, pr.id));
-      return {
-        id: pr.id,
-        number: pr.number,
-        title: pr.title,
-        author: pr.author,
-        branch: pr.branch,
-        base: pr.base,
-        head_sha: pr.headSha,
-        additions: pr.additions,
-        deletions: pr.deletions,
-        files_count: pr.filesCount,
-        status: pr.status as PrDetail['status'],
-        opened_at: pr.openedAt?.toISOString() ?? null,
-        updated_at: pr.updatedAt?.toISOString() ?? null,
-        body: pr.body ?? null,
-        files: files.map((f) => ({
-          path: f.path,
-          additions: f.additions,
-          deletions: f.deletions,
-          patch: f.patch ?? null,
-        })),
-        commits: commits.map((c) => ({
-          sha: c.sha,
-          message: c.message,
-          author: c.author,
-          committed_at: c.committedAt?.toISOString() ?? null,
-        })),
-      };
-    }
+    return pullsService.refreshPullDetail(workspaceId, req.params.id);
   });
 
   // ---- Inline review comments (Files changed tab) -------------------------

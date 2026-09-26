@@ -306,6 +306,8 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
       provider: DEFAULT_PROVIDER,
       model: DEFAULT_MODEL,
       systemPrompt: TEST_QUALITY_REVIEWER_PROMPT,
+      // [D5] Reads the stated intent (author's claim) when scoping test coverage.
+      usesIntent: true,
       enabled: true,
       version: 1,
       createdBy: userId,
@@ -318,6 +320,8 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
       provider: DEFAULT_PROVIDER,
       model: DEFAULT_MODEL,
       systemPrompt: API_CONTRACT_REVIEWER_PROMPT,
+      // [D5] Reads the stated intent (author's claim) when scoping a breaking change.
+      usesIntent: true,
       enabled: true,
       version: 1,
       createdBy: userId,

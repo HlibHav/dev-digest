@@ -51,9 +51,12 @@ export const FEATURE_MODELS: FeatureModelDef[] = [
   {
     id: 'review_intent',
     label: 'PR Review · Intent',
-    description: 'Derives a PR’s intent and scope before review.',
-    defaultProvider: 'openai',
-    defaultModel: 'gpt-4.1',
+    description: "Classifies a PR's intent and scope before review (cheap model).",
+    // Provisional default (H1 plan): a measured comparison of cheap models
+    // (DeepSeek v4 flash, gpt-4.1-mini, gpt-oss-20b/120b, gemini-2.5-flash-lite)
+    // happens after this iteration — see the intent-layer plan's iteration rules.
+    defaultProvider: 'openrouter',
+    defaultModel: 'openai/gpt-4.1-mini',
   },
   {
     id: 'risk_brief',
