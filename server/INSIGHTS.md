@@ -10,6 +10,8 @@ fixed — add to the one that fits.
 
 ## What Doesn't Work
 
+- **2026-09-26** — `pr_files` has no status column, so "the PR touches this path" is not "the PR added this file". The first Intent Layer rebuilt any linked doc whose patch had `+` lines from that patch, which handed the model only the changed hunk of a *modified* plan. Only a file the PR adds carries its whole content in the patch; GitHub's per-file patch for it opens with the hunk header `@@ -0,0 `, and that is the test to use. Everything else is read from the base-branch clone. Evidence: `server/src/modules/reviews/intent-helpers.ts:286`, `server/src/adapters/github/octokit.ts:110`
+
 - **2026-09-20** — A review of a PR nobody has opened sees an **empty diff**, completes, and costs money: it reports 0 findings with `Reviewing 0 changed file(s)` in the run log. `loadDiff` tries `git diff base...head` in the clone first, but `fetchPullHead` has no production caller, so an unmerged PR's head sha is never in the clone and the call throws; the fallback reconstructs the diff from `pr_files.patch`, which only `GET /pulls/:id` fills (it refreshes from GitHub). Open the PR in the UI once — or call `GET /pulls/:id` — before measuring anything about a review. Evidence: `server/src/modules/reviews/diff-loader.ts:20`, `server/src/modules/pulls/routes.ts:227`, `server/src/adapters/git/simple-git.ts:72`
 
 - **2026-09-20** — A `JobRunner` handler that throws takes the **whole API process down**. `enqueue` records the failure on the `jobs` row and then rethrows (`jobs.ts:96`), which rejects `EnqueuedJob.done` — and no route awaits `done`, so it surfaces as an unhandled rejection and node exits. The trigger here was the timeout: providers apply `timeoutMs` **per attempt** inside their own retry loop, so `maxRetries: 1` at 90s overran the runner's 120s. A job handler that calls an LLM needs all three — bound the whole call below 120s yourself, catch inside the handler so the paid call is not retried, and `void job.done.catch(() => {})` at the enqueue site. Note the catch has a cost: the runner then sees the handler resolve and stamps `done` over your `failed`, so the truthful status has to be derived from the error column. Evidence: `server/src/platform/jobs.ts:96`, `server/src/adapters/llm/openai.ts:108`, `server/src/modules/conventions/routes.ts:118`
@@ -38,6 +40,8 @@ fixed — add to the one that fits.
 ## Recurring Errors & Fixes
 
 ## Session Notes
+
+- **2026-09-26** — Intent Layer review fixes (doc path moved inside its untrusted block, branch and paths sanitised, modified docs read from base) → What Doesn't Work. Evidence: `server/src/modules/reviews/intent-service.ts:178`
 
 - **2026-09-22** — onion-architecture skill v2 plus the `pnpm lint:boundaries` import check (dependency-cruiser, 34 known violations as the baseline) → Tool & Library Notes. Evidence: `server/.dependency-cruiser.cjs:34`
 

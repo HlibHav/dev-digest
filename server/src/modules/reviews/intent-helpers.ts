@@ -279,6 +279,11 @@ export function parseLinkedDocs(
  */
 export function docFromAddedPatch(patch: string | null | undefined): string | null {
   if (!patch) return null;
+  // Only a file the PR ADDS has its whole content in the patch (first hunk
+  // `@@ -0,0 …`). A modified file's patch is just the changed hunks, so the
+  // caller must read the full doc from the base branch instead [D2].
+  const firstHunk = patch.split('\n').find((line) => line.startsWith('@@'));
+  if (!firstHunk?.startsWith('@@ -0,0 ')) return null;
   const added: string[] = [];
   for (const line of patch.split('\n')) {
     if (line.startsWith('+++')) continue;
@@ -316,7 +321,11 @@ export function renderIntentSources(input: IntentSourceTexts): string {
     );
   });
   input.docs.forEach((doc, i) => {
-    sections.push(`## Plan/spec doc: ${doc.path}\n${wrapUntrusted(`doc-${i}`, datamark(doc.content))}`);
+    // The path comes from a link in the PR body — author-controlled, so it
+    // rides inside the block, never in the constant header.
+    sections.push(
+      `## Plan/spec doc ${i + 1}\n${wrapUntrusted(`doc-${i}`, datamark(`${doc.path}\n\n${doc.content}`))}`,
+    );
   });
   if (input.branch) sections.push(`## Branch name\n${wrapUntrusted('pr-branch', datamark(input.branch))}`);
   if (input.commits.length > 0) {
