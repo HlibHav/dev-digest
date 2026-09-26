@@ -1,0 +1,12 @@
+{
+  "verdict": "ready",
+  "mode": "pre-PR",
+  "base_sha": "17cc44a386f6f9b41b291823627b5613c89d2d06",
+  "head_sha": "4630a6ccf4a216e567d30d2496f40ba3ed3ff692",
+  "dirty_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "findings": [
+    { "severity": "minor", "path": "client/src/components/diff-viewer/RoleGroup/RoleGroup.tsx", "line": 54,
+      "skill": "react-best-practices", "rule": "key prop patterns: no array index as key", "note": "fixed before commit: key={file.path}" }
+  ],
+  "ts": "2026-09-26T09:58:37Z"
+}
