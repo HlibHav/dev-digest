@@ -8,15 +8,17 @@ its own `.md` file, so read that file before you change the agent.
 
 | Agent | Responsibility | Model | Permissions | Input | Output |
 |---|---|---|---|---|---|
+| [brainstorm](brainstorm.md) | Turns a rough idea into options before planning: what already exists, the one question that changes the design most, two or three approaches with trade-offs, what to leave out, a recommendation and the request text for the planner | `opus` | Read-only: `Read, Grep, Glob` (no `Bash`, `Skill`, `Write` or web) | A rough idea | **Brainstorm Brief** (`ready` / `needs-answers`) |
 | [researcher](researcher.md) | Answers one concrete question from the repo or from external sources, with evidence and an explicit "not found" list | `sonnet` | Read-only in the repo (`Read, Grep, Glob`); `WebSearch`, `WebFetch`; NotebookLM create/add/query only (no delete, share or studio) | A question plus its scope (repo / external / both) and what it feeds | **Repo report** or **External report**, or clarifying questions |
 | [planner](planner.md) | Turns a request into a Development Plan that respects modules, skills, rules and `INSIGHTS.md` | `opus` | Read-only: `Read, Grep, Glob` (no `Skill`, `Bash`, `Write` or web) | A feature or change request (optionally a researcher report) | **Development Plan** (`Status: ready`) or clarifying questions (`needs-answers`) |
 | [test-writer](test-writer.md) | Writes tests for BE and UI in two modes: red-first from a plan's acceptance criteria, or backfill for existing code | `sonnet` | `Read, Grep, Glob, Edit, Write, Bash, Skill`; hooks limit writes to test paths and Bash to the `test` profile; every test run inside `srt`; writes but doesn't run integration tests or e2e | A plan (red-first) or named files (backfill) | **Test Report**: criterion → test → evidence, plus test files in the working tree |
 | [implementer](implementer.md) | Executes the plan in the backend and the UI, self-reviews how its own code is written, and runs typecheck plus the existing unit tests | `sonnet` | `Read, Grep, Glob, Edit, Write, Bash, Skill`; preloads `engineering-insights`, `onion-architecture`, `frontend-ui-architecture`; no commit, push or research | A Development Plan with `Status: ready` | **Implementation Report** (`done` / `partial` / `blocked`) plus uncommitted changes in the working tree |
 | [architecture-reviewer](architecture-reviewer.md) | Checks a diff against the onion and client boundaries, runs `lint:boundaries` and the route test, reports what the lint can't see | `opus` | Read-only: `Read, Grep, Glob, Bash`; a hook limits Bash to the `architecture` profile; preloads both architecture skills | A target (`base..head`, branch or uncommitted tree) | **Architecture Review**: findings with severity, rule, `path:line` and evidence; `pass` / `fail` |
 | [plan-verifier](plan-verifier.md) | Checks finished code against every plan item and traces every hunk back to the plan; no advice | `sonnet` | Read-only: `Read, Grep, Glob, Bash`; a hook limits Bash to the `verify` profile | A plan, a target, optionally the Test Report | **Plan Verification**: a verdict with evidence per item, unmapped changes; `verified` / `gaps` |
+| [security-reviewer](security-reviewer.md) | Reviews a diff for security defects in the changed lines — workspace scoping, input validation, secrets, prompt injection into the review LLM, SSRF and path traversal, unsafe rendering, agent-hook holes — and never executes the code under review | `opus` | Read-only: `Read, Grep, Glob, Bash`; a hook limits Bash to the `security` profile (read-only git, `diff`, `gh pr view`; no test, lint or typecheck run); preloads `security` | A target (`base..head`, branch or uncommitted tree) | **Security Review**: attack surface, findings with severity, rule, `path:line`, evidence and exploit path; `pass` / `fail` |
 | [doc-writer](doc-writer.md) | Documents implemented features and turns plans or other material into docs with Mermaid diagrams, in the right `docs/` or `specs/` section | `sonnet` | `Read, Grep, Glob, Edit, Write, Skill`, no Bash; a hook limits writes to docs paths; preloads `mermaid-diagram` | A subject plus material (plan, report, verified code) | **Documentation Report**: files, claim → `path:line`, index updates, ADR and insight candidates |
 
-All seven are flat: none has the `Agent` tool, so none spawns subagents.
+All nine are flat: none has the `Agent` tool, so none spawns subagents.
 
 None of them can ask the user, because Claude Code removes `AskUserQuestion` from every subagent.
 When the input is too vague to act on, each agent returns its questions to the calling session,
@@ -31,6 +33,8 @@ session records them through that skill.
 ```mermaid
 flowchart LR
   Q[question] --> R[researcher] -- report --> S((main session))
+  IDEA[rough idea] --> B[brainstorm] -- Brainstorm Brief --> S
+  S -- chosen approach as a request --> P
   REQ[request] --> P[planner]
   S -. external facts .-> P
   P -- plan --> TW[test-writer]
@@ -45,6 +49,8 @@ flowchart LR
   P -- plan --> PV
   TW -- criterion → test map --> PV
   PV -- Plan Verification --> S
+  S -- bundle path --> SR[security-reviewer]
+  SR -- Security Review --> S
   S -- plan + verified code --> DW[doc-writer]
 ```
 
@@ -71,7 +77,7 @@ The planner writes each check under *Checks for reviewers* with its owner, and t
 | unchanged red-first tests | plan-verifier |
 | e2e (`npm run e2e:hermetic`) | main session: it rebuilds `client/.next` and breaks a running dev server (`e2e/INSIGHTS.md`), and its ports live in `CLAUDE.local.md` |
 | `pr-self-review` | main session: it writes a verdict artifact |
-| security review, including the agent hooks | main session (`/security-review`); there is no security agent |
+| security review, including the agent hooks | security-reviewer (read-only, never executes the diff); `/security-review` stays available to the main session |
 
 ## Brief for reviewers
 
@@ -120,7 +126,7 @@ Four mechanisms. The hooks live in `.claude/hooks/`, the sandbox in `.claude/san
 one step of the audit are wired from agent frontmatter, so they apply to these agents and
 nothing else:
 
-- `agent-bash-allowlist.py <architecture | verify | test>` splits the command into words itself
+- `agent-bash-allowlist.py <architecture | verify | test | security>` splits the command into words itself
   and allows it only when those words form one of the listed shapes. It refuses every character
   the shell would expand or interpret (braces, `$`, globs, `\`, double quotes, pipes), so the
   program receives exactly the words that were checked; literal arguments go in single quotes.
@@ -130,7 +136,9 @@ nothing else:
   in one plan-verifier run). Git long options are matched with git's abbreviation rule, and
   `--dir` / `--prefix` must be a package of this repo or one of its worktrees, never a directory
   under `server/clones/`. The `verify` profile also reads PR bodies (`gh pr view … --json`),
-  `docker info` and a plain `diff`. Each agent's **Commands you may run** section lists the
+  `docker info` and a plain `diff`. The `security` profile allows only read-only git, `diff` and
+  `gh pr view`: no test, lint or typecheck run, because those load scripts and configs from the
+  very diff under review. Each agent's **Commands you may run** section lists the
   allowed forms.
 - `agent-write-scope.py <tests | docs>` resolves the target path against `$CLAUDE_PROJECT_DIR`
   and allows only the profile's paths. `tests` also denies adding `.skip`/`.only`/`.todo` and
@@ -200,6 +208,18 @@ test rules. Change that table and you change four agents.
 (`~/.claude/rules/research-gate.md`): existing notebooks first, `research_import` before
 querying, and the fast/deep mode rules stated in its file.
 
+**brainstorm** adapts the course's `brainstorming` skill (on the course's
+`demo/security-review-fixture` branch, `.claude/skills/brainstorming/SKILL.md`) to a subagent:
+understand the project first, one question at a time with multiple-choice options, at least two
+approaches with trade-offs, YAGNI, design before code. A subagent can't hold the conversation, so
+it returns one question and the main session relays it.
+
+**security-reviewer** preloads the `security` skill (OWASP Top 10:2025) and grades with the
+critical list in step 5 of `pr-self-review`. It is the only reviewer that runs no code at all:
+tests, lint and typecheck all load scripts or configs from the diff under review, so for a
+reviewer looking for malicious or unsafe changes they are attacker-controlled input. The same
+reasoning is why the other agents' code runs go through the `srt` wrapper.
+
 The other agents rest on these sources, checked on 2026-09-24:
 
 | Source | Rule taken | Applied in |
@@ -237,8 +257,8 @@ The other agents rest on these sources, checked on 2026-09-24:
 | [C4 model](https://c4model.com/), [Mermaid on GitHub](https://github.blog/developer-skills/github/include-diagrams-markdown-files-mermaid/) | Context and Container levels carry most value; Mermaid renders natively and diffs as text | doc-writer's diagram rule |
 
 Judgement calls that are **not** from these sources:
-- the model split (Opus plans and reviews architecture; Sonnet executes, writes tests, verifies
-  and documents);
+- the model split (Opus brainstorms, plans and reviews architecture and security; Sonnet
+  executes, writes tests, verifies and documents);
 - re-reading the plan's Constraints before each step (a goal-drift guard);
 - limiting the implementer's self-review to code writing plus the existing tests;
 - the 150-call budget and the stop after two failed attempts;

@@ -41,8 +41,8 @@ item to the code and every changed hunk back to the plan, and you give no advice
   and no plan item covers it, it goes under **Unmapped changes** as a fact, with no advice
   attached.
 - **Don't re-run another owner's checks.** `pnpm lint:boundaries`, onion step 9 and the
-  route-adapter-calls test belong to `architecture-reviewer`. e2e, `pr-self-review` and
-  `/security-review` belong to the main session. When the plan lists them, the verdict is
+  route-adapter-calls test belong to `architecture-reviewer`, security review to
+  `security-reviewer`, e2e and `pr-self-review` to the main session. When the plan lists them, the verdict is
   `unverifiable` with the owner named.
 - Never read or search `server/clones/`.
 - **Budget:** at most 100 tool calls. When you hit it, return the report and mark the

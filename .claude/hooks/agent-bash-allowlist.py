@@ -15,6 +15,9 @@ Profiles:
   architecture .. read-only git + `lint:boundaries` + the route-adapter-calls test
   verify ........ read-only git + the Check-table commands + targeted vitest runs
   test .......... same as verify
+  security ...... read-only git + `diff` + `gh pr view`; nothing that executes repo code, not even
+                  typecheck or lint (a `package.json` script or a lint config in the diff under
+                  review is attacker-controlled input for this reviewer)
 
 How a command is judged
 -----------------------
@@ -66,7 +69,7 @@ import sys
 from functools import lru_cache
 from pathlib import Path
 
-PROFILES = ("architecture", "verify", "test")
+PROFILES = ("architecture", "verify", "test", "security")
 
 BARE_CHARS = re.compile(r"[A-Za-z0-9_./:@%+=,\-^~]")
 # Allowed in a bare word, but the word is re-emitted single-quoted so the shell never globs it.
@@ -253,7 +256,7 @@ def code_run_allowed(words: list[str], profile: str) -> bool:
     These run only inside `.claude/sandbox/run-tests.sh`, so `check` calls this on the words
     after the wrapper and refuses a match that isn't wrapped.
     """
-    if len(words) < 4:
+    if profile == "security" or len(words) < 4:
         return False
     d, tail = words[2], words[3:]
     if words[:2] == ["pnpm", "--dir"] and pkg_dir(d, ("server",)) and tail in (
@@ -338,6 +341,9 @@ def read_only_allowed(words: list[str], profile: str) -> bool:
         return git_allowed(words)
     if words == ["diff", "-rq", "server/src/vendor/shared", "client/src/vendor/shared"]:
         return True
+    if profile == "security":
+        # No typecheck either: `pnpm typecheck` runs a package.json script the diff may rewrite.
+        return gh_pr_view_allowed(words) or diff_allowed(words)
     if profile == "verify" and (
         gh_pr_view_allowed(words) or words == ["docker", "info"] or diff_allowed(words)
     ):

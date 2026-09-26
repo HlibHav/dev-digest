@@ -324,6 +324,42 @@ class SessionSandboxEscape(unittest.TestCase):
                 self.assertEqual(decide(cmd, profile, unsandboxed=True), "allow")
 
 
+class SecurityProfile(unittest.TestCase):
+    """security-reviewer reads the diff and never executes it: no test, lint or typecheck run,
+    sandboxed or not, because the scripts and configs they load come from the diff itself."""
+
+    def test_allowed(self) -> None:
+        for cmd in [
+            "git diff main...HEAD",
+            "git diff --stat",
+            "git log --oneline -5",
+            "git show HEAD:server/src/app.ts",
+            "diff -rq server/src/vendor/shared client/src/vendor/shared",
+            "diff -u server/src/a.ts client/src/a.ts",
+            "gh pr view 22 --json body,files",
+        ]:
+            with self.subTest(cmd=cmd):
+                self.assertEqual(decide(cmd, "security"), "allow")
+
+    def test_denied(self) -> None:
+        for cmd in [
+            W + "pnpm --dir server lint:boundaries",
+            W + "pnpm --dir server exec vitest run test/route-adapter-calls.test.ts",
+            W + "pnpm --dir client test",
+            "pnpm --dir server typecheck",
+            "npm --prefix reviewer-core run typecheck",
+            "pnpm --dir server exec vitest run .it.test",
+            "docker info",
+            "cat server/.env",
+            "git diff --output=/tmp/x",
+        ]:
+            with self.subTest(cmd=cmd):
+                self.assertEqual(decide(cmd, "security"), "deny")
+
+    def test_unsandboxed_code_run_denied(self) -> None:
+        self.assertEqual(decide(W + "pnpm --dir server lint:boundaries", "security", unsandboxed=True), "deny")
+
+
 class FailClosed(unittest.TestCase):
     def test_unreadable_input_denies(self) -> None:
         out = subprocess.run(

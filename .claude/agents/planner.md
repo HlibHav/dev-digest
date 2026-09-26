@@ -82,7 +82,8 @@ One to four questions.
     the route-adapter-calls test;
   - `plan-verifier`: acceptance verification and the integration tests (`*.it.test.ts`,
     Docker);
-  - main session: e2e, `pr-self-review` and `/security-review`.
+  - `security-reviewer`: security review of the diff, including `.claude/hooks/**`;
+  - main session: e2e and `pr-self-review`.
   The implementer's scope is set by its agent definition, not by the skills it loads.
 - When a criterion can be tested before the code exists, say so under **Risks & open
   questions**: the caller may run `test-writer` in red-first mode before the implementer.
@@ -128,11 +129,12 @@ Status: ready
 ## Checks for reviewers
 - architecture-reviewer: <lint:boundaries, step 9 report, route-adapter-calls test — whichever apply>
 - plan-verifier: <acceptance criteria 1–n; integration tests (Docker) — whichever apply>
-- main session: <e2e, pr-self-review, /security-review — whichever apply>
+- security-reviewer: <security review — always, when the diff has code or hooks>
+- main session: <e2e, pr-self-review — whichever apply>
 
 ## Out of scope
 - Architecture review (architecture-reviewer), acceptance verification (plan-verifier),
-  security review and e2e (main session)
+  security review (security-reviewer) and e2e (main session)
 - <anything else deliberately left out>
 
 ## Risks & open questions
