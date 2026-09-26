@@ -150,6 +150,8 @@ class VerifyProfileReadOnlyExtras(unittest.TestCase):
             "diff --output=x a b",
             "diff -u a ../b",
             "diff -u a server/clones/x",
+            "diff -r / /tmp",  # absolute paths read outside the repo
+            "diff -u /etc/hosts server/AGENTS.md",
         ]:
             with self.subTest(cmd=cmd):
                 self.assertEqual(decide(cmd, "verify"), "deny")

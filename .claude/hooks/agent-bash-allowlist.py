@@ -320,7 +320,8 @@ def gh_pr_view_allowed(words: list[str]) -> bool:
 
 
 def diff_allowed(words: list[str]) -> bool:
-    """`diff [-rquN…] <path> <path>` between two plain paths; no long options."""
+    """`diff [-rquN…] <path> <path>` between two relative paths inside the repo; no long
+    options, no absolute paths (`diff -r / /tmp` would read the whole disk)."""
     if words[0] != "diff":
         return False
     args = words[1:]
@@ -328,7 +329,7 @@ def diff_allowed(words: list[str]) -> bool:
         if not DIFF_FLAGS.fullmatch(args[0]):
             return False
         args = args[1:]
-    return len(args) == 2 and all(plain_path(a) for a in args)
+    return len(args) == 2 and all(plain_path(a) and not a.startswith("/") for a in args)
 
 
 def read_only_allowed(words: list[str], profile: str) -> bool:
