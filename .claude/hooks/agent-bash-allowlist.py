@@ -21,15 +21,26 @@ How a command is judged
 The shell, not this script, runs the command after it is allowed. So the script only accepts a
 command whose words the shell will pass through unchanged, and splits it itself:
 
-  * a bare word may use only `A-Za-z0-9 _ . / : @ % + = , - ^ ~`. That excludes every character
-    the shell expands or treats specially: `{ } $ * ? [ ] ( ) ! # & | ; < > \\ " \\``, newlines;
+  * a bare word may use only `A-Za-z0-9 _ . / : @ % + = , - ^ ~` plus `[ ]`. That excludes every
+    character the shell expands or treats specially: `{ } $ * ? ( ) ! # | < > \\ " \\``, newlines;
+  * `[` and `]` are glob characters too (`app/[repoId]/page.tsx`), but a Next.js route path needs
+    them, so a bare word containing them is allowed and re-emitted single-quoted;
   * a single-quoted word ('…') is taken literally, as the shell takes it;
   * a bare word may not start with `~ ^ =` (tilde, zsh negation, zsh `=cmd` expansion), and `~`
-    may not follow `=` or `:`.
+    may not follow `=` or `:`;
+  * `;` and `&&` split the command into segments. Every segment is judged on its own against the
+    same allowlist, and the command reaches the shell with the segments joined by `&&`. `|`,
+    `||` and a single `&` are refused.
 
 The words it checks are therefore the words the program receives. The earlier version tokenised
 with shlex and allowed `{`, `$'…'` and `$VAR`, so `git diff {--output=/x,HEAD}` passed the check
 and reached git as `--output=/x` (2026-09-24 security review).
+
+When the allowed command differs from what the agent typed (a `;` chain, a `[` path), the hook
+returns `permissionDecision: allow` with `updatedInput` carrying the whole `tool_input` and the
+rewritten `command`, so `dangerouslyDisableSandbox` survives whether the host merges or replaces
+the input. A denial used to cost a full turn on a ~150k-token window; the 2026-09-26 token
+profile counted 7 such turns in one plan-verifier run.
 
 Git long options are matched with git's own abbreviation rule: `--outp` is `--output`.
 `--dir` / `--prefix` must resolve to a package directory of this repo or of one of its git
@@ -58,6 +69,13 @@ from pathlib import Path
 PROFILES = ("architecture", "verify", "test")
 
 BARE_CHARS = re.compile(r"[A-Za-z0-9_./:@%+=,\-^~]")
+# Allowed in a bare word, but the word is re-emitted single-quoted so the shell never globs it.
+QUOTE_ON_REWRITE = "[]"
+
+GH_REPO = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.\-]*/[A-Za-z0-9][A-Za-z0-9_.\-]*")
+GH_PR_REF = re.compile(rf"[0-9]+|https://github\.com/{GH_REPO.pattern}/pull/[0-9]+")
+GH_JSON_FIELDS = re.compile(r"[A-Za-z]+(,[A-Za-z]+)*")
+DIFF_FLAGS = re.compile(r"-[rquN]+")
 
 GIT_READ_SUBCOMMANDS = {"diff", "log", "show", "status", "merge-base", "rev-parse", "ls-files", "blame"}
 # Long options that make a read-only git subcommand write a file or run a program. Any
@@ -74,19 +92,61 @@ class Refused(Exception):
     """The command is not on the allowlist; the message is the reason."""
 
 
-def split_words(command: str) -> list[str]:
-    """Split like the shell would, refusing anything the shell would expand."""
-    words: list[str] = []
-    word: list[str] = []
+class Word:
+    """One argument as the program will receive it, and whether the agent quoted it."""
+
+    __slots__ = ("text", "quoted")
+
+    def __init__(self, text: str, quoted: bool) -> None:
+        self.text, self.quoted = text, quoted
+
+    def render(self) -> str:
+        if self.quoted or not self.text or any(not BARE_CHARS.fullmatch(ch) for ch in self.text):
+            return f"'{self.text}'"
+        return self.text
+
+
+def split_segments(command: str) -> list[list[Word]]:
+    """Split like the shell would, refusing anything the shell would expand.
+
+    Returns one word list per `;` / `&&` segment; an empty segment is refused.
+    """
+    segments: list[list[Word]] = []
+    words: list[Word] = []
+    text: list[str] = []
+    quoted = False
     in_word = False
     i = 0
+
+    def end_word() -> None:
+        nonlocal text, quoted, in_word
+        if in_word:
+            words.append(Word("".join(text), quoted))
+            text, quoted, in_word = [], False, False
+
+    def end_segment() -> None:
+        nonlocal words
+        end_word()
+        if not words:
+            raise Refused("empty command segment (a leading, trailing or doubled ';' / '&&')")
+        segments.append(words)
+        words = []
+
     while i < len(command):
         ch = command[i]
         if ch in " \t":
-            if in_word:
-                words.append("".join(word))
-                word, in_word = [], False
+            end_word()
             i += 1
+            continue
+        if ch == ";":
+            end_segment()
+            i += 1
+            continue
+        if ch == "&":
+            if command[i + 1 : i + 2] != "&":
+                raise Refused("a single '&' (background job) is not allowed")
+            end_segment()
+            i += 2
             continue
         if ch == "'":
             end = command.find("'", i + 1)
@@ -95,25 +155,28 @@ def split_words(command: str) -> list[str]:
             literal = command[i + 1 : end]
             if "\n" in literal or "\r" in literal:
                 raise Refused("newline inside quotes")
-            word.append(literal)
-            in_word = True
+            text.append(literal)
+            quoted = in_word = True
             i = end + 1
             continue
-        if not BARE_CHARS.fullmatch(ch):
+        if not BARE_CHARS.fullmatch(ch) and ch not in QUOTE_ON_REWRITE:
             raise Refused(
                 f"character {ch!r} is not allowed unquoted (no braces, $, globs, backslashes, "
-                "double quotes or shell operators; wrap a literal argument in single quotes)"
+                "double quotes, pipes or '||'; wrap a literal argument in single quotes)"
             )
-        if not word and ch in "~^=":
+        if not text and ch in "~^=":
             raise Refused(f"a word may not start with {ch!r}")
-        if ch == "~" and word and word[-1][-1:] in ("=", ":"):
+        if ch == "~" and text and text[-1] in ("=", ":"):
             raise Refused("'~' after '=' or ':' is expanded by the shell")
-        word.append(ch)
+        text.append(ch)
         in_word = True
         i += 1
-    if in_word:
-        words.append("".join(word))
-    return words
+    end_segment()
+    return segments
+
+
+def render(segments: list[list[Word]]) -> str:
+    return " && ".join(" ".join(w.render() for w in seg) for seg in segments)
 
 
 def plain_path(value: str) -> bool:
@@ -233,11 +296,50 @@ def integration_suite(words: list[str], profile: str) -> bool:
     return target == root / "server"
 
 
-def read_only_allowed(words: list[str]) -> bool:
+def gh_pr_view_allowed(words: list[str]) -> bool:
+    """`gh pr view <n|url> --json <fields> [--jq|-q <expr>] [--repo|-R <owner/repo>]`: the PR
+    body and metadata as JSON, nothing that opens a browser, edits or hits the raw API."""
+    if words[:3] != ["gh", "pr", "view"]:
+        return False
+    rest = words[3:]
+    if not rest or not GH_PR_REF.fullmatch(rest[0]):
+        return False
+    rest, seen_json = rest[1:], False
+    while rest:
+        flag = rest[0]
+        if flag == "--json" and len(rest) >= 2 and GH_JSON_FIELDS.fullmatch(rest[1]):
+            seen_json = True
+        elif flag in ("--jq", "-q") and len(rest) >= 2 and not rest[1].startswith("-"):
+            pass
+        elif flag in ("--repo", "-R") and len(rest) >= 2 and GH_REPO.fullmatch(rest[1]):
+            pass
+        else:
+            return False
+        rest = rest[2:]
+    return seen_json
+
+
+def diff_allowed(words: list[str]) -> bool:
+    """`diff [-rquN…] <path> <path>` between two plain paths; no long options."""
+    if words[0] != "diff":
+        return False
+    args = words[1:]
+    while args and args[0].startswith("-"):
+        if not DIFF_FLAGS.fullmatch(args[0]):
+            return False
+        args = args[1:]
+    return len(args) == 2 and all(plain_path(a) for a in args)
+
+
+def read_only_allowed(words: list[str], profile: str) -> bool:
     """Commands that read or type-check but execute no repo code."""
     if words[0] == "git":
         return git_allowed(words)
     if words == ["diff", "-rq", "server/src/vendor/shared", "client/src/vendor/shared"]:
+        return True
+    if profile == "verify" and (
+        gh_pr_view_allowed(words) or words == ["docker", "info"] or diff_allowed(words)
+    ):
         return True
     if len(words) >= 4:
         d, tail = words[2], words[3:]
@@ -248,10 +350,15 @@ def read_only_allowed(words: list[str]) -> bool:
     return False
 
 
-def check(command: str, profile: str, unsandboxed: bool) -> None:
-    words = split_words(command)
-    if not words:
-        raise Refused("empty command")
+def check(command: str, profile: str, unsandboxed: bool) -> str:
+    """Judge every segment; return the command as the shell should receive it."""
+    segments = split_segments(command)
+    for segment in segments:
+        check_segment([w.text for w in segment], profile, unsandboxed)
+    return render(segments)
+
+
+def check_segment(words: list[str], profile: str, unsandboxed: bool) -> None:
     if words[0] == WRAPPER:
         if not code_run_allowed(words[1:], profile):
             raise Refused(f"{WRAPPER} only wraps the test and lint runs of the `{profile}` profile")
@@ -260,7 +367,7 @@ def check(command: str, profile: str, unsandboxed: bool) -> None:
         raise Refused(f"this runs repo code, so run it through the sandbox: {WRAPPER} {command}")
     if integration_suite(words, profile):
         return  # Docker can't run inside the session sandbox either
-    if not read_only_allowed(words):
+    if not read_only_allowed(words, profile):
         raise Refused(f"not on the `{profile}` allowlist")
     if unsandboxed:
         raise Refused(
@@ -286,6 +393,24 @@ def deny(reason: str) -> None:
     )
 
 
+def allow_rewritten(tool_input: dict, command: str) -> None:
+    print(
+        json.dumps(
+            {
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "permissionDecision": "allow",
+                    "permissionDecisionReason": (
+                        "agent-bash-allowlist: allowed as `" + command + "` (';' joined with '&&', "
+                        "glob characters quoted)"
+                    ),
+                    "updatedInput": {**tool_input, "command": command},
+                }
+            }
+        )
+    )
+
+
 def main() -> int:
     try:
         profile = sys.argv[1] if len(sys.argv) > 1 else ""
@@ -295,7 +420,10 @@ def main() -> int:
         command = tool_input["command"]
         if not isinstance(command, str):
             raise Refused("command is not a string")
-        check(command.strip(), profile, tool_input.get("dangerouslyDisableSandbox") is True)
+        original = command.strip()
+        allowed = check(original, profile, tool_input.get("dangerouslyDisableSandbox") is True)
+        if allowed != original:
+            allow_rewritten(tool_input, allowed)
     except Refused as exc:
         deny(str(exc))
     except Exception as exc:  # anything unexpected must deny, never fall through to allow

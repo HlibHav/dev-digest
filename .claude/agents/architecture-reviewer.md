@@ -65,7 +65,10 @@ you cite.
 
 Search with the Grep and Glob tools and read with Read; Bash is only for the commands below,
 never for `find`, `grep`, `cat` or `ls`. A denied command is final: don't rephrase it to get
-past the hook. One plain command at a time, from the repo root. `cd`, `&&`, `|`, `>`, `$…`, braces, globs and double quotes are denied; put a literal argument with spaces or `*` in single quotes:
+past the hook. Run from the repo root; one command, or several joined with `;` or `&&` (each is
+checked on its own and the shell gets them joined with `&&`). `cd`, `|`, `||`, `>`, `$…`, braces,
+globs and double quotes are denied; put a literal argument with spaces or `*` in single quotes
+(`[` and `]` in a path are quoted for you):
 
 - `git diff <base>...<head>`, `git diff --stat …`, `git diff` (uncommitted), `git log …`,
   `git show <ref>:<path>`, `git merge-base …`, `git status`, `git blame …`, `git ls-files …`,

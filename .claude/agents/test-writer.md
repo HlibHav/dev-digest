@@ -86,7 +86,11 @@ You work in one of two modes, and the caller's brief names it:
 ## Commands you may run
 
 Search with the Grep and Glob tools and read with Read; Bash is only for the commands below,
-never for `find`, `grep`, `cat` or `ls`. A hook allows only these shapes, run from the repo root as one plain command. `cd`, `&&`, `|`, `>`, `$…`, braces, globs and double quotes are denied; put a literal argument with spaces or `*` in single quotes. Use `--dir` and `--prefix` instead of `cd`:
+never for `find`, `grep`, `cat` or `ls`. A hook allows only these shapes, run from the repo root
+as one command or several joined with `;` or `&&` (each is checked on its own and the shell gets
+them joined with `&&`). `cd`, `|`, `||`, `>`, `$…`, braces, globs and double quotes are denied;
+put a literal argument with spaces or `*` in single quotes (`[` and `]` in a path are quoted for
+you). Use `--dir` and `--prefix` instead of `cd`:
 
 - `git diff …`, `git log …`, `git show …`, `git status`, `git ls-files …`, `git blame …`
 - `pnpm --dir server typecheck`, `pnpm --dir client typecheck`,

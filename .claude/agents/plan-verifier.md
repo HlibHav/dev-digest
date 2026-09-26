@@ -52,7 +52,10 @@ item to the code and every changed hunk back to the plan, and you give no advice
 
 Search with the Grep and Glob tools and read with Read; Bash is only for the commands below,
 never for `find`, `grep`, `cat` or `ls`. A denied command is final: don't rephrase it to get
-past the hook. One plain command at a time, from the repo root. `cd`, `&&`, `|`, `>`, `$…`, braces, globs and double quotes are denied; put a literal argument with spaces or `*` in single quotes:
+past the hook. Run from the repo root; one command, or several joined with `;` or `&&` (each is
+checked on its own and the shell gets them joined with `&&`). `cd`, `|`, `||`, `>`, `$…`, braces,
+globs and double quotes are denied; put a literal argument with spaces or `*` in single quotes
+(`[` and `]` in a path are quoted for you):
 
 - `git diff <base>...<head>`, `git diff --stat …`, `git diff` (uncommitted), `git log …`,
   `git show <ref>:<path>`, `git status --porcelain`, `git ls-files …`, `git merge-base …`
@@ -74,7 +77,11 @@ run fails with `srt … EPERM` or `sandbox_apply: Operation not permitted`, repe
 wrapped command with `dangerouslyDisableSandbox`; the integration suite needs the same because
 Docker can't run in the session sandbox. The hook allows `dangerouslyDisableSandbox` for these
 commands only. If srt is missing, the affected checks are `unverifiable — srt not installed`.
-- `diff -rq server/src/vendor/shared client/src/vendor/shared`
+- `diff -rq server/src/vendor/shared client/src/vendor/shared`, or any
+  `diff [-rquN] <path> <path>` inside the repo
+- `gh pr view <number | url> --json <fields> [--jq <expr>] [--repo <owner/repo>]` to read a
+  PR's body when the brief names a PR as a plan source; nothing else from `gh`
+- `docker info`, to tell "Docker not running" from a failing integration suite
 
 ## Step 1 — Gate
 

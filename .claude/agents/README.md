@@ -90,11 +90,16 @@ nothing else:
 
 - `agent-bash-allowlist.py <architecture | verify | test>` splits the command into words itself
   and allows it only when those words form one of the listed shapes. It refuses every character
-  the shell would expand or interpret (braces, `$`, globs, `\`, double quotes, operators), so the
+  the shell would expand or interpret (braces, `$`, globs, `\`, double quotes, pipes), so the
   program receives exactly the words that were checked; literal arguments go in single quotes.
-  Git long options are matched with git's abbreviation rule, and `--dir` / `--prefix` must be a
-  package of this repo or one of its worktrees, never a directory under `server/clones/`. Each
-  agent's **Commands you may run** section lists the allowed forms.
+  A `;` or `&&` chain is split into segments, each judged on its own, and handed to the shell
+  joined with `&&`; a bare `[`/`]` path is re-emitted single-quoted. Both go through the hook's
+  `updatedInput`, so a denial no longer costs a turn (a 2026-09-26 profile counted 7 such turns
+  in one plan-verifier run). Git long options are matched with git's abbreviation rule, and
+  `--dir` / `--prefix` must be a package of this repo or one of its worktrees, never a directory
+  under `server/clones/`. The `verify` profile also reads PR bodies (`gh pr view … --json`),
+  `docker info` and a plain `diff`. Each agent's **Commands you may run** section lists the
+  allowed forms.
 - `agent-write-scope.py <tests | docs>` resolves the target path against `$CLAUDE_PROJECT_DIR`
   and allows only the profile's paths. `tests` also denies adding `.skip`/`.only`/`.todo` and
   removing `it(`/`test(`/`expect(` calls from an existing file, and it keeps test-writer out of
