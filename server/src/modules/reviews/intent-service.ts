@@ -15,6 +15,7 @@ import type { PullRow } from './repository.js';
 import {
   INTENT_DATAMARK,
   INTENT_MAX_BODY_CHARS,
+  INTENT_MAX_BRANCH_CHARS,
   INTENT_MAX_COMMITS,
   INTENT_MAX_COMMIT_CHARS,
   INTENT_MAX_DOCS,
@@ -22,6 +23,7 @@ import {
   INTENT_MAX_ISSUES,
   INTENT_MAX_ISSUE_CHARS,
   INTENT_MAX_PATHS,
+  INTENT_MAX_PATH_CHARS,
   INTENT_MAX_TICKETS,
   INTENT_MAX_TITLE_CHARS,
   INTENT_SCHEMA_NAME,
@@ -173,7 +175,10 @@ export class IntentService {
       .filter((s) => s.length > 0)
       .slice(0, INTENT_MAX_COMMITS);
 
-    const paths = diff.files.map((f) => f.path).slice(0, INTENT_MAX_PATHS);
+    const branch = sanitizeSourceText(pull.branch, INTENT_MAX_BRANCH_CHARS);
+    const paths = diff.files
+      .slice(0, INTENT_MAX_PATHS)
+      .map((f) => sanitizeSourceText(f.path, INTENT_MAX_PATH_CHARS));
 
     const sources = [
       { kind: 'title' as const, ref: 'title', used: true, note: null },
@@ -186,7 +191,7 @@ export class IntentService {
       ...issues.map((i) => ({ kind: 'issue' as const, ref: `#${i.number}`, used: true, note: null })),
       ...ticketKeys.map((k) => ({ kind: 'ticket_ref' as const, ref: k, used: true, note: null })),
       ...docs.map((d) => ({ kind: 'plan_doc' as const, ref: d.path, used: true, note: null })),
-      { kind: 'branch' as const, ref: pull.branch, used: pull.branch.length > 0, note: null },
+      { kind: 'branch' as const, ref: branch, used: branch.length > 0, note: null },
       {
         kind: 'commits' as const,
         ref: `${commitSubjects.length} commit(s)`,
@@ -219,7 +224,7 @@ export class IntentService {
       description: sanitizedBody || null,
       issues,
       docs,
-      branch: pull.branch,
+      branch,
       commits: commitSubjects,
       paths,
     });

@@ -11,7 +11,7 @@ export const INTENT_SCHEMA_NAME = 'PrIntentExtraction';
  * prompt change invalidates every cached intent instead of silently reusing a
  * classification made under the old wording. [D7]
  */
-export const INTENT_PROMPT_VERSION = 'v2';
+export const INTENT_PROMPT_VERSION = 'v3';
 
 /**
  * Whitespace runs in every untrusted source sent to the intent model are
@@ -41,6 +41,8 @@ export const INTENT_MAX_COMMITS = 20;
     and must be sanitised + capped before it reaches the prompt. */
 export const INTENT_MAX_COMMIT_CHARS = 200;
 export const INTENT_MAX_PATHS = 50;
+/** Per-path cap — a path is sanitised like any other untrusted source. */
+export const INTENT_MAX_PATH_CHARS = 300;
 
 /** Per-ATTEMPT ceiling handed to the provider (see conventions/constants.ts for why
     this alone does not bound the call — providers apply it inside their own retry loop). */
