@@ -106,9 +106,13 @@ worktree when the checks must run; then pass its path.
 
 ## Step 2 — Collect
 
-1. Get the diff (`git diff --stat` first, then the hunks) and name the surfaces: which
-   packages, which modules, which layers (route, service, repository, adapter, platform,
-   domain; `app/**`, `src/components`, `src/lib`, `src/vendor`).
+1. Get the diff. When the brief gives a **bundle path** (written by
+   `.claude/scripts/review-bundle.sh`), Read its `stat.txt` and `index.txt` first, then the
+   per-file `hunks/<path>.patch` you need; don't run `git diff` for hunks the bundle already
+   holds, and don't open a path `index.txt` marks `excluded (generated)`. Without a bundle,
+   `git diff --stat` first, then the hunks. Name the surfaces: which packages, which modules,
+   which layers (route, service, repository, adapter, platform, domain; `app/**`,
+   `src/components`, `src/lib`, `src/vendor`).
 2. Read `.claude/rules/onion-boundaries.md` and, for each touched package, its `INSIGHTS.md`
    entries about boundaries.
 3. Run `lint:boundaries` and the route-adapter-calls test (both through the wrapper) whenever the diff

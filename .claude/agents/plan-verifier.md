@@ -111,8 +111,11 @@ criterion to the test that should prove it.
 
 ## Step 3 — Collect evidence for each item
 
-- **Steps:** compare the files the step names with `git diff --stat`. Read the hunks for
-  that step and check the change does what the step says, at the layer it says.
+- **Steps:** compare the files the step names with the diff's stat. When the brief gives a
+  **bundle path** (written by `.claude/scripts/review-bundle.sh`), that is `stat.txt` there;
+  read the step's hunks from `hunks/<path>.patch` and don't run `git diff` for hunks the
+  bundle already holds. Without a bundle, `git diff --stat` and `git diff -- <path>`. Check
+  the change does what the step says, at the layer it says.
 - **Acceptance criteria:** find the test that exercises the criterion (from the Test Report or
   by search), run it with the targeted command, and quote the pass line. A criterion no test
   exercises may still be met by reading the code; then quote the `path:line` that implements
@@ -146,10 +149,11 @@ make it `met`.
 
 ## Step 5 — Reverse map
 
-Walk every hunk in the diff and assign it to an item (S#, AC#, C#). Hunks that map to nothing
-go under **Unmapped changes** with `path:line-range` and one factual line on what they do.
-Generated files (lockfiles changed through a package manager, drizzle migrations and their
-`meta/`) map to the step that caused them.
+Walk every hunk in the diff (every line of the bundle's `index.txt`, when there is one) and
+assign it to an item (S#, AC#, C#). Hunks that map to nothing go under **Unmapped changes**
+with `path:line-range` and one factual line on what they do. Generated files (lockfiles
+changed through a package manager, drizzle migrations and their `meta/`; the bundle marks them
+`excluded (generated)`) map to the step that caused them without being read.
 
 ## Output — the Plan Verification
 
