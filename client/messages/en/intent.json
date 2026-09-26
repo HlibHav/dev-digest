@@ -1,7 +1,11 @@
 {
   "title": "Stated intent",
-  "empty": "No intent derived yet — it's derived the next time a review runs.",
+  "empty": "No intent derived yet. Derive it now, or it's derived on the next review.",
   "lowHint": "Derived from indirect data (branch name, commits, changed paths) — no description or linked issue.",
+  "stale": "Derived for an older commit ({sha}); the PR has changed since. Re-derive to refresh it.",
+  "derive": "Derive intent",
+  "rederive": "Re-derive",
+  "rederiving": "Deriving…",
   "confidence": {
     "high": "high confidence",
     "medium": "medium confidence",

@@ -5,7 +5,7 @@
  * failure does to the caller) rather than any one adapter's behaviour.
  */
 import { describe, it, expect, vi } from 'vitest';
-import type { FeatureModelChoice, IssueMeta, PrDetail, RepoRef } from '@devdigest/shared';
+import type { FeatureModelChoice, IssueMeta, PrDetail, RepoRef, UnifiedDiff } from '@devdigest/shared';
 import { MockLLMProvider } from '../src/adapters/mocks.js';
 import { IntentService, type IntentPorts, type PersistedIntent } from '../src/modules/reviews/intent-service.js';
 import { INTENT_SCHEMA_NAME, INTENT_TOTAL_BUDGET_MS } from '../src/modules/reviews/intent-constants.js';
@@ -67,6 +67,8 @@ function harness(
     prFiles?: { path: string; patch: string | null }[];
     hangs?: boolean;
     model?: string;
+    pullMissing?: boolean;
+    llmFails?: boolean;
   } = {},
 ): Harness {
   const llm = new MockLLMProvider('openai', {
@@ -76,7 +78,7 @@ function harness(
   let refreshCalls = 0;
 
   const ports: IntentPorts = {
-    getPull: async () => pull(),
+    getPull: async () => (opts.pullMissing ? undefined : pull()),
     getIntent: async () => opts.cached,
     saveIntent: async (prId, record) => {
       saved.push({ prId, record });
@@ -88,6 +90,8 @@ function harness(
     },
     listCommits: async () => opts.commits ?? [],
     listPrFiles: async () => opts.prFiles ?? [],
+    getRepo: async () => REPO,
+    loadDiff: async () => ({ files: [] }) as unknown as UnifiedDiff,
     getIssue: async (_ref: RepoRef, n: number) => {
       if (opts.issueFails) throw new Error('404 not found');
       return { number: n, title: `Issue ${n}`, body: `Body of issue ${n}` } as unknown as IssueMeta;
@@ -100,7 +104,9 @@ function harness(
       model: opts.model ?? 'gpt-4.1-mini',
     }),
     llm: async () =>
-      opts.hangs
+      opts.llmFails
+        ? ({ ...llm, completeStructured: () => Promise.reject(new Error('provider 500')) } as unknown as MockLLMProvider)
+        : opts.hangs
         ? ({ ...llm, completeStructured: () => new Promise(() => {}) } as unknown as MockLLMProvider)
         : llm,
   };
@@ -372,5 +378,44 @@ describe('getForPull', () => {
       change_type: 'feature',
       model: 'openai/gpt-4.1-mini',
     });
+  });
+});
+
+describe('rederive — manual POST /pulls/:id/intent', () => {
+  function cachedRow(h: Harness): PersistedIntent {
+    return h.saved[0]!.record;
+  }
+
+  it('returns null (→ 404) when the PR is not in this workspace, with no refresh and no model call', async () => {
+    const h = harness({ pullMissing: true });
+    const spy = vi.spyOn(h.llm, 'completeStructured');
+    expect(await h.service.rederive(WS, 'pr-1', () => {})).toBeNull();
+    expect(h.refreshCalls).toBe(0);
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('always refreshes the PR from GitHub first, even when the stored body is not empty', async () => {
+    const h = harness();
+    await h.service.rederive(WS, 'pr-1', () => {});
+    expect(h.refreshCalls).toBe(1);
+  });
+
+  it('calls the model even when the inputs match the cached row (force)', async () => {
+    const first = harness();
+    await first.service.derive({ workspaceId: WS, pull: pull(), repo: REPO, diff: { files: [] } as unknown as UnifiedDiff }, () => {});
+    const h = harness({ cached: cachedRow(first) });
+    const spy = vi.spyOn(h.llm, 'completeStructured');
+    await h.service.rederive(WS, 'pr-1', () => {});
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(h.saved).toHaveLength(1);
+  });
+
+  it('throws ExternalServiceError (502) with the cause when the model call fails, instead of returning the old record', async () => {
+    const h = harness({ llmFails: true });
+    await expect(h.service.rederive(WS, 'pr-1', () => {})).rejects.toMatchObject({
+      statusCode: 502,
+      message: expect.stringContaining('provider 500'),
+    });
+    expect(h.saved).toHaveLength(0);
   });
 });

@@ -1,5 +1,5 @@
-import { describe, it, expect, afterEach } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { describe, it, expect, afterEach, vi } from "vitest";
+import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import type { PrIntentRecord } from "@devdigest/shared";
 import messages from "../../../../../../../../../../messages/en/intent.json";
@@ -72,7 +72,7 @@ describe("IntentCard", () => {
   it("renders the empty state when intent is null", () => {
     renderWithIntl(<IntentCard intent={null} />);
     expect(
-      screen.getByText("No intent derived yet — it's derived the next time a review runs."),
+      screen.getByText("No intent derived yet. Derive it now, or it's derived on the next review."),
     ).toBeInTheDocument();
     expect(screen.queryByText(INTENT.intent)).not.toBeInTheDocument();
   });
@@ -80,7 +80,7 @@ describe("IntentCard", () => {
   it("renders the empty state when intent is undefined (e.g. a 404)", () => {
     renderWithIntl(<IntentCard intent={undefined} />);
     expect(
-      screen.getByText("No intent derived yet — it's derived the next time a review runs."),
+      screen.getByText("No intent derived yet. Derive it now, or it's derived on the next review."),
     ).toBeInTheDocument();
   });
 
@@ -88,7 +88,7 @@ describe("IntentCard", () => {
     const { container } = renderWithIntl(<IntentCard intent={undefined} isLoading />);
     expect(container).toBeEmptyDOMElement();
     expect(
-      screen.queryByText("No intent derived yet — it's derived the next time a review runs."),
+      screen.queryByText("No intent derived yet. Derive it now, or it's derived on the next review."),
     ).not.toBeInTheDocument();
   });
 
@@ -101,5 +101,39 @@ describe("IntentCard", () => {
     // The literal markup shows up as visible text content, not a parsed <img>.
     expect(screen.getByText(withHtmlish.intent)).toBeInTheDocument();
     expect(document.querySelector("img")).not.toBeInTheDocument();
+  });
+});
+
+describe("IntentCard — re-derive", () => {
+  it("offers Re-derive on a derived intent and calls the handler on click", () => {
+    const onRederive = vi.fn();
+    renderWithIntl(<IntentCard intent={INTENT} onRederive={onRederive} />);
+    fireEvent.click(screen.getByRole("button", { name: "Re-derive" }));
+    expect(onRederive).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers Derive intent on the empty state", () => {
+    renderWithIntl(<IntentCard intent={null} onRederive={() => {}} />);
+    expect(screen.getByRole("button", { name: "Derive intent" })).toBeInTheDocument();
+  });
+
+  it("disables the button and says Deriving… while the request runs", () => {
+    renderWithIntl(<IntentCard intent={INTENT} onRederive={() => {}} rederiving />);
+    expect(screen.getByRole("button", { name: /Deriving/ })).toBeDisabled();
+  });
+
+  it("renders no button when no handler is given", () => {
+    renderWithIntl(<IntentCard intent={INTENT} />);
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("flags an intent derived for an older head", () => {
+    renderWithIntl(<IntentCard intent={INTENT} currentHeadSha="def9999" />);
+    expect(screen.getByText(/Derived for an older commit \(abc1234\)/)).toBeInTheDocument();
+  });
+
+  it("does not flag an intent derived for the current head", () => {
+    renderWithIntl(<IntentCard intent={INTENT} currentHeadSha="abc1234" />);
+    expect(screen.queryByText(/older commit/)).not.toBeInTheDocument();
   });
 });

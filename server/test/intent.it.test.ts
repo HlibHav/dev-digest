@@ -275,4 +275,40 @@ d('Intent Layer (Testcontainers pg)', () => {
     await restore();
     await app.close();
   });
+
+  it('POST /pulls/:id/intent re-derives on demand with no review run, and GET then serves the new record', async () => {
+    const app = await appWith();
+    const { pr } = await setupRepoAndPr(pg.handle.db, workspaceId);
+    expect((await app.inject({ method: 'GET', url: `/pulls/${pr.id}/intent` })).statusCode).toBe(404);
+
+    const res = await app.inject({ method: 'POST', url: `/pulls/${pr.id}/intent` });
+    expect(res.statusCode).toBe(200);
+    const record = res.json();
+    expect(record.intent).toContain('rate limiter');
+    expect(record.head_sha).toBe('a1b2c3d4');
+    expect(record.confidence).toEqual(expect.stringMatching(/^(high|medium|low)$/));
+
+    const get = await app.inject({ method: 'GET', url: `/pulls/${pr.id}/intent` });
+    expect(get.statusCode).toBe(200);
+    expect(get.json().updated_at).toBe(record.updated_at);
+
+    const runs = await pg.handle.db.select().from(t.agentRuns).where(eq(t.agentRuns.prId, pr.id));
+    expect(runs).toHaveLength(0);
+
+    const missing = await app.inject({ method: 'POST', url: '/pulls/00000000-0000-0000-0000-000000000000/intent' });
+    expect(missing.statusCode).toBe(404);
+    await app.close();
+  });
+
+  it('POST /pulls/:id/intent answers 502 when the model fails, and stores nothing', async () => {
+    const app = await appWith({ intent: 'not enough fields' });
+    const { pr } = await setupRepoAndPr(pg.handle.db, workspaceId);
+
+    const res = await app.inject({ method: 'POST', url: `/pulls/${pr.id}/intent` });
+    expect(res.statusCode).toBe(502);
+    expect(JSON.stringify(res.json())).toContain("Couldn't derive the PR intent");
+
+    expect((await app.inject({ method: 'GET', url: `/pulls/${pr.id}/intent` })).statusCode).toBe(404);
+    await app.close();
+  });
 });

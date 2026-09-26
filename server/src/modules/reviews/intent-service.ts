@@ -9,6 +9,7 @@ import type {
   UnifiedDiff,
 } from '@devdigest/shared';
 import { withTimeout } from '../../platform/resilience.js';
+import { ExternalServiceError, NotFoundError } from '../../platform/errors.js';
 import { renderPrompt } from '../../platform/prompts.js';
 import type { PromptIntent } from '@devdigest/reviewer-core';
 import type { PullRow } from './repository.js';
@@ -77,6 +78,10 @@ export interface IntentPorts {
   refreshPullDetail(workspaceId: string, prId: string): Promise<PrDetail>;
   listCommits(prId: string): Promise<{ message: string }[]>;
   listPrFiles(prId: string): Promise<{ path: string; patch: string | null }[]>;
+  /** Owner/name of the PR's repo — the manual re-derive has no run to take it from. */
+  getRepo(repoId: string): Promise<{ owner: string; name: string } | undefined>;
+  /** The PR's unified diff, the same loader a review run uses. */
+  loadDiff(workspaceId: string, pull: PullRow): Promise<UnifiedDiff>;
   getIssue(ref: RepoRef, n: number): Promise<IssueMeta>;
   /** Reads from the local clone (default branch) — [D2] option A/B. */
   readRepoFile(ref: RepoRef, path: string): Promise<string>;
@@ -86,6 +91,14 @@ export interface IntentPorts {
 
 /** The subset `run-executor.ts` depends on — narrows the surface it can call. */
 export type IntentDeriver = Pick<IntentService, 'derive'>;
+
+/** Knobs for one derivation. A review run passes none of them. */
+export interface IntentDeriveOptions {
+  /** Skip the `input_hash` cache and call the model (manual re-derive). */
+  force?: boolean;
+  /** The caller already refreshed the PR from GitHub; don't do it again. */
+  refreshed?: boolean;
+}
 
 /**
  * Derives a PR's intent (title/description/linked issues/plan docs/branch/
@@ -100,9 +113,10 @@ export class IntentService {
   async derive(
     input: IntentDeriveInput,
     log: (msg: string) => void,
+    opts: IntentDeriveOptions = {},
   ): Promise<{ intent: PromptIntent; costUsd: number } | null> {
     try {
-      return await withTimeout(this.deriveInner(input, log), INTENT_TOTAL_BUDGET_MS);
+      return await withTimeout(this.deriveInner(input, log, opts), INTENT_TOTAL_BUDGET_MS);
     } catch (err) {
       log(`intent: failed — ${(err as Error).message}; continuing without intent`);
       return null;
@@ -112,13 +126,14 @@ export class IntentService {
   private async deriveInner(
     input: IntentDeriveInput,
     log: (msg: string) => void,
+    opts: IntentDeriveOptions,
   ): Promise<{ intent: PromptIntent; costUsd: number } | null> {
     const { workspaceId, pull, repo, diff } = input;
     const repoRef: RepoRef = { owner: repo.owner, name: repo.name };
 
     // 0. [D6] refresh from GitHub when the stored body is empty.
     let body = pull.body ?? '';
-    if (!body.trim()) {
+    if (!body.trim() && !opts.refreshed) {
       try {
         const detail = await this.ports.refreshPullDetail(workspaceId, pull.id);
         body = detail.body ?? '';
@@ -231,7 +246,7 @@ export class IntentService {
     const inputHash = intentInputHash(choice.model, INTENT_PROMPT_VERSION, sanitizedTitle, sanitizedBody, userMessage);
 
     const cached = await this.ports.getIntent(pull.id);
-    if (cached && cached.inputHash === inputHash) {
+    if (!opts.force && cached && cached.inputHash === inputHash) {
       log(`intent: cached (inputs unchanged since ${pull.headSha.slice(0, 7)})`);
       return { intent: toPromptIntent(cached), costUsd: 0 };
     }
@@ -280,6 +295,49 @@ export class IntentService {
 
     // g. return the review-facing shape + what it cost.
     return { intent: toPromptIntent(record), costUsd: result.costUsd ?? 0 };
+  }
+
+  /**
+   * `POST /pulls/:id/intent` — re-derive on demand after the PR changed.
+   * Unlike a review run it always refreshes the PR from GitHub first (body,
+   * files, commits — falling back to what is stored when GitHub is
+   * unreachable) and always calls the model (`force`), because the user asked
+   * for a fresh answer. Returns `null` when the PR is not in this workspace;
+   * throws `ExternalServiceError` when the derivation itself fails, so the
+   * caller never gets the old record back as if it were new.
+   */
+  async rederive(
+    workspaceId: string,
+    prId: string,
+    log: (msg: string) => void,
+  ): Promise<PrIntentRecord | null> {
+    const stored = await this.ports.getPull(workspaceId, prId);
+    if (!stored) return null;
+
+    await this.ports.refreshPullDetail(workspaceId, prId);
+    log('intent: refreshed PR detail before re-deriving');
+    const pull = (await this.ports.getPull(workspaceId, prId)) ?? stored;
+
+    const repo = await this.ports.getRepo(pull.repoId);
+    if (!repo) throw new NotFoundError('Repository not found');
+    const diff = await this.ports.loadDiff(workspaceId, pull);
+
+    let failure: string | null = null;
+    const outcome = await this.derive(
+      { workspaceId, pull, repo, diff },
+      (msg) => {
+        if (msg.startsWith('intent: failed')) failure = msg;
+        log(msg);
+      },
+      { force: true, refreshed: true },
+    );
+    if (!outcome) {
+      const reason = (failure ?? 'intent: failed — unknown error')
+        .replace(/^intent: failed — /, '')
+        .replace(/; continuing without intent$/, '');
+      throw new ExternalServiceError(`Couldn't derive the PR intent: ${reason}`);
+    }
+    return this.getForPull(workspaceId, prId);
   }
 
   /** `GET /pulls/:id/intent` — 404 (via the route) when not derived, or when

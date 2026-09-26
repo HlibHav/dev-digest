@@ -7,6 +7,7 @@ import { IdParams } from '../_shared/schemas.js';
 import { NotFoundError } from '../../platform/errors.js';
 import { ReviewService } from './service.js';
 import { IntentService } from './intent-service.js';
+import { loadDiff } from './diff-loader.js';
 import { resolveFeatureModel } from '../settings/feature-models.js';
 import { buildPullsService } from '../pulls/wiring.js';
 
@@ -17,6 +18,7 @@ import { buildPullsService } from '../pulls/wiring.js';
  *   GET    /runs/:id/trace                             → the single-document RunTrace
  *   GET    /pulls/:id/reviews                          → persisted reviews + findings for a PR
  *   GET    /pulls/:id/intent                           → derived PR intent (404 if not derived yet)
+ *   POST   /pulls/:id/intent                           → re-derive the intent now (refresh + model call)
  *   POST   /findings/:id/(accept|dismiss)              → finding actions
  */
 const FINDING_ACTIONS = ['accept', 'dismiss'] as const;
@@ -38,6 +40,12 @@ export default async function reviewsRoutes(appBase: FastifyInstance) {
     refreshPullDetail: (workspaceId, prId) => pullsService.refreshPullDetail(workspaceId, prId),
     listCommits: (prId) => container.reviewRepo.getPrCommits(prId),
     listPrFiles: (prId) => container.reviewRepo.getPrFiles(prId),
+    getRepo: (repoId) => container.reviewRepo.getRepo(repoId),
+    loadDiff: async (workspaceId, pull) => {
+      const repo = await container.reviewRepo.getRepo(pull.repoId);
+      if (!repo) throw new NotFoundError('Repository not found');
+      return loadDiff(container, container.reviewRepo, workspaceId, pull, repo);
+    },
     getIssue: (ref, n) => container.github().then((gh) => gh.getIssue(ref, n)),
     readRepoFile: (ref, path) => container.git.readFile(ref, path),
     resolveModel: (workspaceId) => resolveFeatureModel(container, workspaceId, 'review_intent'),
@@ -163,6 +171,19 @@ export default async function reviewsRoutes(appBase: FastifyInstance) {
     if (!record) throw new NotFoundError('Intent not derived yet');
     return record;
   });
+
+  // Manual re-derive after the PR changed. One paid model call per request,
+  // so it gets the same tight per-route limit as a review run.
+  app.post(
+    '/pulls/:id/intent',
+    { schema: { params: IdParams }, config: { rateLimit: { max: 10, timeWindow: '1 minute' } } },
+    async (req) => {
+      const { workspaceId } = await getContext(container, req);
+      const record = await intentService.rederive(workspaceId, req.params.id, (msg) => req.log.info(msg));
+      if (!record) throw new NotFoundError('Pull request not found');
+      return record;
+    },
+  );
 
   // ---- Delete a whole review run (one agent's pass) + its findings --------
   app.delete('/reviews/:id', { schema: { params: IdParams } }, async (req) => {

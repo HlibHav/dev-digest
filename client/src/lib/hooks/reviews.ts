@@ -67,6 +67,20 @@ export function usePrIntent(prId: string | null | undefined) {
   });
 }
 
+/** Re-derive the PR's intent now (refreshes the PR from GitHub, then one model
+   call). A failure reaches the user through the global mutation toast. */
+export function useRederiveIntent(prId: string | null | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<PrIntentRecord>(`/pulls/${prId}/intent`),
+    onSuccess: (record) => {
+      qc.setQueryData(["pr-intent", prId], record);
+      // The refresh may have changed the body, files and commits too.
+      qc.invalidateQueries({ queryKey: ["pull", prId] });
+    },
+  });
+}
+
 // ---- Persisted reviews + findings for a PR ----
 export function usePrReviews(prId: string | null | undefined) {
   return useQuery({
