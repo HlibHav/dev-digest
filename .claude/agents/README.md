@@ -37,18 +37,24 @@ flowchart LR
   TW -- red tests + Test Report --> S
   S -- commit red tests --> I[implementer]
   P -- plan --> I
-  I -- report + diff --> AR[architecture-reviewer]
-  I -- report + diff --> PV[plan-verifier]
+  I -- Implementation Report --> AR[architecture-reviewer]
+  S -- bundle path + checks already run --> AR
+  AR -- Architecture Review --> S
+  S -- bundle path + Architecture Review checks + checks already run --> PV[plan-verifier]
+  I -- Implementation Report --> PV
   P -- plan --> PV
   TW -- criterion → test map --> PV
-  AR -- Architecture Review --> S
   PV -- Plan Verification --> S
   S -- plan + verified code --> DW[doc-writer]
 ```
 
 The main session is the orchestrator. It passes each artifact on verbatim, because a subagent
-sees no conversation history. The red-first leg is optional: without it, test-writer can run in
-backfill mode after the implementer.
+sees no conversation history. The diff is the exception: it is never pasted into a brief. The
+main session runs `.claude/scripts/review-bundle.sh <base>...<head> <out-dir>` once and passes
+the path (see *Brief for reviewers*). The two reviewers run one after the other,
+architecture-reviewer first, because plan-verifier reuses its check results instead of
+running them again. The red-first leg is optional: without it, test-writer can run in backfill
+mode after the implementer.
 
 ## Who owns which check
 
@@ -66,6 +72,32 @@ The planner writes each check under *Checks for reviewers* with its owner, and t
 | e2e (`npm run e2e:hermetic`) | main session: it rebuilds `client/.next` and breaks a running dev server (`e2e/INSIGHTS.md`), and its ports live in `CLAUDE.local.md` |
 | `pr-self-review` | main session: it writes a verdict artifact |
 | security review, including the agent hooks | main session (`/security-review`); there is no security agent |
+
+## Brief for reviewers
+
+A reviewer's brief carries the target and everything already known about it, so the agent
+spends its turns on judgment, not on re-deriving facts the main session has. Both reviewers get
+the first three items; plan-verifier gets the fourth as well.
+
+1. **Target:** `<base>...<head>` and the head sha.
+2. **Bundle:** the absolute path `review-bundle.sh` wrote for that range.
+3. **Checks already run:** every check the main session or an earlier agent ran on that head.
+
+   | check | command | head sha | result line |
+   |---|---|---|---|
+   | server unit | `pnpm --dir server exec vitest run --exclude '**/*.it.test.ts'` | `abc1234` | `Tests 271 passed (271)` |
+   | lint:boundaries | `pnpm --dir server lint:boundaries` | `abc1234` | `no dependency violations found` / `34 known violations ignored` |
+
+   A row whose sha equals the target's head is evidence: the reader quotes it in its own
+   Checks table with `brief` in the exit column and does not run the command again. A row with
+   another sha, or a check with no row, is run as before.
+4. **plan-verifier only:** the plan, the Implementation Report, the Test Report's **Tests**
+   table when there is one, and the **Checks run** table from the Architecture Review, which
+   is why plan-verifier runs second.
+
+What this saved, measured on the intent-layer PR (2026-09-26): plan-verifier had re-run three
+typechecks and four unit suites the main session had just run, ~8 turns and 5 minutes; the two
+reviewers had sliced the same diff 28 times.
 
 Scope splits that are easy to get wrong:
 - **researcher vs. planner.** The planner doesn't browse. When a plan needs external facts, the
@@ -90,11 +122,16 @@ nothing else:
 
 - `agent-bash-allowlist.py <architecture | verify | test>` splits the command into words itself
   and allows it only when those words form one of the listed shapes. It refuses every character
-  the shell would expand or interpret (braces, `$`, globs, `\`, double quotes, operators), so the
+  the shell would expand or interpret (braces, `$`, globs, `\`, double quotes, pipes), so the
   program receives exactly the words that were checked; literal arguments go in single quotes.
-  Git long options are matched with git's abbreviation rule, and `--dir` / `--prefix` must be a
-  package of this repo or one of its worktrees, never a directory under `server/clones/`. Each
-  agent's **Commands you may run** section lists the allowed forms.
+  A `;` or `&&` chain is split into segments, each judged on its own, and handed to the shell
+  joined with `&&`; a bare `[`/`]` path is re-emitted single-quoted. Both go through the hook's
+  `updatedInput`, so a denial no longer costs a turn (a 2026-09-26 profile counted 7 such turns
+  in one plan-verifier run). Git long options are matched with git's abbreviation rule, and
+  `--dir` / `--prefix` must be a package of this repo or one of its worktrees, never a directory
+  under `server/clones/`. The `verify` profile also reads PR bodies (`gh pr view … --json`),
+  `docker info` and a plain `diff`. Each agent's **Commands you may run** section lists the
+  allowed forms.
 - `agent-write-scope.py <tests | docs>` resolves the target path against `$CLAUDE_PROJECT_DIR`
   and allows only the profile's paths. `tests` also denies adding `.skip`/`.only`/`.todo` and
   removing `it(`/`test(`/`expect(` calls from an existing file, and it keeps test-writer out of

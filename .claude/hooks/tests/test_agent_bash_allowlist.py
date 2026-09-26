@@ -39,6 +39,130 @@ def decide(command: str, profile: str = "architecture", unsandboxed: bool = Fals
     return json.loads(out.stdout)["hookSpecificOutput"]["permissionDecision"]
 
 
+def rewritten(command: str, profile: str = "architecture", unsandboxed: bool = False) -> dict | None:
+    """The `updatedInput` the hook returns for an allowed command, or None when it passes as is."""
+    tool_input: dict = {"command": command}
+    if unsandboxed:
+        tool_input["dangerouslyDisableSandbox"] = True
+    payload = json.dumps({"tool_name": "Bash", "tool_input": tool_input})
+    env = {**os.environ, "CLAUDE_PROJECT_DIR": str(ROOT)}
+    out = subprocess.run(
+        [sys.executable, str(HOOK), profile], input=payload, capture_output=True, text=True, env=env
+    )
+    assert out.returncode == 0, out.stderr
+    if not out.stdout.strip():
+        return None
+    output = json.loads(out.stdout)["hookSpecificOutput"]
+    assert output["permissionDecision"] == "allow", output
+    return output["updatedInput"]
+
+
+class CompoundCommands(unittest.TestCase):
+    """`;` and `&&` join allowed segments; the hook checks each and hands the shell `&&`.
+
+    A plan-verifier run lost 6 of 41 turns to `;` denials (2026-09-26 token profile). Each
+    segment is judged by the same allowlist, so a chain is never more than its parts.
+    """
+
+    def test_every_segment_is_checked(self) -> None:
+        for cmd in [
+            "git diff HEAD; rm -rf x",
+            "git log -1; git diff --output=/tmp/x",
+            "git log -1 && echo OK",
+            "git log -1 || true",
+            "git log -1 | head",
+            "git log -1 &",
+            "git log ;; git status",
+            "; git log",
+            "git log;",
+            "git log -1; pnpm --dir server exec vitest run test/x.test.ts",  # unwrapped code run
+        ]:
+            with self.subTest(cmd=cmd):
+                self.assertEqual(decide(cmd, "verify"), "deny")
+
+    def test_semicolons_become_and(self) -> None:
+        updated = rewritten("git diff --stat HEAD; git log -1", "verify")
+        self.assertEqual(updated, {"command": "git diff --stat HEAD && git log -1"})
+
+    def test_and_chain_passes_unchanged(self) -> None:
+        self.assertIsNone(rewritten("git log -1 && git status --porcelain", "verify"))
+
+    def test_unsandboxed_flag_survives_the_rewrite(self) -> None:
+        lint = W + "pnpm --dir server lint:boundaries"
+        route = W + "pnpm --dir server exec vitest run test/route-adapter-calls.test.ts"
+        updated = rewritten(f"{lint}; {route}", "architecture", unsandboxed=True)
+        self.assertEqual(updated, {"command": f"{lint} && {route}", "dangerouslyDisableSandbox": True})
+
+    def test_unsandboxed_chain_with_a_read_only_segment_is_still_denied(self) -> None:
+        self.assertEqual(decide("git log -1; git status", "verify", unsandboxed=True), "deny")
+
+
+class BracketPathsAreQuoted(unittest.TestCase):
+    """`[` and `]` are glob characters in zsh, so a Next.js route path like `[repoId]` must
+    reach the shell single-quoted. The hook quotes it instead of refusing (one lost turn per
+    review of the PR page, 2026-09-26)."""
+
+    def test_bare_bracket_path_is_quoted(self) -> None:
+        cmd = "git diff HEAD -- client/src/app/repos/[repoId]/page.tsx"
+        updated = rewritten(cmd, "architecture")
+        self.assertEqual(updated, {"command": "git diff HEAD -- 'client/src/app/repos/[repoId]/page.tsx'"})
+
+    def test_already_quoted_passes_unchanged(self) -> None:
+        self.assertIsNone(rewritten("git diff HEAD -- 'client/src/app/repos/[repoId]/page.tsx'"))
+
+    def test_other_glob_characters_stay_denied(self) -> None:
+        for cmd in ["git diff HEAD -- client/src/app/*.tsx", "git diff HEAD -- {a,b}", "git log ?"]:
+            with self.subTest(cmd=cmd):
+                self.assertEqual(decide(cmd), "deny")
+
+
+class VerifyProfileReadOnlyExtras(unittest.TestCase):
+    """`gh pr view --json`, `docker info` and a plain `diff` are read-only and `verify`-only.
+
+    Without them plan-verifier could not read PR bodies (2 denials), could not tell whether
+    Docker was up (1), and re-ran `diff -rq` in a shape the hook refused (1)."""
+
+    def test_allowed_in_verify(self) -> None:
+        for cmd in [
+            "gh pr view 19 --json body",
+            "gh pr view 19 --json body,title --jq .body",
+            "gh pr view 19 --json body -q .body",
+            "gh pr view https://github.com/HlibHav/dev-digest/pull/19 --json body",
+            "gh pr view 19 --repo HlibHav/dev-digest --json body",
+            "docker info",
+            "diff -u server/INSIGHTS.md client/INSIGHTS.md",
+            "diff -ruN server/src/vendor/shared client/src/vendor/shared",
+            "diff server/AGENTS.md client/AGENTS.md",
+        ]:
+            with self.subTest(cmd=cmd):
+                self.assertEqual(decide(cmd, "verify"), "allow")
+
+    def test_denied_shapes(self) -> None:
+        for cmd in [
+            "gh pr view 19 --web",
+            "gh pr view 19",  # no --json: opens the pager / human output, not needed
+            "gh pr edit 19 --body x",
+            "gh pr checks 19",
+            "gh api repos/HlibHav/dev-digest",
+            "gh pr view 19 --repo ../x --json body",
+            "docker run alpine",
+            "docker ps",
+            "diff --output=x a b",
+            "diff -u a ../b",
+            "diff -u a server/clones/x",
+            "diff -r / /tmp",  # absolute paths read outside the repo
+            "diff -u /etc/hosts server/AGENTS.md",
+        ]:
+            with self.subTest(cmd=cmd):
+                self.assertEqual(decide(cmd, "verify"), "deny")
+
+    def test_other_profiles_do_not_get_them(self) -> None:
+        for cmd in ["gh pr view 19 --json body", "docker info", "diff -u a b"]:
+            for profile in ("architecture", "test"):
+                with self.subTest(cmd=cmd, profile=profile):
+                    self.assertEqual(decide(cmd, profile), "deny")
+
+
 class ShellExpansionBypasses(unittest.TestCase):
     """The shell must see exactly the tokens the hook checked."""
 

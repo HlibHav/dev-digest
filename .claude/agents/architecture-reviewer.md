@@ -61,11 +61,22 @@ you cite.
 - **Budget:** at most 80 tool calls. When you hit it, return what you have and list the rest
   under **Not checked**.
 
+## Reading
+
+Grep for the symbol or rule first, then Read the range it points at (`offset` and `limit`).
+Read a whole file only when it is under ~150 lines or you need all of it. Never Read the same
+file twice: note the line numbers you will cite the first time. A hunk you have from the
+bundle is already read; open the file only for context outside the hunk. (One review on the
+intent-layer PR spent 0 of 101 tool calls on Grep and read a 7k-char test file three times.)
+
 ## Commands you may run
 
 Search with the Grep and Glob tools and read with Read; Bash is only for the commands below,
 never for `find`, `grep`, `cat` or `ls`. A denied command is final: don't rephrase it to get
-past the hook. One plain command at a time, from the repo root. `cd`, `&&`, `|`, `>`, `$…`, braces, globs and double quotes are denied; put a literal argument with spaces or `*` in single quotes:
+past the hook. Run from the repo root; one command, or several joined with `;` or `&&` (each is
+checked on its own and the shell gets them joined with `&&`). `cd`, `|`, `||`, `>`, `$…`, braces,
+globs and double quotes are denied; put a literal argument with spaces or `*` in single quotes
+(`[` and `]` in a path are quoted for you):
 
 - `git diff <base>...<head>`, `git diff --stat …`, `git diff` (uncommitted), `git log …`,
   `git show <ref>:<path>`, `git merge-base …`, `git status`, `git blame …`, `git ls-files …`,
@@ -103,14 +114,20 @@ worktree when the checks must run; then pass its path.
 
 ## Step 2 — Collect
 
-1. Get the diff (`git diff --stat` first, then the hunks) and name the surfaces: which
-   packages, which modules, which layers (route, service, repository, adapter, platform,
-   domain; `app/**`, `src/components`, `src/lib`, `src/vendor`).
+1. Get the diff. When the brief gives a **bundle path** (written by
+   `.claude/scripts/review-bundle.sh`), Read its `stat.txt` and `index.txt` first, then the
+   per-file `hunks/<path>.patch` you need; don't run `git diff` for hunks the bundle already
+   holds, and don't open a path `index.txt` marks `excluded (generated)`. Without a bundle,
+   `git diff --stat` first, then the hunks. Name the surfaces: which packages, which modules,
+   which layers (route, service, repository, adapter, platform, domain; `app/**`,
+   `src/components`, `src/lib`, `src/vendor`).
 2. Read `.claude/rules/onion-boundaries.md` and, for each touched package, its `INSIGHTS.md`
    entries about boundaries.
 3. Run `lint:boundaries` and the route-adapter-calls test (both through the wrapper) whenever the diff
    touches `server/` or `reviewer-core/`. Record the command, the exit code and the key output
-   line. Together they are onion-architecture step 9.
+   line. Together they are onion-architecture step 9. When the brief's *Checks already run*
+   table has that command with a sha equal to the target's head, quote its result line with
+   `brief` in the exit column instead of running it again.
 
 ## Step 3 — Review what the checks can't see
 

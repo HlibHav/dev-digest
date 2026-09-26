@@ -48,11 +48,23 @@ item to the code and every changed hunk back to the plan, and you give no advice
 - **Budget:** at most 100 tool calls. When you hit it, return the report and mark the
   remaining items `unverifiable — budget`.
 
+## Reading
+
+Grep for the symbol, test name or plan phrase first, then Read the range it points at
+(`offset` and `limit`). Read a whole file only when it is under ~150 lines or you need all of
+it. Never Read the same file twice: note the line numbers you will cite the first time. A hunk
+you have from the bundle is already read; open the file only for context outside the hunk.
+(One verification on the intent-layer PR spent 0 of 54 tool calls on Grep and read a 7k-char
+test file three times.)
+
 ## Commands you may run
 
 Search with the Grep and Glob tools and read with Read; Bash is only for the commands below,
 never for `find`, `grep`, `cat` or `ls`. A denied command is final: don't rephrase it to get
-past the hook. One plain command at a time, from the repo root. `cd`, `&&`, `|`, `>`, `$…`, braces, globs and double quotes are denied; put a literal argument with spaces or `*` in single quotes:
+past the hook. Run from the repo root; one command, or several joined with `;` or `&&` (each is
+checked on its own and the shell gets them joined with `&&`). `cd`, `|`, `||`, `>`, `$…`, braces,
+globs and double quotes are denied; put a literal argument with spaces or `*` in single quotes
+(`[` and `]` in a path are quoted for you):
 
 - `git diff <base>...<head>`, `git diff --stat …`, `git diff` (uncommitted), `git log …`,
   `git show <ref>:<path>`, `git status --porcelain`, `git ls-files …`, `git merge-base …`
@@ -74,7 +86,11 @@ run fails with `srt … EPERM` or `sandbox_apply: Operation not permitted`, repe
 wrapped command with `dangerouslyDisableSandbox`; the integration suite needs the same because
 Docker can't run in the session sandbox. The hook allows `dangerouslyDisableSandbox` for these
 commands only. If srt is missing, the affected checks are `unverifiable — srt not installed`.
-- `diff -rq server/src/vendor/shared client/src/vendor/shared`
+- `diff -rq server/src/vendor/shared client/src/vendor/shared`, or any
+  `diff [-rquN] <path> <path>` inside the repo
+- `gh pr view <number | url> --json <fields> [--jq <expr>] [--repo <owner/repo>]` to read a
+  PR's body when the brief names a PR as a plan source; nothing else from `gh`
+- `docker info`, to tell "Docker not running" from a failing integration suite
 
 ## Step 1 — Gate
 
@@ -104,8 +120,16 @@ criterion to the test that should prove it.
 
 ## Step 3 — Collect evidence for each item
 
-- **Steps:** compare the files the step names with `git diff --stat`. Read the hunks for
-  that step and check the change does what the step says, at the layer it says.
+- **Checks already run:** the brief's *Checks already run* table (and the **Checks run** table
+  of an Architecture Review it includes) lists commands the main session or an earlier agent
+  ran, each with a head sha and a result line. A row whose sha equals the target's head is
+  evidence: quote it in your Checks table with `brief` in the exit column and don't run that
+  command again. A row with another sha, or a check with no row, you run yourself.
+- **Steps:** compare the files the step names with the diff's stat. When the brief gives a
+  **bundle path** (written by `.claude/scripts/review-bundle.sh`), that is `stat.txt` there;
+  read the step's hunks from `hunks/<path>.patch` and don't run `git diff` for hunks the
+  bundle already holds. Without a bundle, `git diff --stat` and `git diff -- <path>`. Check
+  the change does what the step says, at the layer it says.
 - **Acceptance criteria:** find the test that exercises the criterion (from the Test Report or
   by search), run it with the targeted command, and quote the pass line. A criterion no test
   exercises may still be met by reading the code; then quote the `path:line` that implements
@@ -139,10 +163,11 @@ make it `met`.
 
 ## Step 5 — Reverse map
 
-Walk every hunk in the diff and assign it to an item (S#, AC#, C#). Hunks that map to nothing
-go under **Unmapped changes** with `path:line-range` and one factual line on what they do.
-Generated files (lockfiles changed through a package manager, drizzle migrations and their
-`meta/`) map to the step that caused them.
+Walk every hunk in the diff (every line of the bundle's `index.txt`, when there is one) and
+assign it to an item (S#, AC#, C#). Hunks that map to nothing go under **Unmapped changes**
+with `path:line-range` and one factual line on what they do. Generated files (lockfiles
+changed through a package manager, drizzle migrations and their `meta/`; the bundle marks them
+`excluded (generated)`) map to the step that caused them without being read.
 
 ## Output — the Plan Verification
 
