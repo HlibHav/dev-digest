@@ -33,7 +33,11 @@ fixed — add to the one that fits.
 
 ## Recurring Errors & Fixes
 
+- **2026-09-26** — A JSDoc block that spells out a glob such as `**/*.md` closes the comment at the `*/` inside it; `tsc` then reports a cascade of syntax errors from the middle of the doc text (first hit: `classify.ts(17,53)`) with nothing pointing at the comment. Describe glob patterns in words inside `/** … */` comments (or use `//` lines), never a literal `*/`. Evidence: `server/src/modules/smart-diff/classify.ts:15`
+
 ## Session Notes
+
+- **2026-09-26** — Smart Diff: `smart-diff` module (pure `classifyFile` + `buildSmartDiff`, `GET /pulls/:id/smart-diff`, five-value `SmartDiffRole`) → Recurring Errors & Fixes. Evidence: `server/src/modules/smart-diff/service.ts:33`
 
 - **2026-09-22** — onion-architecture skill v2 plus the `pnpm lint:boundaries` import check (dependency-cruiser, 34 known violations as the baseline) → Tool & Library Notes. Evidence: `server/.dependency-cruiser.cjs:34`
 

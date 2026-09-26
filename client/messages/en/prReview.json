@@ -57,13 +57,33 @@
   },
   "smartDiff": {
     "coreLabel": "Core",
+    "testsLabel": "Tests",
     "wiringLabel": "Wiring",
+    "docsLabel": "Docs",
     "boilerplateLabel": "Boilerplate",
+    "coreHint": "Business logic",
+    "testsHint": "Test coverage",
+    "wiringHint": "Config & wiring",
+    "docsHint": "Documentation",
+    "boilerplateHint": "Generated & lockfiles",
     "largeTitle": "This PR is large ({lines} changed lines)",
     "largeBody": "Consider splitting it into smaller, focused PRs for easier review:",
     "filesCount": "{count} files",
     "findingLines": "{count} finding-lines",
-    "groupedByRole": "Smart Diff · grouped by role"
+    "groupedByRole": "Smart Diff · grouped by role",
+    "orderSmart": "Smart order",
+    "orderOriginal": "Original order",
+    "unanchoredHeading": "Not shown inline (line not in this diff)",
+    "emptyNoReview": "No review has run yet",
+    "severity": {
+      "blocker": "blocker",
+      "warning": "warning",
+      "suggestion": "suggestion"
+    },
+    "filesWithFindings": "{count} files with findings",
+    "fileHasFindings": "This file has findings",
+    "toggleShow": "Show comments & findings ({count})",
+    "toggleHide": "Hide comments & findings ({count})"
   },
   "list": {
     "breadcrumb": "Pull Requests",

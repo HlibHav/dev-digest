@@ -14,6 +14,7 @@ import type {
   RunEvent,
   RunSummary,
 } from "@devdigest/shared";
+import type { SmartDiff } from "../types";
 
 // ---- Active (in-flight) runs — server-side source of truth ----
 export interface ActiveRun {
@@ -52,6 +53,17 @@ export function usePrReviews(prId: string | null | undefined) {
   return useQuery({
     queryKey: ["reviews", prId],
     queryFn: () => api.get<ReviewRecord[]>(`/pulls/${prId}/reviews`),
+    enabled: !!prId,
+  });
+}
+
+/** Smart Diff — PR files grouped by role, with findings mapped onto them.
+   Pure path classification server-side; safe to fetch before any review
+   has run. */
+export function useSmartDiff(prId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["smart-diff", prId],
+    queryFn: () => api.get<SmartDiff>(`/pulls/${prId}/smart-diff`),
     enabled: !!prId,
   });
 }
