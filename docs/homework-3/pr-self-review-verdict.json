@@ -2,11 +2,15 @@
   "verdict": "ready",
   "mode": "pre-PR",
   "base_sha": "17cc44a386f6f9b41b291823627b5613c89d2d06",
-  "head_sha": "4630a6ccf4a216e567d30d2496f40ba3ed3ff692",
+  "head_sha": "4758eed28ba7eb4bb6fb071658de4acd486ffec9",
   "dirty_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "scope_note": "Smart Diff reviewed at 4630a6c (two sonnet slices); the merged agent and Intent Layer stacks were reviewed in PRs #14/#17/#20 and #18/#19; commits 588e93c..4758eed reviewed inline plus security-reviewer over origin/main...647511e.",
   "findings": [
-    { "severity": "minor", "path": "client/src/components/diff-viewer/RoleGroup/RoleGroup.tsx", "line": 54,
-      "skill": "react-best-practices", "rule": "key prop patterns: no array index as key", "note": "fixed before commit: key={file.path}" }
+    { "severity": "minor", "path": "client/src/components/diff-viewer/RoleGroup/RoleGroup.tsx", "line": 54, "skill": "react-best-practices", "rule": "no array index as key", "note": "fixed in 4630a6c" },
+    { "severity": "minor", "path": "client/src/app/repos/[repoId]/pulls/[number]/_components/OverviewTab/_components/IntentCard/IntentCard.tsx", "line": 56, "skill": "react-best-practices", "rule": "stale doc comment, indentation", "note": "fixed in ec8889f" },
+    { "severity": "major", "path": "server/src/adapters/git/simple-git.ts", "line": 130, "skill": "security", "rule": "path traversal via symlink", "note": "security-reviewer finding 1, fixed in 4758eed" },
+    { "severity": "minor", "path": "reviewer-core/src/prompt.ts", "line": 32, "skill": "security", "rule": "untrusted close tag case", "note": "security-reviewer finding 3, fixed in 4758eed" },
+    { "severity": "minor", "path": ".claude/hooks/agent-write-audit.py", "line": 100, "skill": "security", "rule": "audit result never read", "note": "security-reviewer finding 2, fixed in 4758eed" }
   ],
-  "ts": "2026-09-26T09:58:37Z"
+  "ts": "2026-09-26T21:09:16Z"
 }
