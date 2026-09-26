@@ -148,6 +148,12 @@ class AuditTest(unittest.TestCase):
         # Frontmatter hooks never ran, e.g. the session cached the agent definition before they existed.
         self.assertIn("did not run", report(self.repo, agent_id="x", agent_type="test-writer"))
 
+    def test_new_read_only_agents_are_audited(self) -> None:
+        # security-reviewer and brainstorm wire this hook; the report must read their audit too.
+        for agent in ("security-reviewer", "brainstorm"):
+            with self.subTest(agent=agent):
+                self.assertIn("did not run", report(self.repo, agent_id=f"x-{agent}", agent_type=agent))
+
     def test_other_agents_are_ignored(self) -> None:
         self.assertEqual(report(self.repo, agent_id="x", agent_type="Explore"), "")
 

@@ -97,7 +97,12 @@ def snapshot(root: Path) -> dict:
     return {"head": git(root, "rev-parse", "HEAD").strip(), "files": files}
 
 
-AUDITED_AGENTS = {"test-writer", "doc-writer", "architecture-reviewer", "plan-verifier"}
+# Every agent whose frontmatter wires this hook must be listed, or its audit runs and nobody
+# reads the result (2026-09-26 security review).
+AUDITED_AGENTS = {
+    "test-writer", "doc-writer", "architecture-reviewer", "plan-verifier",
+    "security-reviewer", "brainstorm",
+}
 
 
 def audit_dir(root: Path) -> Path:

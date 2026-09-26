@@ -1,6 +1,6 @@
 import { simpleGit, type SimpleGit } from 'simple-git';
-import { join } from 'node:path';
-import { mkdir, readFile, access, rm } from 'node:fs/promises';
+import { join, sep } from 'node:path';
+import { mkdir, readFile, access, rm, realpath, stat } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import type {
   GitClient,
@@ -23,6 +23,9 @@ const RESYNC_FETCH_DEPTH = 50;
  * GitClient over simple-git. Repos clone to
  * `<cloneDir>/<owner>/<repo>`. We NEVER execute repo code — only git ops.
  */
+/** Upper bound for `readFile`; callers cap what they use far below this. */
+const MAX_READ_BYTES = 1_000_000;
+
 export class SimpleGitClient implements GitClient {
   constructor(private cloneDir: string) {
     // Force non-interactive auth so an unauthenticated/private clone fails in
@@ -126,8 +129,23 @@ export class SimpleGitClient implements GitClient {
     }));
   }
 
+  /**
+   * Read one file from the clone. The path comes from untrusted PR text (a
+   * linked plan doc), and a clone checks symlinks out as symlinks, so a lexical
+   * `..` check is not containment: resolve the real path, refuse anything that
+   * lands outside the clone or isn't a regular file (`/dev/zero`, a directory),
+   * and cap the size before reading.
+   */
   async readFile(repo: RepoRef, path: string): Promise<string> {
-    return readFile(join(this.clonePathFor(repo), path), 'utf8');
+    const root = await realpath(this.clonePathFor(repo));
+    const target = await realpath(join(root, path));
+    if (target !== root && !target.startsWith(root + sep)) {
+      throw new Error(`refusing to read outside the clone: ${path}`);
+    }
+    const info = await stat(target);
+    if (!info.isFile()) throw new Error(`not a regular file: ${path}`);
+    if (info.size > MAX_READ_BYTES) throw new Error(`file too large to read: ${path}`);
+    return readFile(target, 'utf8');
   }
 }
 
