@@ -21,7 +21,8 @@ interface IntentCardProps {
 /**
  * "Stated intent" card — the PR author's claim, derived by a cheap model
  * before review. Never shown as a verdict: it's context for scope only (see
- * `reviewer-core`'s `INTENT_RULES`). Empty until a review has run once.
+ * `reviewer-core`'s `INTENT_RULES`). Derived on the next review, or on demand through the
+ * Derive / Re-derive button (`POST /pulls/:id/intent`).
  */
 export function IntentCard({ intent, isLoading, currentHeadSha, onRederive, rederiving }: IntentCardProps) {
   const t = useTranslations("intent");
@@ -54,8 +55,8 @@ export function IntentCard({ intent, isLoading, currentHeadSha, onRederive, rede
   return (
     <section>
       <SectionLabel icon="Target" right={rederiveButton}>
-          {t("title")}
-        </SectionLabel>
+        {t("title")}
+      </SectionLabel>
       <div style={s.card}>
         <div style={s.headerRow}>
           {intent.change_type && <Badge>{t(`changeType.${intent.change_type}`)}</Badge>}
