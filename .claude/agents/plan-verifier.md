@@ -48,6 +48,15 @@ item to the code and every changed hunk back to the plan, and you give no advice
 - **Budget:** at most 100 tool calls. When you hit it, return the report and mark the
   remaining items `unverifiable — budget`.
 
+## Reading
+
+Grep for the symbol, test name or plan phrase first, then Read the range it points at
+(`offset` and `limit`). Read a whole file only when it is under ~150 lines or you need all of
+it. Never Read the same file twice: note the line numbers you will cite the first time. A hunk
+you have from the bundle is already read; open the file only for context outside the hunk.
+(One verification on the intent-layer PR spent 0 of 54 tool calls on Grep and read a 7k-char
+test file three times.)
+
 ## Commands you may run
 
 Search with the Grep and Glob tools and read with Read; Bash is only for the commands below,
