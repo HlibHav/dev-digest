@@ -23,6 +23,8 @@ fixed — add to the one that fits.
 
 ## Codebase Patterns
 
+- **2026-09-26** — `PullsService.refreshPullDetail` refreshes only the body, files, commits and line counts; `title` and `head_sha` move only when the PR list syncs (`GET /repos/:id/pulls`). It also never throws on a GitHub failure (no token, offline): it logs and serves what is stored. So a feature that "refreshes the PR first" (the intent re-derive) still sees the old head until the list is opened, and must not treat a successful refresh as proof that GitHub answered. Evidence: `server/src/modules/pulls/service.ts:39`, `server/src/modules/pulls/routes.ts:64`
+
 - **2026-09-16** — `GET /runs/:id/trace` returns the `run_traces.trace` jsonb as stored, with no zod parse, so a field added to `RunStats` is simply absent on traces written before the change. Declare it `.nullish()` and make the client treat `undefined` like `null` (e.g. `stats.cost_usd` → "—"). Evidence: `server/src/modules/reviews/repository/run.repo.ts:190`, `server/src/vendor/shared/contracts/trace.ts:69`
 - **2026-09-16** — `diff -rq server/src/vendor/shared client/src/vendor/shared` is not clean even on `main`: `adapters.ts`, `eval-ci.ts`, `knowledge.ts`, `productionize.ts` and `trace.ts` already differ in comments. After mirroring a contract change, diff the files you touched and ignore that pre-existing comment drift instead of "fixing" it. Evidence: `server/src/vendor/shared/contracts/trace.ts:44`, `client/src/vendor/shared/contracts/trace.ts:44`
 
@@ -42,6 +44,8 @@ fixed — add to the one that fits.
 - **2026-09-26** — A JSDoc block that spells out a glob such as `**/*.md` closes the comment at the `*/` inside it; `tsc` then reports a cascade of syntax errors from the middle of the doc text (first hit: `classify.ts(17,53)`) with nothing pointing at the comment. Describe glob patterns in words inside `/** … */` comments (or use `//` lines), never a literal `*/`. Evidence: `server/src/modules/smart-diff/classify.ts:15`
 
 ## Session Notes
+
+- **2026-09-26** — Mentor follow-ups: `POST /pulls/:id/intent` re-derive (forced refresh + cache bypass, 502 on failure), `security` Bash-allowlist profile for the new security-reviewer agent → Codebase Patterns. Evidence: `server/src/modules/reviews/intent-service.ts:309`
 
 - **2026-09-26** — Smart Diff: `smart-diff` module (pure `classifyFile` + `buildSmartDiff`, `GET /pulls/:id/smart-diff`, five-value `SmartDiffRole`) → Recurring Errors & Fixes. Evidence: `server/src/modules/smart-diff/service.ts:33`
 

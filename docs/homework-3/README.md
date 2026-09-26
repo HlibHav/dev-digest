@@ -62,3 +62,32 @@ model run was cut from the take.
 The fixture the demo runs on is this very PR's `server/src/modules/pulls/age.ts` + `ms`
 dependency (folded in from the `demo/smart-diff-fixture` branch), so the PR itself has files in
 all five groups.
+
+## Mentor follow-ups (2026-09-26)
+
+The mentor's review asked for three things. All three are in this PR.
+
+1. **One branch with everything.** The lab agents (PR #14 → #17 → #20, which also carries the
+   researcher from #16) and the Intent Layer (PR #18 → #19) are merged into `feat/smart-diff`.
+   The only conflict was `server/INSIGHTS.md`, resolved as a union: every line of both parents
+   is still there. After the merge: reviewer-core 56 tests, server 299 unit + 60 integration,
+   client 190, hook tests 47, `lint:boundaries` clean.
+2. **brainstorm and security-reviewer.** Nine agents now (`.claude/agents/README.md`).
+   - `brainstorm` runs before the planner and returns a Brainstorm Brief. It adapts the
+     course's `brainstorming` skill to a subagent that can't hold a conversation: one question
+     with options, two or three approaches, what to leave out, a recommendation, the request for
+     the planner. A sample run on "suggest how to split a large PR" is in
+     `brainstorm-split-suggestion.md`.
+   - `security-reviewer` is read-only and never executes the code under review, not even
+     typecheck or lint: a new `security` profile in `agent-bash-allowlist.py` allows read-only
+     git, `diff` and `gh pr view` only, with regression tests. The planner, implementer,
+     plan-verifier and architecture-reviewer now hand security review to it. Its run on this PR
+     is in `security-review.md`.
+3. **Re-derive the intent by hand.** `POST /pulls/:id/intent` refreshes the PR from GitHub, loads
+   the diff and calls the model with the cache bypassed; a failed derivation answers 502 with
+   the cause instead of returning the old record, and the route has the same rate limit as a
+   review run. The Overview tab's intent card has a Derive / Re-derive button and says when the
+   intent was derived for an older head commit.
+
+Both new agents were run from their definitions as general-purpose subagents: agent definitions
+are cached per session, so a session can't invoke an agent file it didn't start with.
