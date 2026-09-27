@@ -52,6 +52,21 @@ export const prIntent = pgTable('pr_intent', {
   intent: text('intent').notNull(),
   inScope: jsonb('in_scope').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
   outOfScope: jsonb('out_of_scope').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  // The model's own classification; never confidence (that's code-derived below).
+  changeType: text('change_type'),
+  // Code-derived from which sources actually existed — the model never sets this.
+  confidence: text('confidence').notNull().default('low'),
+  // IntentSource[] — which sources were considered and whether they were used.
+  sources: jsonb('sources').$type<unknown[]>().notNull().default(sql`'[]'::jsonb`),
+  model: text('model'),
+  headSha: text('head_sha'),
+  // hashKey(model, INTENT_PROMPT_VERSION, ...source texts) — a cache key so an
+  // unchanged PR (same model + prompt version + sources) skips the LLM call.
+  inputHash: text('input_hash'),
+  tokensIn: integer('tokens_in'),
+  tokensOut: integer('tokens_out'),
+  costUsd: doublePrecision('cost_usd'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const prBrief = pgTable('pr_brief', {

@@ -88,6 +88,8 @@
     },
     "repoIntel": "Repo intelligence",
     "repoIntelHint": "Inject repo context (repo skeleton, callers of changed symbols, and a 'high blast-radius' note) into this agent's review prompt. On by default. Turning it off sends only the diff — useful for cheap models or self-contained PRs.",
+    "usesIntent": "Stated intent",
+    "usesIntentHint": "Include the PR's derived intent (the author's claim, from title/description/linked issue/docs) in this agent's review prompt, as context for scope only — it never lowers a finding's severity. Off by default; security and correctness agents should usually leave it off.",
     "save": "Save agent",
     "saving": "Saving…",
     "saved": "Saved (v{version})",

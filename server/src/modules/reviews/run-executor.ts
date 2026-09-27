@@ -6,6 +6,7 @@ import {
   countBlockers,
   renderSkillsBlock,
   type PromptSkill,
+  type PromptIntent,
 } from '@devdigest/reviewer-core';
 import { RunLogger } from '../../platform/run-logger.js';
 import * as schema from '../../db/schema.js';
@@ -14,6 +15,7 @@ import type { ReviewRepository, FindingRow, PullRow, ReviewRow } from './reposit
 import { REVIEW_STRATEGY } from './constants.js';
 import { taskLine } from './helpers.js';
 import { loadDiff } from './diff-loader.js';
+import type { IntentDeriver } from './intent-service.js';
 
 /** Thrown by a run when the user cancels it mid-flight (between map files). */
 export class RunCancelledError extends Error {
@@ -51,6 +53,7 @@ export class ReviewRunExecutor {
     private container: Container,
     private repo: ReviewRepository,
     private agents: Container['agentsRepo'],
+    private intent?: IntentDeriver,
   ) {}
 
   /**
@@ -110,14 +113,49 @@ export class ReviewRunExecutor {
     }
     runLog.info(`Diff ready — ${diff.files.length} changed file(s); starting ${jobs.length} agent run(s)`);
 
-    for (const { agent, runId } of jobs) {
+    // Intent is derived ONCE per batch (not per agent) — `derive` never
+    // throws; a null result means the review proceeds without intent. Gate on
+    // whether any queued agent actually uses intent: deriving it for a batch
+    // where no agent has `uses_intent` would cost an LLM call for nothing.
+    const anyAgentUsesIntent = jobs.some(({ agent }) => agent.usesIntent === true);
+    const intentOutcome = anyAgentUsesIntent
+      ? await this.intent?.derive(
+          { workspaceId, pull, repo: { owner: repo.owner, name: repo.name }, diff },
+          (msg) => runLog.info(msg),
+        )
+      : undefined;
+    if (!anyAgentUsesIntent) {
+      runLog.info('intent: skipped — no agent in this review uses intent');
+    }
+
+    jobs.forEach(({ agent }) => {
+      if (intentOutcome && agent.usesIntent === false) {
+        runLog.info(`intent: not sent to ${agent.name} (uses_intent off)`);
+      }
+    });
+
+    for (const [index, { agent, runId }] of jobs.entries()) {
       const agentStart = Date.now();
       logger?.info(
         { runId, agent: agent.name, provider: agent.provider, model: agent.model, prId: pull.id },
         `review: agent "${agent.name}" started (${agent.provider}/${agent.model})`,
       );
       try {
-        const outcome = await this.runOneAgent(workspaceId, pull, repo, diff, agent, runId, runLog);
+        // [D3] a freshly-derived (not cached) intent's cost is added to the
+        // FIRST run's cost_usd, independent of whether that agent uses intent.
+        const extraCostUsd = index === 0 ? (intentOutcome?.costUsd ?? 0) : 0;
+        const intentForAgent = agent.usesIntent ? intentOutcome?.intent : undefined;
+        const outcome = await this.runOneAgent(
+          workspaceId,
+          pull,
+          repo,
+          diff,
+          agent,
+          runId,
+          runLog,
+          intentForAgent,
+          extraCostUsd,
+        );
         logger?.info(
           {
             runId,
@@ -149,6 +187,8 @@ export class ReviewRunExecutor {
     agent: AgentRow,
     runId: string,
     parentLog: RunLogger,
+    intent: PromptIntent | undefined,
+    extraCostUsd: number,
   ): Promise<RunOutcome> {
     const start = Date.now();
     // Narrow the fanned-out pre-work logger to THIS run; the shared diff/intent
@@ -228,6 +268,8 @@ export class ReviewRunExecutor {
         // PR author's description/body — untrusted; assemblePrompt wraps +
         // truncates it. Omitted when the PR has no body.
         ...(pull.body ? { prDescription: pull.body } : {}),
+        // Derived intent — only forwarded when this agent has `uses_intent`.
+        ...(intent ? { intent } : {}),
         task,
         sessionId: `${repo.owner}/${repo.name}#${pull.number}:${agent.name}`,
         onEvent: (e) => runLog.event(e.kind, e.msg, e.data),
@@ -235,7 +277,15 @@ export class ReviewRunExecutor {
           if (this.container.runBus.isCancelled(runId)) throw new RunCancelledError();
         },
       });
-      const { tokensIn, tokensOut, costUsd, grounding } = outcome;
+      const { tokensIn, tokensOut, grounding } = outcome;
+      // [D3] fold the (possibly zero) intent cost into this run's total —
+      // null stays null only when NEITHER the review nor intent priced.
+      const costUsd =
+        outcome.costUsd == null
+          ? extraCostUsd > 0
+            ? extraCostUsd
+            : null
+          : outcome.costUsd + extraCostUsd;
 
       const keptFindings = outcome.review.findings;
 
@@ -505,6 +555,10 @@ export class ReviewRunExecutor {
         skills_tokens: skillsTokens,
         memory: null,
         specs: null,
+        // The pre-work failure path never assembled a prompt, so it never
+        // resolved intent either — always null here (unlike the success path,
+        // where it comes straight from `outcome.assembly`).
+        intent: null,
         user: '',
       },
       tool_calls: [],

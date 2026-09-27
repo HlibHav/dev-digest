@@ -23,6 +23,7 @@ export function ConfigTab({ agent }: { agent: Agent }) {
   const [strategy, setStrategy] = React.useState<ReviewStrategy>(agent.strategy);
   const [ciFailOn, setCiFailOn] = React.useState<CiFailOn>(agent.ci_fail_on);
   const [repoIntel, setRepoIntel] = React.useState(agent.repo_intel);
+  const [usesIntent, setUsesIntent] = React.useState(agent.uses_intent);
   const [enabled, setEnabled] = React.useState(agent.enabled);
 
   // Reset local form when switching agents.
@@ -35,6 +36,7 @@ export function ConfigTab({ agent }: { agent: Agent }) {
     setStrategy(agent.strategy);
     setCiFailOn(agent.ci_fail_on);
     setRepoIntel(agent.repo_intel);
+    setUsesIntent(agent.uses_intent);
     setEnabled(agent.enabled);
   }, [agent.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -65,6 +67,7 @@ export function ConfigTab({ agent }: { agent: Agent }) {
           strategy,
           ci_fail_on: ciFailOn,
           repo_intel: repoIntel,
+          uses_intent: usesIntent,
           enabled,
         },
       },
@@ -125,6 +128,11 @@ export function ConfigTab({ agent }: { agent: Agent }) {
       <FormField label={t("config.repoIntel")} hint={t("config.repoIntelHint")}>
         <label style={s.enabledLabel}>
           <Toggle on={repoIntel} onChange={setRepoIntel} size={16} />
+        </label>
+      </FormField>
+      <FormField label={t("config.usesIntent")} hint={t("config.usesIntentHint")}>
+        <label style={s.enabledLabel}>
+          <Toggle on={usesIntent} onChange={setUsesIntent} size={16} />
         </label>
       </FormField>
       <FormField label={t("config.systemPrompt")} hint={t("config.systemPromptHint")}>

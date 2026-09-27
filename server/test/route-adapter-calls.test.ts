@@ -37,7 +37,7 @@ const ROUTE_METHODS = new Set(['get', 'post', 'put', 'patch', 'delete', 'head', 
  * its count here — the last test fails until you do, so the list stays exact.
  */
 const GRANDFATHERED: Record<string, Record<string, number>> = {
-  'pulls/routes.ts': { github: 4 },
+  'pulls/routes.ts': { github: 3 },
   'polling/routes.ts': { github: 1 },
   'settings/routes.ts': { secrets: 3, github: 1, llm: 1 },
 };

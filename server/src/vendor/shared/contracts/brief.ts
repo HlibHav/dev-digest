@@ -13,6 +13,49 @@ export const Intent = z.object({
 });
 export type Intent = z.infer<typeof Intent>;
 
+/**
+ * Confidence in a derived PR intent — set by CODE from which sources actually
+ * existed (never by the model): `high` = a meaningful body AND a resolved
+ * linked issue or plan doc; `medium` = exactly one of the two; `low` = neither.
+ */
+export const IntentConfidence = z.enum(['high', 'medium', 'low']);
+export type IntentConfidence = z.infer<typeof IntentConfidence>;
+
+/** The kind of change a derived intent believes the PR makes. */
+export const IntentChangeType = z.enum([
+  'feature',
+  'bugfix',
+  'refactor',
+  'perf',
+  'docs',
+  'test',
+  'chore',
+  'unknown',
+]);
+export type IntentChangeType = z.infer<typeof IntentChangeType>;
+
+/** Which kind of source contributed to a derived intent. */
+export const IntentSourceKind = z.enum([
+  'title',
+  'description',
+  'issue',
+  'ticket_ref',
+  'plan_doc',
+  'branch',
+  'commits',
+  'paths',
+]);
+export type IntentSourceKind = z.infer<typeof IntentSourceKind>;
+
+/** One source considered while deriving intent — whether it existed/was used. */
+export const IntentSource = z.object({
+  kind: IntentSourceKind,
+  ref: z.string(),
+  used: z.boolean(),
+  note: z.string().nullish(),
+});
+export type IntentSource = z.infer<typeof IntentSource>;
+
 // ---- Blast radius ----
 export const ChangedSymbol = z.object({
   name: z.string(),
@@ -78,7 +121,7 @@ export const PrHistory = z.object({
 export type PrHistory = z.infer<typeof PrHistory>;
 
 // ---- Smart Diff ----
-export const SmartDiffRole = z.enum(['core', 'wiring', 'boilerplate']);
+export const SmartDiffRole = z.enum(['core', 'tests', 'wiring', 'docs', 'boilerplate']);
 export type SmartDiffRole = z.infer<typeof SmartDiffRole>;
 
 export const SmartDiffFile = z.object({

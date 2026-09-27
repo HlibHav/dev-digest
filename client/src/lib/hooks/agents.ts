@@ -53,6 +53,7 @@ export interface UpdateAgentInput {
       | "strategy"
       | "ci_fail_on"
       | "repo_intel"
+      | "uses_intent"
       | "enabled"
     >
   >;

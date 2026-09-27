@@ -5,7 +5,7 @@
 import React from "react";
 import { useTranslations } from "next-intl";
 import { Icon } from "@devdigest/ui";
-import type { PrFile } from "@/lib/types";
+import type { FindingRecord, PrFile } from "@/lib/types";
 import { AUTO_EXPAND_MAX_LINES } from "../constants";
 import { parsePatch, type Line } from "../helpers";
 import {
@@ -15,6 +15,7 @@ import {
   type CommentThread,
   type DiffCommentApi,
 } from "../comments";
+import { filesWithFindings, partitionFindings, type DiffFindingApi } from "../findings";
 import { s, chevronFor } from "../styles";
 import { CodeLine } from "../CodeLine";
 import { OutdatedComments } from "../OutdatedComments";
@@ -30,8 +31,24 @@ function threadsForLine(ln: Line, matched: Map<string, CommentThread[]>): Commen
   return out;
 }
 
-export function FileCard({ file, commenting }: { file: PrFile; commenting?: DiffCommentApi }) {
+/** Findings matched to a given parsed line (RIGHT side only — findings key
+ *  on the new line number). */
+function findingsForLine(ln: Line, matched: Map<string, FindingRecord[]>): FindingRecord[] {
+  if (matched.size === 0 || ln.newNo == null) return [];
+  return matched.get(`RIGHT:${ln.newNo}`) ?? [];
+}
+
+export function FileCard({
+  file,
+  commenting,
+  findings,
+}: {
+  file: PrFile;
+  commenting?: DiffCommentApi;
+  findings?: DiffFindingApi;
+}) {
   const t = useTranslations("shell");
+  const tf = useTranslations("prReview");
   const [open, setOpen] = React.useState(
     (file.additions ?? 0) + (file.deletions ?? 0) <= AUTO_EXPAND_MAX_LINES
   );
@@ -48,15 +65,34 @@ export function FileCard({ file, commenting }: { file: PrFile; commenting?: Diff
     return partitionThreads(fileThreads, renderedKeys);
   }, [comments, file.path, lines]);
 
+  // Same split for findings: matched to a rendered line, or "unanchored"
+  // (the finding's start_line isn't in this patch) — shown in a trailing
+  // block rather than dropped.
+  const fileFindings = findings?.findings;
+  const { matched: matchedFindings, unanchored: unanchoredFindings } = React.useMemo(() => {
+    if (!fileFindings) return { matched: new Map<string, FindingRecord[]>(), unanchored: [] };
+    const forFile = fileFindings.filter((f) => f.file === file.path);
+    const renderedKeys = new Set<string>();
+    for (const ln of lines) if (ln.newNo != null) renderedKeys.add(`RIGHT:${ln.newNo}`);
+    return partitionFindings(forFile, renderedKeys);
+  }, [fileFindings, file.path, lines]);
+
   const commentCount = commenting
     ? commenting.comments.filter((c) => c.path === file.path).length
     : 0;
+  const hasFindings = findings ? filesWithFindings([file.path], findings.findings) > 0 : false;
 
   return (
     <div style={s.fileCard}>
       <div onClick={() => setOpen((o) => !o)} style={s.fileHeader}>
         <Icon.ChevronRight size={13} style={chevronFor(open)} />
         <Icon.FileText size={14} style={s.fileIcon} />
+        {hasFindings && (
+          <span
+            title={tf("smartDiff.fileHasFindings")}
+            style={{ width: 6, height: 6, borderRadius: 99, background: "var(--crit)", flexShrink: 0 }}
+          />
+        )}
         <span className="mono" style={s.filePath}>
           {file.path}
         </span>
@@ -85,10 +121,24 @@ export function FileCard({ file, commenting }: { file: PrFile; commenting?: Diff
                 path={file.path}
                 threads={threadsForLine(ln, matched)}
                 commenting={commenting}
+                findings={findingsForLine(ln, matchedFindings)}
+                findingApi={findings}
               />
             ))
           )}
           {commenting && commenting.showComments && <OutdatedComments threads={outdated} />}
+          {findings && findings.showFindings && unanchoredFindings.length > 0 && (
+            <div style={s.fileBody}>
+              <div style={{ padding: "6px 14px", fontSize: 11.5, color: "var(--text-muted)" }}>
+                {tf("smartDiff.unanchoredHeading")}
+              </div>
+              {unanchoredFindings.map((f) => (
+                <div key={f.id} style={{ padding: "0 14px 10px" }}>
+                  {findings.renderFinding(f)}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

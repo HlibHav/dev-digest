@@ -29,6 +29,9 @@ export const agents = pgTable('agents', {
   // + file-rank note) injected into the prompt. Default on; the global
   // REPO_INTEL_ENABLED flag is the second gate (facade degrades when off).
   repoIntel: boolean('repo_intel').notNull().default(true),
+  // Receive the derived PR intent ("Stated intent (author's claim)") in this
+  // agent's review prompt. Default OFF — see contracts/knowledge.ts:Agent.
+  usesIntent: boolean('uses_intent').notNull().default(false),
   enabled: boolean('enabled').notNull().default(true),
   version: integer('version').notNull().default(1),
   createdBy: uuid('created_by').references(() => users.id),
