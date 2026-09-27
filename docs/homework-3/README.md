@@ -25,7 +25,7 @@ of the demo take. The feature itself is described in the pull request body.
 `test-writer` pass for `DiffTab.test.tsx`. All subagents ran on **sonnet** through the Workflow
 tool.
 
-The agent definitions from the lab (`.claude/agents/*.md`) live on the still-open PRs #17 and
+The agent definitions from the lab (`.claude/agents/*.md`) lived at the time on the still-open PRs #17 and
 #20, not on `main`, and agent definitions are cached per session, so a `main`-based worktree
 cannot load them. The workaround: each definition's body was copied into a role file, the hooks
 and the `.claude/sandbox` wrapper were dropped (neither exists on `main`), and the Workflow script
@@ -59,9 +59,11 @@ and the shared hide/show toggle → Original order and back → the classifier's
 with the one-sentence answer on why grouping never calls a model. The 68-second wait for the
 model run was cut from the take.
 
-The fixture the demo runs on is this very PR's `server/src/modules/pulls/age.ts` + `ms`
-dependency (folded in from the `demo/smart-diff-fixture` branch), so the PR itself has files in
-all five groups.
+The demo runs on a fixture PR, `demo/smart-diff-fixture` (was PR #21): an `ms` dependency (so
+the diff has a lock file), `server/src/modules/pulls/age.ts` with a planted flaw for the reviewer,
+its test, a barrel and a doc — one file per role. It was folded into this PR for a while so the PR
+showed all five groups, then removed before the merge so none of it lands in `main`. The branch
+stays on origin with the recorded demo.
 
 ## Mentor follow-ups (2026-09-26)
 
