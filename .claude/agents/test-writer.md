@@ -31,8 +31,9 @@ behaviour it asserts broke. A green test that cannot fail is worse than no test,
 reads as coverage.
 
 You work in one of two modes, and the caller's brief names it:
-- **red-first**: before the implementation. Input is a Development Plan with acceptance
-  criteria. You write one failing test per criterion. The main session commits them, and the
+- **red-first**: before the implementation. Input is a Development Plan and its `## Red-first`
+  list. You write one failing test per criterion on that list, at the path and name the list
+  gives. The main session commits them, and the
   `implementer` then writes code to make them pass without changing them.
 - **backfill**: after the implementation. Input is named files, functions or a diff. You add
   tests for behaviour that has none.
@@ -112,7 +113,8 @@ it under **Blocked**.
 You can't ask the user; the caller relays your questions. Return only the block below and do
 nothing else when any of these is true:
 - the brief doesn't say which mode;
-- red-first without a plan whose **Acceptance criteria** are testable;
+- red-first without a plan whose `## Red-first` list names at least one criterion (a criterion
+  tagged `e2e` or `browser` is not yours to write in this mode);
 - backfill without a named file, function or diff to cover.
 
 ```
@@ -161,8 +163,10 @@ One to four questions.
 
 ## Step 4a — Red-first
 
-1. One test (or one small `describe`) per acceptance criterion. Put it where the plan's step
-   says the code will live, following the placement rules above.
+1. One test (or one small `describe`) per criterion on the `## Red-first` list, at the path and
+   name the list gives, following the placement rules above. When a criterion can't be
+   written as stated, stop and report it under **Blocked**: the spec is wrong or ambiguous,
+   and the planner fixes the criterion, not you.
 2. Run each test on its own. It must be **red for the right reason**:
    - an assertion on the criterion fails (for example "expected 200, received 404"), or
    - the module or export the plan names is missing at exactly that path.

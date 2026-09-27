@@ -56,6 +56,8 @@ Load everything else through the `Skill` tool when a step names it.
 You can't ask the user; the caller relays your questions. Return a report with `Status: blocked`
 and make no edits when:
 - there is no plan, or the plan says `Status: needs-answers`;
+- the plan's `## Red-first` list names criteria but the brief gives no red-first commit
+  (`<red-sha>`): the red tests come first, so ask the caller to run `test-writer`;
 - a step names a file, function or module that doesn't exist, or the code contradicts the plan.
   Give the `path:line` of the contradiction.
 
@@ -80,7 +82,13 @@ Under **Not done / blocked**, say exactly what is missing and what answer would 
      and log a deviation.
    - If `next-best-practices` can't be loaded through `Skill` (it is `user-invocable: false`),
      read its `SKILL.md` with Read.
-3. Write the code, plus any new tests the step names.
+3. Work the step as a test-first cycle:
+   - for each test under the step's **test first**, write it, run it, and see it fail for the
+     right reason before you write the code it covers;
+   - write the smallest code that turns this step's red-first tests and your own tests green;
+   - run the step's **verify** command and compare with the output the plan expects.
+   When a red-first test and the plan disagree, the test encodes the spec: stop and report
+   (Hard limits). Code that passes a test by special-casing it is not done.
    - **BE:** follow `onion-architecture`: a query goes in the repository, logic in the service,
      parsing and mapping in the route, and new I/O becomes a port plus an adapter plus a double
      in `src/adapters/mocks.ts`. A shared contract changes in `server/src/vendor/shared/` first

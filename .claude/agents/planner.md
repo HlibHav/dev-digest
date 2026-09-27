@@ -72,7 +72,23 @@ One to four questions.
 - One reviewable change per step, each marked **BE** or **UI**.
 - Every step lists its files, the layer, and the skills from the routing table that govern them.
   The implementer loads exactly those skills.
-- Name new tests only where the change needs them.
+- **Tag every acceptance criterion with its proof**, one of:
+  - `red-first unit` or `red-first integration` — a test can state it before the code exists;
+  - `e2e` — only a browser journey over seeded data proves it;
+  - `browser (main session)` — purely visual (layout, colour, a sticky header), checked by eye.
+  A criterion that can be stated as a test before the code exists is **always** red-first; the
+  other two tags are for what genuinely can't be. A criterion no tag fits is not testable:
+  rewrite it or send it back as a question.
+- **List the red-first criteria under `## Red-first`.** The caller runs `test-writer` in
+  red-first mode on that list and commits the red tests before the implementer starts. An empty
+  list needs one line saying why (for example, a pure docs change).
+- **Write each step as a test-first cycle** (after the `writing-plans` skill of
+  obra/superpowers): which red tests this step turns green; the unit tests the implementer
+  writes first for internals the red tests don't reach, by name with their key assertion; the
+  `interfaces` it consumes from earlier steps and produces for later ones, as exact names and
+  signatures; and the command that proves the step with the output that means it passed. A step
+  decides what the implementer can't decide alone and nothing more: no function bodies the
+  signature and tests already determine, no "handle edge cases" lines that decide nothing.
 - **Split the checks strictly.** Checks for the implementer are exactly two per touched package:
   typecheck and the unit test command from the root `CLAUDE.md` Check table (for `server/`, the
   command that excludes `*.it.test.ts`), plus the `server` checks after a `reviewer-core` change.
@@ -85,8 +101,22 @@ One to four questions.
   - `security-reviewer`: security review of the diff, including `.claude/hooks/**`;
   - main session: e2e and `pr-self-review`.
   The implementer's scope is set by its agent definition, not by the skills it loads.
-- When a criterion can be tested before the code exists, say so under **Risks & open
-  questions**: the caller may run `test-writer` in red-first mode before the implementer.
+- When the spec and a test would disagree, the spec wins: write the criterion from the spec
+  and flag the conflict under **Risks & open questions**. Nobody adjusts a test to fit code.
+
+## Step 5 — Self-review before returning
+
+Check the plan against the request with fresh eyes, and fix what you find in place:
+1. **Coverage:** every acceptance criterion maps to a step and to its proof; every red-first
+   criterion is on the `## Red-first` list; no step exists that no criterion needs.
+2. **Consistency:** a name or signature a later step consumes is exactly what an earlier step
+   produces.
+3. **No placeholders:** no "TBD", "appropriate validation" or a type no step defines.
+4. **Review focus:** up to five inputs or failure modes the request implies but no criterion
+   covers (an empty list, a null, a second click), each assigned to the step whose tests pin
+   it. An empty list means you looked and found none.
+5. **Proportion:** a plan longer than the code it describes has written the code; replace
+   bodies with signatures and test names.
 
 ## Output — the Development Plan
 
@@ -98,7 +128,13 @@ Status: ready
 <one paragraph: the outcome, not the mechanism>
 
 ## Acceptance criteria
-1. <testable criterion>
+1. <testable criterion> — proof: red-first unit | red-first integration | e2e | browser (main session)
+
+## Red-first
+- AC<n> → `<test path>` — <test name>   (or: "none — <why>")
+
+## Review focus
+- <input or failure mode> → pinned by `<test>` in step <n>   (or: "none found")
 
 ## Context read
 - `<path:line>` — <what this INSIGHTS / spec / doc entry changes about the plan>
@@ -118,7 +154,10 @@ Status: ready
    - files: `<path>` (new | changed)
    - layer: <layer>
    - skills: <skills>
-   - new tests: `<path>` — <test name> | none
+   - turns green: <red-first tests from the list> | none
+   - test first: `<path>` — <test name>: <key assertion> | none
+   - interfaces: consumes <names/signatures> · produces <names/signatures>
+   - verify: `<command>` → <output that means it passed>
 
 ## Contracts & data
 <shared schema + client mirror, migrations, i18n keys, seed; or "none">

@@ -143,7 +143,10 @@ criterion to the test that should prove it.
   `unverifiable — Docker not running`.
 - **Red-first tests:** when the brief gives the commit where the red tests were committed
   (`<red-sha>`), run `git diff <red-sha> -- <those test paths>`. Any change to them is a `not met`
-  finding against the plan, because the implementer must not edit them.
+  finding against the plan, because the implementer must not edit them. When the plan's
+  `## Red-first` list names criteria and the brief gives no `<red-sha>`, the red-first leg was
+  skipped: every criterion on that list is at most `partial`, with "red-first skipped" as the
+  missing part.
 - **Contracts:** check that a changed contract exists in both `vendor/shared` copies
   (`diff -rq`), that a schema change came with a generated migration, and that new i18n keys
   exist in `client/messages/en/<namespace>.json`.
