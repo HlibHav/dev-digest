@@ -50,20 +50,25 @@ workflow (775k) and the three review/test agents (~490k).
 
 ## The demo
 
-Two minutes twenty-four seconds, recorded with Playwright at 1440×900 against the local stack,
-voice-over by ElevenLabs (Daniel). Scenes follow "Як перевірити": GitHub's flat order → the five
-groups with `docs`/`boilerplate` collapsed → the lock file inside `boilerplate` and `package.json`
-under `wiring` → Run Review (General Reviewer, deepseek-v4-flash) while staying on Files changed
-→ `Core ● 1`, the dot, the stripe + `WARNING` label and the finding card under line 10 → Accept
-and the shared hide/show toggle → Original order and back → the classifier's `constants.ts`,
-with the one-sentence answer on why grouping never calls a model. The 68-second wait for the
-model run was cut from the take.
+Two minutes forty-five seconds, recorded with Playwright at 1440×900 against the local stack
+from this branch, voice-over by ElevenLabs (Daniel). It was re-recorded after the mentor's review
+on a fresh fixture, **PR #23** (`demo/smart-diff-fixture-v2`, not for merging): a `pretty-bytes`
+dependency (so the diff has a lock file), `server/src/modules/pulls/size.ts` with two planted
+flaws, its test, a barrel, `package.json` and a plan doc that the PR description links.
 
-The demo runs on a fixture PR, `demo/smart-diff-fixture` (was PR #21): an `ms` dependency (so
-the diff has a lock file), `server/src/modules/pulls/age.ts` with a planted flaw for the reviewer,
-its test, a barrel and a doc — one file per role. It was folded into this PR for a while so the PR
-showed all five groups, then removed before the merge so none of it lands in `main`. The branch
-stays on origin with the recorded demo.
+Scenes follow "Як перевірити": GitHub's flat order → the five groups with `docs`/`boilerplate`
+collapsed → the lock file inside `boilerplate`, `package.json` and the barrel under `wiring` → Run
+Review (General Reviewer) while staying on Files changed → `Core ● 1` and the file-card dot →
+each finding under its own line with the severity stripe, label and card → Accept and the shared
+hide/show toggle → Original order and back. Then the mentor follow-ups: Derive intent on the
+Overview tab (high confidence, because the description links the plan doc), the nine agents on
+GitHub including `brainstorm` and `security-reviewer`, and the classifier's `constants.ts` with
+the one-sentence answer on why grouping never calls a model. The ~53-second wait for the model
+run was cut from the take. During the take the API saw 37 `GET`s and 3 `POST`s: the review, one
+Accept and the intent derivation (`demo-api-requests.log`).
+
+The first recording used an earlier fixture (`demo/smart-diff-fixture`, closed PR #21), which was
+folded into this PR for a while and removed before the merge.
 
 ## Mentor follow-ups (2026-09-26)
 

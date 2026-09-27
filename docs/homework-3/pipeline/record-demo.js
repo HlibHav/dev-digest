@@ -1,14 +1,14 @@
-// Records the Homework 3 (Smart Diff) demo against the local stack (web :3200, API :3201).
+// Records the Homework 3 (Smart Diff, after the mentor review) demo against the local stack (web :3200, API :3201).
 // Scenes are paced by the voiceover: say(n) starts line n; the next say() waits until it ends.
-// Every API request is logged; the only non-GET expected is the one POST /pulls/:id/review.
+// Every API request is logged; non-GET expected: POST /pulls/:id/review, one Accept, POST /pulls/:id/intent.
 const { chromium } = require('playwright');
 const fs = require('fs');
 
 const WEB = 'http://localhost:3200';
 const API = 'http://localhost:3201';
 const R = '57bbf045-f4fb-4d57-bd66-80f5b9770243';
-const PR_NUMBER = 21;
-const PR_ID = '634ef3f6-cd67-4799-9c10-3ba337a4072e';
+const PR_NUMBER = 23;
+const PR_ID = '72986ce4-cb71-4cea-b613-2beda8dbb7a1';
 const GH = 'https://github.com/HlibHav/dev-digest';
 const DUR = JSON.parse(fs.readFileSync('vo/durations.json', 'utf8')); // index 1..10 (seconds)
 const GAP = 0.6;
@@ -125,8 +125,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   // 1. GitHub: the flat order
   await page.goto(`${GH}/pull/${PR_NUMBER}/files`);
   await sleep(1500);
-  await say(1, 'Homework 3 · Smart Diff · fixture PR #21: GitHub shows the lock file next to the logic');
-  await sleep(5000);
+  await say(1, 'Homework 3 · Smart Diff after the mentor review · all work in PR #22 · fixture PR #23 on GitHub: flat order');
+  await sleep(6000);
   await scroll(600, 8);
 
   // 2. DevDigest: Files changed, grouped
@@ -138,72 +138,102 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await moveTo(page.getByText('Core', { exact: true }).first());
   await sleep(1500);
   await scroll(900, 10);
-  await sleep(1500);
+  await sleep(1200);
   await moveTo(page.getByText('Docs', { exact: true }).first());
 
-  // 3. Boilerplate holds the lock file; package.json under wiring
-  await say(3, 'Boilerplate holds pnpm-lock.yaml · package.json goes to wiring (pinned in the test table)');
-  await click(page.getByText('Boilerplate', { exact: true }).first(), 1200);
+  // 3. Boilerplate holds the lock file; wiring holds package.json + barrel
+  await finish();
+  await say(3, 'Boilerplate: pnpm-lock.yaml · wiring: package.json + the barrel');
+  await click(page.getByText('Boilerplate', { exact: true }).first(), 1000);
   await moveTo(page.getByText('server/pnpm-lock.yaml').first());
-  await sleep(2500);
-  await moveTo(page.getByText('server/package.json').first());
   await sleep(1500);
+  await moveTo(page.getByText('server/src/modules/pulls/index.ts').first());
 
   // 4. Run review
   await finish();
   await page.keyboard.press('Home');
-  await sleep(800);
+  await sleep(700);
   await say(4, 'No review yet → no counters · Run Review → General Reviewer');
   await moveTo(page.getByText('No review has run yet').first());
-  await sleep(1500);
-  await click(page.getByRole('button', { name: 'Run Review' }).first(), 1200);
-  await click(page.getByText('General Reviewer').first(), 2500);
+  await sleep(1200);
+  await click(page.getByRole('button', { name: 'Run Review' }).first(), 1000);
+  await click(page.getByText('General Reviewer').first(), 2000);
 
   // 5. Back to Files changed, wait for the run
   await say(5, 'The run streams on Agent runs · back on Files changed the counters update by themselves');
-  await sleep(4000);
+  await sleep(3500);
   await click(tab('Files changed'), 1500);
   const started = now();
-  while ((await activeRuns()) > 0 && now() - started < 75) await sleep(1500);
-  await sleep(5500); // let the 4s poll + refetch land
+  while ((await activeRuns()) > 0 && now() - started < 90) await sleep(1500);
+  await sleep(5500);
 
   // 6. Counter and dot
   await say(6, 'Core ● 1 = one FILE with findings · the file card has its dot');
   await moveTo(page.getByText('Core', { exact: true }).first());
   await sleep(2500);
-  await moveTo(page.getByText('server/src/modules/pulls/age.ts').first());
-  await sleep(2000);
+  await moveTo(page.getByText('server/src/modules/pulls/size.ts').first());
 
-  // 7. Line 10: stripe, label, card
+  // 7. Findings under their lines
   await finish();
-  await say(7, 'Line 10 · stripe + WARNING label · the FindingCard sits under the line');
-  await moveTo(page.getByText(/^warning$/).first());
+  await say(7, 'Each finding under its line · severity stripe + label · the same card as on Agent runs');
+  await moveTo(page.getByText(/^(blocker|warning|suggestion)$/).first());
   await sleep(2500);
   await moveTo(page.getByText('Suggested fix', { exact: false }).first());
   await sleep(2000);
+  await moveTo(page.getByText(/^(blocker|warning|suggestion)$/).nth(1));
 
   // 8. Accept, toggle
   await finish();
+  await page.getByText(/^(blocker|warning|suggestion)$/).first().scrollIntoViewIfNeeded();
+  await sleep(400);
   await say(8, 'Accept works here · one toggle hides GitHub comments and findings together');
-  await click(page.getByRole('button', { name: 'Accept' }).first(), 2500);
-  await click(page.getByRole('button', { name: /Hide comments & findings/ }).first(), 2500);
-  await click(page.getByRole('button', { name: /Show comments & findings/ }).first(), 1500);
+  await click(page.getByRole('button', { name: 'Accept' }).first(), 1500);
+  await click(page.getByRole('button', { name: /Hide comments & findings/ }).first(), 1500);
+  await click(page.getByRole('button', { name: /Show comments & findings/ }).first(), 800);
 
   // 9. Original order and back
   await finish();
-  await say(9, 'Original order = GitHub’s flat list, findings included · Smart order brings the groups back');
+  await page.keyboard.press('Home');
+  await sleep(500);
+  await say(9, 'Original order = GitHub’s flat list · Smart order brings the groups back');
   await click(page.getByRole('button', { name: 'Original order' }).first(), 1200);
-  await scroll(700, 8);
-  await sleep(1800);
-  await scroll(-700, 6);
-  await click(page.getByRole('button', { name: 'Smart order' }).first(), 1500);
+  await scroll(600, 6);
+  await sleep(1000);
+  await scroll(-600, 5);
+  await click(page.getByRole('button', { name: 'Smart order' }).first(), 800);
 
-  // 10. Why no model call
+  // 10. Overview: derive the intent on demand
+  await finish();
+  await click(tab('Overview'), 1200);
+  await say(10, 'Mentor follow-up: Derive / Re-derive the PR intent on demand · high confidence: the description links a plan doc');
+  await click(page.getByRole('button', { name: 'Derive intent' }).first(), 500);
+  for (let i = 0; i < 40 && !(await page.getByRole('button', { name: 'Re-derive' }).count()); i++) await sleep(500);
+  await sleep(800);
+  await moveTo(page.getByText(/confidence$/).first());
+  await sleep(2000);
+  await moveTo(page.getByText('In scope', { exact: true }).first());
+  await sleep(2000);
+  await moveTo(page.getByText('Sources', { exact: true }).first());
+  await sleep(1500);
+  await moveTo(page.getByRole('button', { name: 'Re-derive' }).first());
+
+  // 11. The agents in the same PR
+  await finish();
+  await caption('');
+  await page.goto(`${GH}/tree/feat/smart-diff/.claude/agents`);
+  await sleep(1500);
+  await say(11, 'Same PR: 9 lab agents · + brainstorm · + read-only security-reviewer (3 findings, all fixed with tests)');
+  await sleep(3000);
+  await moveTo(page.getByText('brainstorm.md').first()).catch(() => {});
+  await sleep(2500);
+  await moveTo(page.getByText('security-reviewer.md').first()).catch(() => {});
+
+  // 12. Why no model call
   await finish();
   await caption('');
   await page.goto(`${GH}/blob/feat/smart-diff/server/src/modules/smart-diff/constants.ts`);
   await sleep(1500);
-  await say(10, 'No model call: pure path classifier · ordered rules in one constants file · works before the first review');
+  await say(12, 'No model call: pure path classifier · ordered rules in one constants file · works before the first review');
   await sleep(3000);
   await scroll(500, 8);
   await finish();
