@@ -112,6 +112,11 @@ export const s = {
     color: "var(--text-muted)",
     marginRight: 2,
   } satisfies CSSProperties,
+  graphWrap: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+  } satisfies CSSProperties,
   graphEmpty: {
     fontSize: 13,
     color: "var(--text-muted)",
@@ -121,18 +126,34 @@ export const s = {
     width: "100%",
     height: "auto",
     fontFamily: "var(--font-mono, monospace)",
-    fontSize: 11,
+    fontSize: 10,
   } satisfies CSSProperties,
   graphNodeLabel: {
     fill: "var(--text-primary)",
   } satisfies CSSProperties,
-  graphNodeCircle: {
-    fill: "var(--bg-hover)",
-    stroke: "var(--border-strong)",
-  } satisfies CSSProperties,
   graphEdge: {
-    stroke: "var(--border-strong)",
+    stroke: "var(--text-secondary)",
     fill: "none",
+    opacity: 0.5,
+  } satisfies CSSProperties,
+  graphLegend: {
+    display: "flex",
+    alignItems: "center",
+    gap: 14,
+    flexWrap: "wrap",
+    fontSize: 11,
+    color: "var(--text-secondary)",
+  } satisfies CSSProperties,
+  graphLegendItem: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 5,
+  } satisfies CSSProperties,
+  graphLegendSwatch: {
+    width: 10,
+    height: 10,
+    borderRadius: 3,
+    display: "inline-block",
   } satisfies CSSProperties,
   notice: {
     display: "flex",
