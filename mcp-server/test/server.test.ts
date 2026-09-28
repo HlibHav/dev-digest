@@ -33,7 +33,7 @@ const TOOL_DESCRIPTIONS: Record<string, { title: string; description: string }> 
   devdigest_get_blast_radius: {
     title: 'Get blast radius',
     description:
-      "Get the blast radius of a pull request: each changed symbol with its callers as file:line and the HTTP endpoints and cron jobs they reach, read from DevDigest's code index. Call it before reviewing or merging to see what else the change can break.",
+      "Get a pull request's blast radius from DevDigest's code index: each changed symbol, its callers as file:line and the HTTP endpoints and cron jobs they reach. Call it before reviewing or merging.",
   },
 };
 

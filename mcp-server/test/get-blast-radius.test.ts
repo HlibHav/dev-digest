@@ -153,6 +153,9 @@ describe('getBlastRadius (use case)', () => {
 
     const out = await getBlastRadius(d, { repo: 'acme/payments-api', pr: 42 });
 
+    // Revision 5.1: `changed_symbol_count` is removed, and `downstream[].callers` becomes
+    // `string[]`, each "<file>:<line> <name>" (file capped 160, name capped 80, before
+    // joining). Supersedes the `callers: {name,file,line}[]` shape and the key list below.
     expect(Object.keys(out)).toEqual([
       'notice',
       'repo',
@@ -160,7 +163,6 @@ describe('getBlastRadius (use case)', () => {
       'summary',
       'degraded',
       'reason',
-      'changed_symbol_count',
       'downstream',
       'truncated',
       'message',
@@ -172,14 +174,10 @@ describe('getBlastRadius (use case)', () => {
       summary: radius.summary,
       degraded: false,
       reason: null,
-      changed_symbol_count: 2,
       downstream: [
         {
           symbol: 'rowsToSettings',
-          callers: [
-            { name: 'apply', file: 'src/routes.ts', line: 34 },
-            { name: 'applyOther', file: 'src/routes2.ts', line: 65 },
-          ],
+          callers: ['src/routes.ts:34 apply', 'src/routes2.ts:65 applyOther'],
           endpoints: ['GET /settings', 'POST /settings'],
           crons: ['nightly-sync'],
         },
@@ -223,11 +221,12 @@ describe('getBlastRadius (use case)', () => {
 
     const out = await getBlastRadius(d, { repo: 'acme/payments-api', pr: 42 });
 
+    // Revision 5.1: callers are now `"<file>:<line> <name>"` strings, already in server order.
     const downstream = Array.isArray((out as { downstream?: unknown }).downstream)
-      ? (out as { downstream: { symbol: string; callers: { file: string; line: number }[] }[] }).downstream
+      ? (out as { downstream: { symbol: string; callers: string[] }[] }).downstream
       : [];
     expect(downstream.map((g) => g.symbol)).toEqual(['zeta', 'alpha']);
-    expect(downstream[0]?.callers.map((c) => `${c.file}:${c.line}`) ?? []).toEqual(['b.ts:9', 'a.ts:1']);
+    expect(downstream[0]?.callers ?? []).toEqual(['b.ts:9 callB', 'a.ts:1 callA']);
   });
 
   it('files filter keeps only symbols declared in those files', async () => {
@@ -258,7 +257,9 @@ describe('getBlastRadius (use case)', () => {
 
     const out = await getBlastRadius(d, { repo: 'acme/payments-api', pr: 42, files: ['src/settings.ts'] });
 
-    expect((out as { changed_symbol_count?: unknown }).changed_symbol_count).toBe(1);
+    // Revision 5.1: `changed_symbol_count` is removed from BlastRadiusOut; this test now
+    // asserts on `downstream` only (below), keeping this line as a check that the key is gone.
+    expect((out as { changed_symbol_count?: unknown }).changed_symbol_count).toBeUndefined();
     const downstream = Array.isArray((out as { downstream?: unknown }).downstream)
       ? (out as { downstream: { symbol: string }[] }).downstream
       : [];
@@ -336,19 +337,25 @@ describe('getBlastRadius (use case)', () => {
     const out = await getBlastRadius(d, { repo: 'acme/payments-api', pr: 42 });
     const downstream = Array.isArray((out as { downstream?: unknown }).downstream)
       ? (out as {
-          downstream: { symbol: string; callers: { name: string; file: string }[]; endpoints: string[]; crons: string[] }[];
+          downstream: { symbol: string; callers: string[]; endpoints: string[]; crons: string[] }[];
         }).downstream
       : [];
     const group = downstream[0];
 
+    // Revision 5.1: `downstream[].callers` is `string[]`, each "<file>:<line> <name>" — file
+    // sanitised+capped 160, name capped 80, joined after capping.
+    const expectedFilePart = `${'F'.repeat(159)}…`;
+    const expectedNamePart = `${'D'.repeat(79)}…`;
+    const expectedCaller = `${expectedFilePart}:5 ${expectedNamePart}`;
+
     expect(group?.symbol).toBe(`${'B'.repeat(79)}…`);
-    expect(group?.callers[0]?.name).toBe(`${'D'.repeat(79)}…`);
-    expect(group?.callers[0]?.file).toBe(`${'F'.repeat(159)}…`);
+    expect(group?.callers[0]).toBe(expectedCaller);
+    expect(group?.callers[0]?.startsWith(`${expectedFilePart}:5 `)).toBe(true);
     expect(group?.endpoints[0]).toBe(`${'E'.repeat(99)}…`);
     expect(group?.crons[0]).toBe(`${'C'.repeat(99)}…`);
     expect(group?.symbol.includes(ZW)).toBe(false);
-    expect(group?.callers[0]?.name.includes(ZW)).toBe(false);
-    expect(group?.callers[0]?.file.includes(ZW)).toBe(false);
+    expect(group?.callers[0]?.includes(ZW)).toBe(false);
+    expect(group?.callers[0]?.length).toBe(243); // 160 (file+…) + ':5 ' (3) + 80 (name+…)
     expect(group?.endpoints[0]?.includes(ZW)).toBe(false);
     expect(group?.crons[0]?.includes(ZW)).toBe(false);
   });
