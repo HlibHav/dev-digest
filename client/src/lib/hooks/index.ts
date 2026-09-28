@@ -22,6 +22,7 @@ export {
 export * from "./reviews";
 export * from "./trace";
 export * from "./repo-intel";
+export { useBlastRadius } from "./blast";
 export {
   useConventions,
   useExtractConventions,
