@@ -64,6 +64,20 @@ export const s = {
     color: "var(--text-primary)",
     textAlign: "left",
   } satisfies CSSProperties,
+  /* Caller-less changed symbol (rev 5.3) — same row shape as symbolHeader,
+     but muted and non-interactive: not a <button>, no expand/collapse. */
+  symbolHeaderMuted: {
+    width: "100%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    padding: "8px 12px",
+    background: "var(--bg-elevated)",
+    fontSize: 13,
+    fontWeight: 600,
+    color: "var(--text-muted)",
+  } satisfies CSSProperties,
   symbolName: {
     fontFamily: "var(--font-mono, monospace)",
   } satisfies CSSProperties,

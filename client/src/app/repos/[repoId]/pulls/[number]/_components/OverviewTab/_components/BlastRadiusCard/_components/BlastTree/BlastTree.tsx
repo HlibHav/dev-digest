@@ -3,7 +3,7 @@
 import React from "react";
 import { useTranslations } from "next-intl";
 import { Chip, MonoLink } from "@devdigest/ui";
-import type { DownstreamImpact } from "@devdigest/shared";
+import type { ChangedSymbol, DownstreamImpact } from "@devdigest/shared";
 import { githubBlobUrl } from "@/lib/github-urls";
 import { s } from "../../styles";
 
@@ -14,13 +14,16 @@ interface BlastTreeLink {
 
 interface BlastTreeProps {
   downstream: DownstreamImpact[];
+  changed_symbols: ChangedSymbol[];
   link: BlastTreeLink | null;
 }
 
 /** Per-symbol collapsible tree: callers as `file:line` (linked to GitHub when
     `link` is set), followed by that symbol's endpoint and cron chips. Every
-    header starts expanded (AC21). */
-export function BlastTree({ downstream, link }: BlastTreeProps) {
+    header starts expanded (AC21). After the groups that have callers, every
+    remaining `changed_symbols` entry (server order, deduped by name) renders
+    as a muted, non-expandable "no callers" row (rev 5.3). */
+export function BlastTree({ downstream, changed_symbols, link }: BlastTreeProps) {
   const t = useTranslations("blast");
   const [collapsed, setCollapsed] = React.useState<ReadonlySet<string>>(new Set());
 
@@ -32,6 +35,14 @@ export function BlastTree({ downstream, link }: BlastTreeProps) {
       return next;
     });
   };
+
+  const groupedNames = new Set(downstream.map((group) => group.symbol));
+  const seenCallerless = new Set<string>();
+  const callerless = changed_symbols.filter((symbol) => {
+    if (groupedNames.has(symbol.name) || seenCallerless.has(symbol.name)) return false;
+    seenCallerless.add(symbol.name);
+    return true;
+  });
 
   return (
     <div style={s.tree}>
@@ -95,6 +106,14 @@ export function BlastTree({ downstream, link }: BlastTreeProps) {
           </div>
         );
       })}
+      {callerless.map((symbol) => (
+        <div key={symbol.name} style={s.symbolGroup}>
+          <div style={s.symbolHeaderMuted}>
+            <span style={s.symbolName}>{symbol.name}()</span>
+            <span style={s.symbolCount}>{t("noCallers")}</span>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

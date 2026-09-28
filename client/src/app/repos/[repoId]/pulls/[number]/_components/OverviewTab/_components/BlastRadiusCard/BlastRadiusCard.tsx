@@ -97,7 +97,7 @@ export function BlastRadiusCard({ blast, isLoading, isError, onRetry, link, resy
 
         {hasDownstream ? (
           view === "tree" ? (
-            <BlastTree downstream={blast.downstream} link={link} />
+            <BlastTree downstream={blast.downstream} changed_symbols={blast.changed_symbols} link={link} />
           ) : (
             <BlastGraph blast={blast} />
           )
