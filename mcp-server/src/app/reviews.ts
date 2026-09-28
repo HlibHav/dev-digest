@@ -2,7 +2,14 @@ import type { Repo, PrMeta, ReviewRecord, ReviewRunResponse, RunSummary } from '
 import type { ServerDeps } from '../ports/api-client.js';
 import { resolveAgent, resolvePr, resolveRepo } from './resolve.js';
 import { toToolError, ToolError } from './errors.js';
-import { presentReview, type FindingsOut, type ReviewOut } from './present.js';
+import {
+  presentReview,
+  sanitizeUntrusted,
+  truncate,
+  UNTRUSTED_NOTICE,
+  type FindingsOut,
+  type ReviewOut,
+} from './present.js';
 
 type ResolvedPr = PrMeta & { id: string };
 
@@ -21,7 +28,7 @@ function timedOutReviewOut(runId: string, waitMs: number): ReviewOut {
 }
 
 function runFailedError(runId: string, status: string, error: string | null): ToolError {
-  const reason = error ? error.slice(0, 300) : 'no error recorded';
+  const reason = error ? truncate(sanitizeUntrusted(error), 300) : 'no error recorded';
   return new ToolError(
     `Run ${runId} ${status}: ${reason}. Check the agent's provider key in DevDigest Settings, then retry devdigest_run_agent_on_pr.`,
   );
@@ -58,6 +65,7 @@ export async function runAgentOnPr(
       );
     }
     const runId = target.run_id;
+    const start = deps.clock.now();
 
     for (;;) {
       const runs: RunSummary[] = await deps.api.listRuns(pr.id);
@@ -75,9 +83,9 @@ export async function runAgentOnPr(
             `Run ${runId} finished but its review was not found — call devdigest_get_findings with this run_id.`,
           );
         }
-        return presentReview(review, { format: 'concise', offset: 0 });
+        return { notice: UNTRUSTED_NOTICE, ...presentReview(review, { format: 'concise', offset: 0 }) };
       }
-      if (deps.clock.now() >= deps.waitMs) {
+      if (deps.clock.now() - start >= deps.waitMs) {
         return timedOutReviewOut(runId, deps.waitMs);
       }
       await deps.clock.sleep(deps.pollMs);
@@ -119,6 +127,7 @@ async function findingsForDefault(
     .slice(0, 5);
 
   return {
+    notice: UNTRUSTED_NOTICE,
     repo: repo.full_name,
     pr: pr.number,
     response_format: format,
@@ -150,6 +159,7 @@ async function findingsForAgent(
     new Date(a.created_at).getTime() >= new Date(b.created_at).getTime() ? a : b,
   );
   return {
+    notice: UNTRUSTED_NOTICE,
     repo: repo.full_name,
     pr: pr.number,
     response_format: format,
@@ -187,15 +197,25 @@ async function findingsForRunId(
       next_offset: null,
       message: 'Still running — call devdigest_get_findings with this run_id again later.',
     };
-    return { repo: repo.full_name, pr: pr.number, response_format: format, reviews: [reviewOut], message: null };
+    return {
+      notice: UNTRUSTED_NOTICE,
+      repo: repo.full_name,
+      pr: pr.number,
+      response_format: format,
+      reviews: [reviewOut],
+      message: null,
+    };
   }
 
   const reviews = await deps.api.listReviews(pr.id);
   const review = reviews.find((r) => r.run_id === runId);
   if (!review) {
-    throw new ToolError(`Run ${runId} not found on PR #${pr.number} — omit run_id to get the latest reviews.`);
+    throw new ToolError(
+      `Run ${runId} finished but its review was not found — call devdigest_get_findings with this run_id.`,
+    );
   }
   return {
+    notice: UNTRUSTED_NOTICE,
     repo: repo.full_name,
     pr: pr.number,
     response_format: format,

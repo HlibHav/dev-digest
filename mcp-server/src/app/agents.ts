@@ -1,6 +1,6 @@
 import type { ServerDeps } from '../ports/api-client.js';
 import { toToolError, ToolError } from './errors.js';
-import { truncate, type ListAgentsOut } from './present.js';
+import { truncate, sanitizeUntrusted, type ListAgentsOut } from './present.js';
 
 const MAX_DESCRIPTION = 160;
 
@@ -13,7 +13,7 @@ export async function listAgents(deps: ServerDeps): Promise<ListAgentsOut> {
       agents: agents.map((a) => ({
         id: a.id,
         name: a.name,
-        description: truncate(a.description, MAX_DESCRIPTION),
+        description: truncate(sanitizeUntrusted(a.description), MAX_DESCRIPTION),
         model: a.model,
         enabled: a.enabled,
       })),
