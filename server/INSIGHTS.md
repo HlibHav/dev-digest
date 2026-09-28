@@ -8,6 +8,8 @@ fixed — add to the one that fits.
 
 ## What Works
 
+- **2026-09-28** — To make a route's response provably match its shared contract, declare `schema: { response: { 200: <ZodSchema> } }`: the zod serializer set in `app.ts` runs `safeParse` on the way out, strips keys outside the contract, and turns a non-conforming body into a 500 `internal_error` instead of leaking it. `GET /pulls/:id/blast` is the first route to do this; any field you want on the wire (e.g. caller `rank`) must therefore be in the contract, or it silently disappears. Evidence: `server/src/modules/blast/routes.ts:26`, `server/test/blast.it.test.ts:230`
+
 ## What Doesn't Work
 
 - **2026-09-26** — `pr_files` has no status column, so "the PR touches this path" is not "the PR added this file". The first Intent Layer rebuilt any linked doc whose patch had `+` lines from that patch, which handed the model only the changed hunk of a *modified* plan. Only a file the PR adds carries its whole content in the patch; GitHub's per-file patch for it opens with the hunk header `@@ -0,0 `, and that is the test to use. Everything else is read from the base-branch clone. Evidence: `server/src/modules/reviews/intent-helpers.ts:286`, `server/src/adapters/github/octokit.ts:110`
@@ -22,6 +24,10 @@ fixed — add to the one that fits.
   - **2026-09-25** — Refined: a route file ABSENT from `GRANDFATHERED` must have zero adapter calls, so a `new XService({ adapter: () => container.adapter() })` written inline in two such route files (`pulls/routes.ts`, `reviews/routes.ts`) is safe to consolidate into one `build<X>Service(container)` factory in the owning module (e.g. `pulls/wiring.ts`) without touching the map — the factory file itself isn't scanned as a route, and `pulls/routes.ts`'s own grandfathered count is untouched because its 3 counted calls live in the route body, not in the service construction that moved out. Evidence: `server/src/modules/pulls/wiring.ts:1`, `server/src/modules/reviews/routes.ts:11`
 
 ## Codebase Patterns
+
+- **2026-09-28** — `repoIntel.getBlastRadius` never reports an incomplete index on its own: the persistent path returns `degraded: false` with no `reason` for a `partial` index, and it never emits `index_partial` or `flag_off`. A consumer that must say "index incomplete" reads `getIndexState` itself and derives `index_partial`. Its `MAX_CALLERS_PER_SYMBOL` is also applied as one global `slice` over all callers after the rank sort, not per symbol, so a busy symbol can starve the others before any per-symbol cap runs. Evidence: `server/src/modules/repo-intel/service.ts:386`, `server/src/modules/blast/helpers.ts:133`
+
+- **2026-09-28** — Blast-radius endpoints come from `factsByFile`, keyed by the **caller's** file, and the facade looks one hop out only (`BFS_DEPTH` is unused there). A changed helper shows an HTTP endpoint only when a direct caller is itself a file with `app.get('/…')`-style routes; a helper reached through `service.ts` → `routes.ts` shows none. To demo or test it, pick a helper a `routes.ts` imports directly (e.g. `rowsToSettings` → `settings/routes.ts`). Evidence: `server/src/adapters/codeindex/extract.ts:186`, `server/src/modules/blast/helpers.ts:86`
 
 - **2026-09-26** — `PullsService.refreshPullDetail` refreshes only the body, files, commits and line counts; `title` and `head_sha` move only when the PR list syncs (`GET /repos/:id/pulls`). It also never throws on a GitHub failure (no token, offline): it logs and serves what is stored. So a feature that "refreshes the PR first" (the intent re-derive) still sees the old head until the list is opened, and must not treat a successful refresh as proof that GitHub answered. Evidence: `server/src/modules/pulls/service.ts:39`, `server/src/modules/pulls/routes.ts:64`
 
@@ -69,5 +75,7 @@ fixed — add to the one that fits.
 - **2026-09-25** — Intent Layer review-fix iteration (F1 derive gating, F1b hermetic mocks, F2 commit sanitising, F4 malformed-link handling, F5 pure input-hash helper, F7 one `PullsService` factory) → What Doesn't Work (comment). Evidence: `server/src/modules/pulls/wiring.ts:1`
 
 - **2026-09-28** — Blast Radius (homework-5, implementer A, steps 1–3): `BlastDegradedReason` + `degraded`/`reason`/`rank` added to the shared `BlastRadius` contract, `blast` module (`helpers.ts` pure mapper, `service.ts`, `wiring.ts`, `routes.ts`) registered in `server/src/modules/index.ts` → Tool & Library Notes. Evidence: `server/src/modules/blast/service.ts:1`
+
+- **2026-09-28** — Blast Radius wrap-up (homework-5): added the response-schema pattern (What Works) and two facade facts (Codebase Patterns: no `index_partial` from the facade + global caller cap; endpoints only via direct route-file callers). Evidence: `server/src/modules/blast/routes.ts:26`
 
 ## Open Questions
