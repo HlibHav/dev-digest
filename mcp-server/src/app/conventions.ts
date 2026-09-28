@@ -5,6 +5,7 @@ import { truncate, sanitizeUntrusted, UNTRUSTED_NOTICE, type ConventionsOut } fr
 
 const MAX_RULE = 240;
 const MAX_FILE = 200;
+const MAX_CATEGORY = 60;
 const MAX_ITEMS = 50;
 
 /** `devdigest_get_conventions`: `accepted` candidates by default, `status` widens the
@@ -23,7 +24,7 @@ export async function getConventions(
     const total = filtered.length;
     const truncated = total > MAX_ITEMS;
     const conventions = filtered.slice(0, MAX_ITEMS).map((c) => ({
-      category: c.category,
+      category: truncate(sanitizeUntrusted(c.category), MAX_CATEGORY),
       rule: truncate(sanitizeUntrusted(c.rule), MAX_RULE),
       file: truncate(sanitizeUntrusted(c.evidence_path), MAX_FILE),
       line: c.evidence_line,

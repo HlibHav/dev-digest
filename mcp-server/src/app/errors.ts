@@ -1,4 +1,5 @@
 import { ApiError } from '../ports/api-client.js';
+import { sanitizeUntrusted } from './present.js';
 
 /** The only error type a tool handler ever turns into an `isError` tool result. Every
  * `resolve*`/use-case function throws this with the exact E1-E12 wording from the plan. */
@@ -27,7 +28,7 @@ export function toToolError(err: unknown, apiUrl: string): ToolError {
       );
     }
     return new ToolError(
-      `DevDigest API error ${err.status} on ${err.method} ${err.path}: ${cut(err.message, 200)}.`,
+      `DevDigest API error ${err.status} on ${err.method} ${err.path}: ${cut(sanitizeUntrusted(err.message), 200)}.`,
     );
   }
   return new ToolError(err instanceof Error ? err.message : String(err));

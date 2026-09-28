@@ -10,10 +10,13 @@ export function truncate(s: string, max: number): string {
 
 /** Strips characters a PR, a clone, a model or a user could smuggle in to hide prompt-injection
  * text from a human reviewing the raw JSON, or to break the token budget's size caps: zero-width
- * characters, bidi controls, Unicode tag characters and C0/C1 control characters other than
- * `\n` and `\t`. Runs before `truncate` on every field the plan lists (Revision 2.2). */
+ * characters, bidi controls, the Arabic letter mark, the soft hyphen, DEL, Unicode tag
+ * characters and C0/C1 control characters other than `\n` and `\t`. Runs before `truncate` on
+ * every field the plan lists (Revision 2.2; widened in Revision 2.3 to match
+ * `intent-helpers.ts`). The source below uses only `\u`/`\u{}` escapes, no raw invisible
+ * characters, so a static check on this file can prove it. */
 const UNTRUSTED_RE =
-  /[\u0000-\u0008\u000B-\u001F\u0080-\u009F​-‏⁠﻿‪-‮⁦-⁩\u{E0000}-\u{E007F}]/gu;
+  /[\u0000-\u0008\u000B-\u001F\u007F\u0080-\u009F\u00AD\u061C\u200B-\u200F\u2060-\u2069\uFEFF\u202A-\u202E\u{E0000}-\u{E007F}]/gu;
 
 export function sanitizeUntrusted(s: string): string {
   return s.replace(UNTRUSTED_RE, '');
