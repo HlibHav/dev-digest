@@ -10,7 +10,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run --passWithNoTests",
-    "start": "tsx src/main.ts"
+    "start": "tsx src/main.ts",
+    "inspect": "npx --yes @modelcontextprotocol/inspector@2.8.0 env DEVDIGEST_API_URL=${DEVDIGEST_API_URL:-http://localhost:3001} node_modules/.bin/tsx src/main.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "2.1.0",

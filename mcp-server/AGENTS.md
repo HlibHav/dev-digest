@@ -10,6 +10,7 @@ no database and no direct GitHub/LLM access of its own.
 pnpm typecheck   # tsc --noEmit, needs server/node_modules for @devdigest/shared's zod types
 pnpm test        # vitest run
 pnpm start       # tsx src/main.ts, reads DEVDIGEST_API_URL / DEVDIGEST_MCP_WAIT_MS / DEVDIGEST_MCP_POLL_MS
+pnpm inspect     # MCP Inspector UI on this server; passes DEVDIGEST_API_URL through (default :3001)
 ```
 
 `server/node_modules` must exist before `pnpm typecheck` — the shared contract types resolve
