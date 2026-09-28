@@ -93,7 +93,7 @@ describe("BlastRadiusCard — no downstream", () => {
     expect(screen.getByText("2 changed symbol(s), no downstream callers found.")).toBeInTheDocument();
     // AC7: no tree and no graph when there are no callers.
     expect(screen.queryByText("b.ts:10")).not.toBeInTheDocument();
-    expect(document.querySelector("svg")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Blast radius graph")).not.toBeInTheDocument();
   });
 });
 
@@ -124,18 +124,21 @@ describe("BlastRadiusCard — view toggle", () => {
   it("Tree/Graph toggle swaps the view", () => {
     renderWithIntl(<BlastRadiusCard blast={BLAST} isLoading={false} isError={false} link={null} />);
 
-    // Starts on the tree view: a caller is visible, no svg graph.
-    expect(screen.getByText("b.ts:10")).toBeInTheDocument();
-    expect(document.querySelector("svg")).not.toBeInTheDocument();
+    // Starts on the tree view: the "foo" symbol header (a tree-only element,
+    // per BlastTree's AC21 collapse button) is present, no graph svg yet.
+    // ("b.ts:10" alone can't tell tree from graph apart: BlastGraph's own
+    // caller node label is also exactly "file:line", per BlastGraph.test.tsx.)
+    expect(screen.getByRole("button", { name: /foo/ })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Blast radius graph")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "graph" }));
 
-    expect(screen.queryByText("b.ts:10")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /foo/ })).not.toBeInTheDocument();
     expect(screen.getByLabelText("Blast radius graph")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "tree" }));
 
-    expect(screen.getByText("b.ts:10")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /foo/ })).toBeInTheDocument();
     expect(screen.queryByLabelText("Blast radius graph")).not.toBeInTheDocument();
   });
 });
