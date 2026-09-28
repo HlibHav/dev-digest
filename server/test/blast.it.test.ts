@@ -287,6 +287,57 @@ d('Blast Radius route (Testcontainers pg)', () => {
     await app.close();
   });
 
+  it('PR in another workspace → 404', async () => {
+    // AC19 (docs/homework-5/plan.md:50): the route 404s "for an unknown PR id
+    // and for a PR in another workspace". `store.getPull` is workspace-scoped
+    // (server/src/modules/reviews/repository/pull.repo.ts:9-19), so a PR that
+    // exists but belongs to a different workspace must look exactly like an
+    // unknown one — and the facade must never be reached for it.
+    const repoIntel = new FakeRepoIntel(
+      { changedSymbols: [], callers: [], impactedEndpoints: [], degraded: false },
+      fullIndexState('00000000-0000-0000-0000-000000000000'),
+    );
+    const app = await appWith(repoIntel);
+
+    const [otherWorkspace] = await pg.handle.db
+      .insert(t.workspaces)
+      .values({ name: `blast-other-workspace-${randomUUID()}` })
+      .returning();
+    const otherName = `dev-digest-other-${randomUUID()}`;
+    const [foreignRepo] = await pg.handle.db
+      .insert(t.repos)
+      .values({
+        workspaceId: otherWorkspace!.id,
+        owner: 'HlibHav',
+        name: otherName,
+        fullName: `HlibHav/${otherName}`,
+      })
+      .returning();
+    const [foreignPr] = await pg.handle.db
+      .insert(t.pullRequests)
+      .values({
+        workspaceId: otherWorkspace!.id,
+        repoId: foreignRepo!.id,
+        number: 27,
+        title: 'Foreign workspace PR',
+        author: 'marisa.koch',
+        branch: 'feat/blast',
+        base: 'main',
+        headSha: 'c6af1e45',
+        additions: 10,
+        deletions: 2,
+        filesCount: 0,
+        status: 'needs_review',
+      })
+      .returning();
+
+    const res = await app.inject({ method: 'GET', url: `/pulls/${foreignPr!.id}/blast` });
+    expect(res.statusCode).toBe(404);
+    expect(repoIntel.blastCalls).toEqual([]);
+
+    await app.close();
+  });
+
   it('a never-opened PR is refreshed from GitHub before the read', async () => {
     const { pr, repo } = await setupPr(false); // no pr_files rows
     const repoIntel = new FakeRepoIntel(
