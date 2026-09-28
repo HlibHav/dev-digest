@@ -73,4 +73,26 @@ describe('HttpApiClient', () => {
     const client = new HttpApiClient('http://localhost:3001', fetchImpl as unknown as typeof fetch);
     await expect(client.getPullDetail('abc')).rejects.toMatchObject({ code: 'bad_response' });
   });
+
+  // AC9 (plan Step 7): ApiClient.getBlastRadius(prId), not yet implemented by HttpApiClient.
+  it('getBlastRadius GETs /pulls/<encoded id>/blast and expects an object', async () => {
+    const calls: { url: string; init: RequestInit | undefined }[] = [];
+    const fetchImpl = vi.fn(async (input: string | URL, init?: RequestInit) => {
+      calls.push({ url: String(input), init });
+      return fakeResponse({ ok: true, status: 200, body: { changed_symbols: [], downstream: [], summary: '' } });
+    });
+    const client = new HttpApiClient('http://localhost:3001', fetchImpl as unknown as typeof fetch);
+    const result = await client.getBlastRadius('weird id/with slash');
+    expect(calls).toHaveLength(1);
+    const url = new URL(calls[0]!.url);
+    expect(url.pathname).toBe(`/pulls/${encodeURIComponent('weird id/with slash')}/blast`);
+    expect(calls[0]!.init?.method).toBe('GET');
+    expect(result).toEqual({ changed_symbols: [], downstream: [], summary: '' });
+  });
+
+  it('getBlastRadius rejects a non-object body as bad_response', async () => {
+    const fetchImpl = vi.fn(async () => fakeResponse({ ok: true, status: 200, body: [] }));
+    const client = new HttpApiClient('http://localhost:3001', fetchImpl as unknown as typeof fetch);
+    await expect(client.getBlastRadius('pr-1')).rejects.toMatchObject({ code: 'bad_response' });
+  });
 });

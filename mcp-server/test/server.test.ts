@@ -33,7 +33,7 @@ const TOOL_DESCRIPTIONS: Record<string, { title: string; description: string }> 
   devdigest_get_blast_radius: {
     title: 'Get blast radius',
     description:
-      'Not implemented yet: always returns status "not_implemented". Planned to show which symbols and callers a pull request\'s changes affect. Do not rely on it; use devdigest_get_findings for review results.',
+      "Get the blast radius of a pull request: each changed symbol with its callers as file:line and the HTTP endpoints and cron jobs they reach, read from DevDigest's code index. Call it before reviewing or merging to see what else the change can break.",
   },
 };
 
@@ -164,7 +164,7 @@ describe('tools/list', () => {
       expect(sentenceCount(TOOL_DESCRIPTIONS.devdigest_run_agent_on_pr!.description)).toBe(3);
       expect(sentenceCount(TOOL_DESCRIPTIONS.devdigest_get_findings!.description)).toBe(3);
       expect(sentenceCount(TOOL_DESCRIPTIONS.devdigest_get_conventions!.description)).toBe(2);
-      expect(sentenceCount(TOOL_DESCRIPTIONS.devdigest_get_blast_radius!.description)).toBe(3);
+      expect(sentenceCount(TOOL_DESCRIPTIONS.devdigest_get_blast_radius!.description)).toBe(2);
     } finally {
       await close();
     }

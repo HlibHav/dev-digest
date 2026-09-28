@@ -247,9 +247,26 @@ describe('notice (AC32)', () => {
     expect(out).not.toHaveProperty('notice');
   });
 
-  it('is absent from BlastRadiusOut', () => {
-    const out = getBlastRadius({ repo: 'acme/payments-api', pr: 42 });
-    expect(out).not.toHaveProperty('notice');
+  it('is the first key of BlastRadiusOut', async () => {
+    const seed = baseSeed();
+    seed.blastByPr = {
+      'pr-1': {
+        changed_symbols: [{ name: 'rowsToSettings', file: 'src/settings.ts', kind: 'function' }],
+        downstream: [
+          {
+            symbol: 'rowsToSettings',
+            callers: [{ name: 'apply', file: 'src/routes.ts', line: 10 }],
+            endpoints_affected: ['GET /settings'],
+            crons_affected: [],
+          },
+        ],
+        summary: '1 changed symbol(s) · 1 caller(s) · 1 endpoint(s) · 0 cron/job(s)',
+      },
+    };
+    const { deps: d } = deps(seed);
+    const out = await getBlastRadius(d, { repo: 'acme/payments-api', pr: 42 });
+    expect(Object.keys(out)[0]).toBe('notice');
+    expect((out as unknown as { notice: string }).notice).toBe(NOTICE);
   });
 });
 
