@@ -514,3 +514,15 @@ Risks for the run:
 - **Degraded demo.** `acme/payments-api` #482 has no clone. Resync there returns 202 but changes nothing, which is acceptable for showing `no_data`.
 - **`mcp-server/**` is unrouted** in `pr-self-review`'s table, so the gate's review of that surface loads no skill. The owner may want a row added; that is not part of this task.
 - **No external facts are open,** so no researcher run is needed. The response-serializer behaviour was verified in `server/node_modules/fastify-type-provider-zod/dist/src/core.js:85-91`.
+
+## Revision 5.1 (2026-09-28): `tools/list` budget
+
+Implementer C's first build put `tools/list` at 10,563 bytes, 323 over the 10,240 cap (`server.test.ts` › "no instructions and tools/list ≤10,240 bytes"). The nested caller object in `BlastRadiusOut` was 1,274 bytes of JSON Schema, and each `z.number().int()` adds ~52 bytes of safe-integer bounds. The Risks section named flattening `callers` as the fallback; the main session takes that decision here, plus two smaller cuts, so the cap holds with margin and the map's content is unchanged.
+
+- **`downstream[].callers` becomes `string[]`**, each `"<file>:<line> <name>"` (for example `server/src/modules/settings/routes.ts:65 settingsRoutes`). `file` is sanitised and capped at 160 and `name` at 80 before joining. Order and caps are unchanged (≤8 per symbol). Supersedes the `callers: {name, file, line}[]` shape in "Contracts & data" → `BlastRadiusOut` and in AC9.
+- **`changed_symbol_count` is removed** from `BlastRadiusOut`. `summary` already carries the changed-symbol count for the whole PR; with `files`, the agent counts `downstream`.
+- **The tool description becomes (verbatim, 194 chars, 2 sentences):**
+  `Get a pull request's blast radius from DevDigest's code index: each changed symbol, its callers as file:line and the HTTP endpoints and cron jobs they reach. Call it before reviewing or merging.`
+  Supersedes the 247-char text in "Contracts & data".
+
+Tests updated against this revision (rewritten, not weakened): `mcp-server/test/get-blast-radius.test.ts` (caller shape, key list, files filter now asserts `downstream` only), `server.test.ts` (description constant). The byte-cap assertion itself is unchanged.
