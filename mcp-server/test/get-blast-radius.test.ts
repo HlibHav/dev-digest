@@ -183,7 +183,9 @@ describe('getBlastRadius (use case)', () => {
         },
       ],
       truncated: false,
-      message: null,
+      // Revision 5.3 clarification: `noCallers` has no `downstream` group (before the MCP
+      // symbol cap), so `message` is M8, not null.
+      message: 'No callers found for 1 changed symbol(s): noCallers.',
     });
     expect(api.calls.map((c) => c.method)).toEqual(['listRepos', 'listPulls', 'getBlastRadius']);
     const blastCall = api.calls.find((c) => c.method === 'getBlastRadius');
@@ -398,6 +400,50 @@ describe('getBlastRadius (use case)', () => {
     expect(outDownstream[0]?.crons.length ?? -1).toBe(5);
     expect((out as { truncated?: unknown }).truncated).toBe(true);
     expect(JSON.stringify(out).length).toBeLessThanOrEqual(36000);
+  });
+
+  // Revision 5.3: a changed symbol with no downstream group is named in `message` (M8)
+  // instead of silently vanishing.
+  it('names changed symbols without callers in message (M8)', async () => {
+    const seed = baseSeed();
+    const radius: BlastRadiusFixture = {
+      changed_symbols: [
+        { name: 'rowsToSettings', file: 'src/settings.ts', kind: 'function' },
+        { name: 'SettingsRow', file: 'src/settings-row.ts', kind: 'type' },
+      ],
+      downstream: [
+        {
+          symbol: 'rowsToSettings',
+          callers: [{ name: 'apply', file: 'src/routes.ts', line: 10 }],
+          endpoints_affected: [],
+          crons_affected: [],
+        },
+      ],
+      summary: '2 changed symbol(s) · 1 caller(s) · 0 endpoint(s) · 0 cron/job(s)',
+      degraded: false,
+      reason: null,
+    };
+    seed.blastByPr = { 'pr-1': radius };
+    const { deps: d } = deps(seed);
+
+    const out = await getBlastRadius(d, { repo: 'acme/payments-api', pr: 42 });
+
+    expect((out as { message?: unknown }).message).toBe(
+      'No callers found for 1 changed symbol(s): SettingsRow.',
+    );
+    const downstream = Array.isArray((out as { downstream?: unknown }).downstream)
+      ? (out as { downstream: { symbol: string }[] }).downstream
+      : [];
+    expect(downstream.map((g) => g.symbol)).toEqual(['rowsToSettings']);
+
+    // With `files` filtering out SettingsRow's declaring file, it is no longer among the
+    // changed symbols considered, so no caller-less name remains and message is null.
+    const filtered = await getBlastRadius(d, {
+      repo: 'acme/payments-api',
+      pr: 42,
+      files: ['src/settings.ts'],
+    });
+    expect((filtered as { message?: unknown }).message).toBeNull();
   });
 });
 
