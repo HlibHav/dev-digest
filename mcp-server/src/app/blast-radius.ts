@@ -89,13 +89,35 @@ export async function getBlastRadius(
     const summaryCap = cap(radius.summary, MAX_SUMMARY);
     if (summaryCap.cut) truncated = true;
 
+    // M8 (Revision 5.3): changed symbols (after the `files` filter) with no group in the
+    // API's raw `downstream` — before the MCP symbol cap, so a symbol dropped only by
+    // MAX_SYMBOLS is not caller-less — deduped by name, in changed_symbols order.
+    const keptSymbols = radius.changed_symbols.filter(
+      (s) => !files || files.length === 0 || files.includes(s.file),
+    );
+    const groupNames = new Set(radius.downstream.map((group) => group.symbol));
+    const seenCallerless = new Set<string>();
+    const callerlessNames: string[] = [];
+    for (const s of keptSymbols) {
+      if (!groupNames.has(s.name) && !seenCallerless.has(s.name)) {
+        seenCallerless.add(s.name);
+        callerlessNames.push(s.name);
+      }
+    }
+    const m8Shown = callerlessNames.slice(0, 10).map((n) => cap(n, MAX_NAME).value);
+    const m8Names = m8Shown.join(', ') + (callerlessNames.length > 10 ? '…' : '');
+
     // M7 whenever degraded, even with an empty map; M6 only when not degraded and the
-    // (filtered, capped) downstream is empty (Resolved spec point 2).
+    // (filtered, capped) downstream is empty; M8 when not degraded, downstream is non-empty
+    // and some changed symbol has no group at all (Resolved spec point 2, extended by
+    // Revision 5.3).
     const message = degraded
       ? `The code index for ${repo.full_name} is incomplete (${reason}), so callers may be missing. Resync the repo in DevDigest, then retry.`
       : downstream.length === 0
         ? `No callers of the changed symbols were found for PR #${pr.number} in ${repo.full_name}.`
-        : null;
+        : callerlessNames.length > 0
+          ? `No callers found for ${callerlessNames.length} changed symbol(s): ${m8Names}.`
+          : null;
 
     return {
       notice: UNTRUSTED_NOTICE,
