@@ -12,7 +12,7 @@ it never talks to GitHub, an LLM provider, or the database directly.
 | `devdigest_run_agent_on_pr` | Run one agent on a pull request, wait up to ~2 minutes, return its verdict and findings. |
 | `devdigest_get_findings` | Read finished reviews on a pull request without starting a run — defaults to the latest per agent, or narrow by `agent`/`run_id`. |
 | `devdigest_get_conventions` | Read the coding conventions DevDigest extracted for a repo. |
-| `devdigest_get_blast_radius` | Not implemented yet (L04 homework target) — always returns `status: "not_implemented"`. |
+| `devdigest_get_blast_radius` | Get a pull request's changed symbols, their callers (`file:line`), and the HTTP endpoints and cron jobs they reach, read from DevDigest's code index. |
 
 ## Setup
 

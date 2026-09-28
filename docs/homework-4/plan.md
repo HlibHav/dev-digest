@@ -605,3 +605,12 @@ revision closes three minor items from it.
   - `devdigest_list_agents` carries no notice; agent names, models and descriptions are written by
     the local user, the same principal as the MCP user.
 - **AC34** covers these items; its tests are in `mcp-server/test/untrusted-text-2.test.ts`.
+
+## Superseded by homework-5 (2026-09-28)
+`docs/homework-5/plan.md` is the plan revision `mcp-server/AGENTS.md` requires for a description
+change. It replaces this plan's `devdigest_get_blast_radius` stub — AC17 (`:59`), Decision G
+(`:18`), the Tool descriptions row (`:380`) and length table row (`:400`), the Contracts row
+(`:414`) and `BlastRadiusOut` schema (`:427`), M5 (`:448`), Revision 2.2's "`BlastRadiusOut`
+carries no notice" (`:570`), and the "Implementing blast radius" out-of-scope line (`:482`). See
+that plan's "Supersedes hw4" section for the point-by-point mapping. Nothing above this section
+changed; read it as history for every tool except `devdigest_get_blast_radius`.

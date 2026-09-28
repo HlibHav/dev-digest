@@ -27,7 +27,9 @@ pnpm inspect     # MCP Inspector UI on this server; passes DEVDIGEST_API_URL thr
   `console.error`, whatever the level — see `test/no-stdout.test.ts`.
 - Tool and field descriptions are copied verbatim from
   `docs/homework-4/plan.md`'s "Tool descriptions" table. A change needs a plan revision, not a
-  local edit.
+  local edit. `devdigest_get_blast_radius`'s description is the exception: it now comes from
+  `docs/homework-5/plan.md`'s "MCP tool description" (see that plan's "Supersedes hw4"), which
+  is the plan revision for that tool.
 
 ## Read when
 

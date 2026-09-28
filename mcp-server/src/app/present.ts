@@ -104,11 +104,32 @@ export const ConventionsOut = z.object({
 });
 export type ConventionsOut = z.infer<typeof ConventionsOut>;
 
+// The reason enum is re-declared here in zod v4 (`@devdigest/shared`'s `BlastDegradedReason`
+// is zod v3, imported type-only, per `mcp-server/AGENTS.md`). Literal members must stay in
+// sync with `server/src/vendor/shared/contracts/brief.ts`'s `BlastDegradedReason`.
+const BlastReasonOut = z.enum(['flag_off', 'index_failed', 'index_partial', 'repo_too_large', 'no_data']);
+
+// Revision 5.1 (docs/homework-5/plan.md): `callers` is `string[]`, each
+// `"<file>:<line> <name>"` (file capped 160, name capped 80, joined after capping) — the
+// nested `{name,file,line}` object shape cost too much of the tools/list byte budget.
+export const BlastDownstreamOut = z.object({
+  symbol: z.string(),
+  callers: z.array(z.string()),
+  endpoints: z.array(z.string()),
+  crons: z.array(z.string()),
+});
+export type BlastDownstreamOut = z.infer<typeof BlastDownstreamOut>;
+
 export const BlastRadiusOut = z.object({
-  status: z.literal('not_implemented'),
+  notice: z.string(),
   repo: z.string(),
   pr: z.number().int(),
-  message: z.string(),
+  summary: z.string(),
+  degraded: z.boolean(),
+  reason: BlastReasonOut.nullable(),
+  downstream: z.array(BlastDownstreamOut),
+  truncated: z.boolean(),
+  message: z.string().nullable(),
 });
 export type BlastRadiusOut = z.infer<typeof BlastRadiusOut>;
 
