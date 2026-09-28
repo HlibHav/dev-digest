@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
-import type { DownstreamImpact } from "@devdigest/shared";
+import type { ChangedSymbol, DownstreamImpact } from "@devdigest/shared";
 import messages from "../../../../../../../../../../../../messages/en/blast.json";
 import { BlastTree } from "./BlastTree";
 
@@ -33,9 +33,17 @@ const ONE_GROUP: DownstreamImpact[] = [
 
 const LINK = { repoFullName: "acme/repo", sha: "abc1234" };
 
+// rev 5.3: BlastTree now also takes changed_symbols (server order, used to
+// render callerless entries after the groups that have callers). The
+// existing tests above only exercise the "foo" group, so this fixture keeps
+// their assertions unchanged.
+const CHANGED_SYMBOLS_FOO: ChangedSymbol[] = [{ name: "foo", file: "a.ts", kind: "function" }];
+
 describe("BlastTree — callers and endpoints", () => {
   it("lists callers as file:line and the symbol's endpoints below them", () => {
-    const { container } = renderWithIntl(<BlastTree downstream={ONE_GROUP} link={LINK} />);
+    const { container } = renderWithIntl(
+      <BlastTree downstream={ONE_GROUP} changed_symbols={CHANGED_SYMBOLS_FOO} link={LINK} />,
+    );
 
     expect(screen.getByText("b.ts:10")).toBeInTheDocument();
     expect(screen.getByText("GET /x")).toBeInTheDocument();
@@ -47,7 +55,7 @@ describe("BlastTree — callers and endpoints", () => {
 
 describe("BlastTree — caller link", () => {
   it("caller link points at exactly that line", () => {
-    renderWithIntl(<BlastTree downstream={ONE_GROUP} link={LINK} />);
+    renderWithIntl(<BlastTree downstream={ONE_GROUP} changed_symbols={CHANGED_SYMBOLS_FOO} link={LINK} />);
 
     const link = screen.getByRole("link", { name: "b.ts:10" });
     expect(link).toHaveAttribute("href", "https://github.com/acme/repo/blob/abc1234/b.ts#L10");
@@ -55,7 +63,7 @@ describe("BlastTree — caller link", () => {
   });
 
   it("no link without sha or repo", () => {
-    renderWithIntl(<BlastTree downstream={ONE_GROUP} link={null} />);
+    renderWithIntl(<BlastTree downstream={ONE_GROUP} changed_symbols={CHANGED_SYMBOLS_FOO} link={null} />);
 
     expect(screen.queryByRole("link", { name: "b.ts:10" })).not.toBeInTheDocument();
     expect(screen.getByText("b.ts:10")).toBeInTheDocument();
@@ -64,7 +72,7 @@ describe("BlastTree — caller link", () => {
 
 describe("BlastTree — collapse", () => {
   it("symbol header collapses and expands its callers", () => {
-    renderWithIntl(<BlastTree downstream={ONE_GROUP} link={LINK} />);
+    renderWithIntl(<BlastTree downstream={ONE_GROUP} changed_symbols={CHANGED_SYMBOLS_FOO} link={LINK} />);
 
     const header = screen.getByRole("button", { name: /foo/ });
     expect(header).toHaveAttribute("aria-expanded", "true");
@@ -90,7 +98,9 @@ describe("BlastTree — crons vs endpoints", () => {
         crons_affected: ["nightly-job"],
       },
     ];
-    const { container } = renderWithIntl(<BlastTree downstream={group} link={LINK} />);
+    const { container } = renderWithIntl(
+      <BlastTree downstream={group} changed_symbols={CHANGED_SYMBOLS_FOO} link={LINK} />,
+    );
 
     expect(screen.getByText("GET /x")).toBeInTheDocument();
     expect(screen.getByText("nightly-job")).toBeInTheDocument();
@@ -104,5 +114,48 @@ describe("BlastTree — crons vs endpoints", () => {
     expect(endpointIdx).toBeGreaterThan(-1);
     expect(cronsLabelIdx).toBeGreaterThan(endpointIdx);
     expect(cronIdx).toBeGreaterThan(cronsLabelIdx);
+  });
+});
+
+describe("BlastTree — changed symbols without callers (rev 5.3)", () => {
+  it("lists changed symbols without callers as 'no callers' rows", () => {
+    // "rowsToSettings" has a downstream group (one caller); "SettingsRow" is a
+    // changed symbol with no group at all. "SettingsRow" also appears twice
+    // in changed_symbols (declared in two files) and must render only once.
+    const changedSymbols: ChangedSymbol[] = [
+      { name: "rowsToSettings", file: "a.ts", kind: "function" },
+      { name: "SettingsRow", file: "a.ts", kind: "function" },
+      { name: "SettingsRow", file: "b.ts", kind: "function" },
+    ];
+    const downstream: DownstreamImpact[] = [
+      {
+        symbol: "rowsToSettings",
+        callers: [{ name: "rowsToSettings", file: "b.ts", line: 10 }],
+        endpoints_affected: ["GET /x"],
+        crons_affected: [],
+      },
+    ];
+
+    const { container } = renderWithIntl(
+      <BlastTree downstream={downstream} changed_symbols={changedSymbols} link={LINK} />,
+    );
+
+    // Renders once, even though changed_symbols lists it twice.
+    expect(screen.getAllByText("SettingsRow()")).toHaveLength(1);
+    // The new blast.json "noCallers" key ("no callers") — stays red until the
+    // key exists, same as every other blast test importing the real JSON.
+    expect(screen.getByText("no callers")).toBeInTheDocument();
+
+    // No file:line link and no endpoint/cron chip were added for the
+    // callerless row: the only link in the whole tree is still the one
+    // caller from the "rowsToSettings" group, and its one endpoint chip
+    // isn't duplicated onto "SettingsRow".
+    expect(screen.getAllByRole("link")).toHaveLength(1);
+    expect(screen.getAllByText("GET /x")).toHaveLength(1);
+
+    // Comes after the symbol that has callers.
+    const text = container.textContent ?? "";
+    expect(text.indexOf("rowsToSettings()")).toBeGreaterThan(-1);
+    expect(text.indexOf("SettingsRow()")).toBeGreaterThan(text.indexOf("rowsToSettings()"));
   });
 });
