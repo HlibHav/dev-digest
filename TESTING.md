@@ -31,6 +31,7 @@ If a test wouldn't catch a class of regression we care about, we don't write it.
 | server-integration | `server/` | integration (real Postgres) | vitest | `server-integration.yml` | **yes** |
 | reviewer-core | `reviewer-core/` | unit (engine) | vitest | `reviewer-core.yml` | no |
 | e2e web | `e2e/` | browser e2e (deterministic) | agent-browser + `run.ts` | `e2e-web.yml` | yes (stack) |
+| mcp-server | `mcp-server/` | unit (`FakeApiClient` + in-process/stdio harness) | vitest | `mcp-server.yml` | no |
 
 ## What each suite covers
 
@@ -55,6 +56,12 @@ and a `run` with a stubbed model → grounded findings. No DB / GitHub / FS.
 **e2e web** — see `e2e/README.md`. Deterministic agent-browser flows over the
 main journeys (boot → PR list → PR detail; agents) against a real seeded stack.
 No `chat`, no model key.
+
+**mcp-server** — the five MCP tools, resolution, error mapping and response
+caps, all against `FakeApiClient` (no network, no DB). `server.test.ts` drives
+the tools through an in-process MCP client (`createMcpHandler`); `stdio.test.ts`
+spawns `src/main.ts` through `tsx` and speaks the wire protocol over a real
+child process's stdio.
 
 ## Running locally
 

@@ -1,0 +1,67 @@
+# mcp-server suite — local stdio MCP server (@devdigest/mcp-server).
+#
+# Typechecking and the unit tests need server/node_modules: mcp-server's
+# tsconfig resolves @devdigest/shared's zod v3 types from there (see
+# mcp-server/README.md and docs/homework-4/plan.md, Risks). server/**'s own
+# suite runs separately in server-unit.yml; this job only installs its deps.
+name: mcp-server
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'mcp-server/**'
+      - 'server/src/vendor/shared/**'
+      - '.mcp.json'
+      - '.github/workflows/mcp-server.yml'
+  pull_request:
+    paths:
+      - 'mcp-server/**'
+      - 'server/src/vendor/shared/**'
+      - '.mcp.json'
+      - '.github/workflows/mcp-server.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mcp-server-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: |
+            server/pnpm-lock.yaml
+            mcp-server/pnpm-lock.yaml
+
+      - name: Install server deps (for @devdigest/shared's zod types)
+        working-directory: server
+        run: pnpm install --frozen-lockfile
+
+      - name: Install mcp-server deps
+        working-directory: mcp-server
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        working-directory: mcp-server
+        run: pnpm typecheck
+
+      - name: Test
+        working-directory: mcp-server
+        run: pnpm test
+
+      - name: Inspector smoke (tools/list)
+        working-directory: mcp-server
+        run: npx --yes @modelcontextprotocol/inspector@2.8.0 --cli node_modules/.bin/tsx src/main.ts --method tools/list

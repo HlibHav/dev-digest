@@ -19,6 +19,7 @@ they are curated and may already answer it. Then read code.
 | `client/` | TypeScript · Next.js 15 (App Router) · React 19 | next-intl, @tanstack/react-query, zod, vitest + Testing Library | pnpm |
 | `reviewer-core/` | TypeScript source, no build step | openai SDK (OpenRouter), zod, vitest | npm |
 | `e2e/` | TypeScript run by tsx | global `agent-browser` CLI, no test framework | npm |
+| `mcp-server/` | TypeScript ESM · MCP stdio server | `@modelcontextprotocol/server` v2, zod v4, vitest | pnpm |
 
 Database: PostgreSQL 16 with pgvector (`pgvector/pgvector:pg16` in `docker-compose.yml`).
 
@@ -31,6 +32,7 @@ its commands from inside its directory.
 - `client/` — the studio UI: PR list, PR detail with findings and agent runs, agents, settings.
 - `reviewer-core/` — the pure review engine (prompt assembly, LLM call, grounding, score), shared by the server and the CI runner.
 - `e2e/` — deterministic browser flows as JSON, run against seeded data.
+- `mcp-server/` — a local stdio MCP server exposing five DevDigest review tools to an MCP client, over the already-running local API.
 - `docs/` — cross-package docs (`docs/agent-prompts/`). Package-local docs live in each package's `docs/` and `specs/`.
 - `scripts/` — `dev.sh` (local stack) and `e2e.sh` (hermetic e2e).
 - `.github/workflows/` — CI per package (server split into unit and integration) plus e2e.
