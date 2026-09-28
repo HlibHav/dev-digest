@@ -11,7 +11,7 @@ Repo root: `/Users/Glebazzz/Claude/PROJECTS/NEO/dev-digest/.claude/worktrees/rev
 ## Decisions (accepted 2026-09-28)
 - **A.** A sibling package `mcp-server/` (`@devdigest/mcp-server`) with its own pnpm lockfile.
 - **B.** A thin HTTP client to the running local API. Inside the package: tool layer → use cases → `ApiClient` port → HTTP adapter.
-- **C.** `@modelcontextprotocol/server` 2.1.0 with `legacy: 'stateless'`.
+- **C.** `@modelcontextprotocol/server` 2.1.0; stdio entry `serveStdio(factory)` with the default `legacy: 'serve'` (rev 2.1).
 - **D.** A project `.mcp.json` with the server name `devdigest` and no server `instructions`.
 - **E.** The test-writer hooks and the sandbox are widened to `mcp-server/`. security-reviewer reviews that change.
 - **F.** A PR number is resolved to its id through `GET /repos/:id/pulls`, with no server change.
@@ -229,7 +229,7 @@ All tests live under `mcp-server/test/` and are written after Step 0 is committe
 0. **[BE] mcp-server and agent tooling: bootstrap with no behaviour. This runs before test-writer.**
    - **Precondition:** `server/node_modules` exists. If it doesn't, run `pnpm install --frozen-lockfile` in `server/`.
    - **Files:**
-     - `mcp-server/package.json`: name `@devdigest/mcp-server`, private, `"type":"module"`, `engines.node ">=22.19"`. Scripts: `typecheck` = `tsc --noEmit -p tsconfig.json`; `test` = `vitest run --passWithNoTests`; `start` = `tsx src/main.ts`.
+     - `mcp-server/package.json`: name `@devdigest/mcp-server`, private, `"type":"module"`, `engines.node ">=20"`. Scripts: `typecheck` = `tsc --noEmit -p tsconfig.json`; `test` = `vitest run --passWithNoTests`; `start` = `tsx src/main.ts`.
      - `mcp-server/tsconfig.json`: reviewer-core's `compilerOptions`, plus `verbatimModuleSyntax: true` and only the two `@devdigest/shared` paths. `include` is `src/**/*.ts` and `test/**/*.ts`.
      - `mcp-server/vitest.config.ts`
      - `src/ports/api-client.ts`, `src/adapters/mocks.ts`, `src/log.ts`, `test/support/in-process-client.ts`
@@ -267,7 +267,7 @@ All tests live under `mcp-server/test/` and are written after Step 0 is committe
        - `runStatuses[runId]` is used up one entry per `listRuns` call, and the last entry repeats;
        - `calls: { method: keyof ApiClient; args: unknown[] }[]` records every call.
      - `log: { info(msg: string, data?: unknown): void; warn(...): void; error(...): void }`, all through `console.error`.
-     - `connectInProcess(factory: () => McpServer): Promise<{ client: Client; instructions: string | undefined; close(): Promise<void> }>`, via `createMcpHandler(factory)` plus `StreamableHTTPClientTransport({ fetch: handler.fetch })`.
+     - `connectInProcess(factory: () => McpServer): Promise<{ client: Client; instructions: string | undefined; close(): Promise<void> }>`, via `createMcpHandler(factory)` plus `StreamableHTTPClientTransport(new URL('http://mcp.local/mcp'), { fetch: (url, init) => handler.fetch(new Request(url, init)) })`.
      - `type Clock = { now(): number; sleep(ms: number): Promise<void> }` and `type ServerDeps = { api: ApiClient; clock: Clock; waitMs: number; pollMs: number; apiUrl: string }`.
    - **Stop condition:** check `createMcpHandler`, `serveStdio`, `registerTool` and the client transport against the installed `.d.ts`. If any name or signature differs, return Blocked.
    - **Verify:** `pnpm --dir mcp-server typecheck` → exit 0; `pnpm --dir mcp-server test` → "No test files found", exit 0.
@@ -336,7 +336,7 @@ All tests live under `mcp-server/test/` and are written after Step 0 is committe
    - **Result mapping:**
      - success: `{ structuredContent: out, content: [{ type: 'text', text: JSON.stringify(out) }] }`;
      - `ToolError`: `{ isError: true, content: [{ type: 'text', text: message }] }`.
-   - **`main.ts`:** `loadConfig(process.env)`, then `HttpApiClient`, then `serveStdio(() => createServer(deps), { legacy: 'stateless' })`, with a real clock. A `ConfigError` is logged through `log.error` and the process exits with code 1.
+   - **`main.ts`:** `loadConfig(process.env)`, then `HttpApiClient`, then `serveStdio(() => createServer(deps))`, with a real clock. A `ConfigError` is logged through `log.error` and the process exits with code 1.
    - **Verify:** `pnpm --dir mcp-server test` → everything passes except `registration.test.ts`.
 
 6. **[BE] Registration, docs and CI.**
@@ -490,7 +490,7 @@ These replace the implementer definition's server/client/reviewer-core list, whi
 - **Two zod type trees in one program.** This is safe only while mcp-server code uses the inferred shared *types* and never passes a shared schema value into the SDK. AC28 and `verbatimModuleSyntax` enforce that; a TS2589 would mean the rule was broken.
 - **The research note disagrees with the brief**, and this plan follows the brief. Lines 59-60 recommend text-only output without `outputSchema`; line 57 recommends returning the `run_id` immediately.
 - **Run `researcher` before Step 0; the implementer and test-writer have no web access.** The facts needed:
-  1. the v2 export names and locations: `createMcpHandler`, `serveStdio` with `{legacy:'stateless'}`, and the client package holding `Client` and `StreamableHTTPClientTransport`;
+  1. the v2 export names and locations: `createMcpHandler`, `serveStdio` (default `legacy:'serve'`), and the client package holding `Client` and `StreamableHTTPClientTransport`;
   2. the exact Inspector version to pin;
   3. the cwd Claude Code uses for project `.mcp.json` stdio servers, and whether `${VAR:-default}` expands there.
 - **`MCP_TOOL_TIMEOUT` is deliberately not set.** A server `env` block reaches the child process, not the client. With the 110 s ceiling, calls finish before the 2-minute auto-background anyway.
@@ -505,3 +505,29 @@ These replace the implementer definition's server/client/reviewer-core list, whi
   - Do only `done` runs count as finished? [yes]
   - Should the default mode of `devdigest_get_findings` list in-flight runs? [no; `M1` hands over the `run_id`]
 - **Prompt injection.** Finding text is LLM output derived from untrusted PR content. security-reviewer should judge whether it needs wrapping beyond truncation.
+
+## Revision 2.1 (main session, 2026-09-28): facts checked against the installed SDK
+These close the plan's open research items and the two signature mismatches Step 0 hit.
+They don't change any accepted decision.
+
+- **`serveStdio`** is imported from `@modelcontextprotocol/server/stdio`. Its options are
+  `legacy?: 'serve' | 'reject'`, and the default `'serve'` answers a 2025-era `initialize`, which
+  AC23 needs. `'stateless'` exists only on `createMcpHandler` (HTTP), where it is the default.
+- **`connectInProcess`:**
+  `new StreamableHTTPClientTransport(new URL('http://mcp.local/mcp'), { fetch: (url, init) => handler.fetch(new Request(url, init)) })`.
+  The constructor requires a URL, and `fetch?: FetchLike` is part of
+  `StreamableHTTPClientTransportOptions`. No request leaves the process.
+- **Imports:**
+  - `createMcpHandler` and `McpServer` from `@modelcontextprotocol/server`;
+  - `Client` and `StreamableHTTPClientTransport` from `@modelcontextprotocol/client`, both 2.1.0.
+- **Node:** `engines.node` is `">=20"`, matching the SDK's own engines. This machine's first
+  `node` is v20.12.2, and it is the one Claude Code spawns. Only the Inspector smoke needs Node
+  ≥22.19, so CI runs on Node 22.
+- **Inspector:** pin `@modelcontextprotocol/inspector@2.8.0`. The call is
+  `npx --yes @modelcontextprotocol/inspector@2.8.0 --cli node_modules/.bin/tsx src/main.ts --method tools/list`.
+  The server command is positional right after `--cli`; no `--` is needed.
+- **`.mcp.json`:**
+  - Claude Code spawns project servers with the project root as cwd, so relative
+    `command`/`args` resolve against the repo root;
+  - `${VAR:-default}` expands in `command`, `args` and `env`;
+  - source: code.claude.com/docs/en/mcp.
