@@ -587,3 +587,21 @@ field over changing the verbatim descriptions:
   - `E14` `Run <run_id> finished but its review was not found — call devdigest_get_findings with this run_id.`
   E14 replaces the reuse of E10's wording for a run that is `done` but has no review. E10 stays
   only for a run_id that doesn't appear among the PR's runs.
+
+## Revision 2.3 (main session, 2026-09-28): security re-review follow-ups
+The security re-review found finding 1 **reduced**, with no critical or major findings open. This
+revision closes three minor items from it.
+
+- **Convention `category`** is model output. It gets `sanitizeUntrusted` and a 60-char cap.
+- **E9's API `message`** goes through `sanitizeUntrusted` before the 200-char cut.
+- **`sanitizeUntrusted` strips more characters**, to match `intent-helpers.ts`:
+  U+2060–U+2069 (the whole block), U+061C, U+00AD and U+007F. It keeps U+FE0F (emoji variation
+  selector), `\n`, `\t`, Cyrillic and emoji.
+- **The regex source contains no raw invisible characters,** only `\u`/`\u{}` escapes, checked
+  statically.
+- **Residual risk, documented and accepted:**
+  - `notice` is advisory text, not structural datamarking;
+  - `isError` results (E7, E9) carry sanitised text but no notice;
+  - `devdigest_list_agents` carries no notice; agent names, models and descriptions are written by
+    the local user, the same principal as the MCP user.
+- **AC34** covers these items; its tests are in `mcp-server/test/untrusted-text-2.test.ts`.
