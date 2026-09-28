@@ -526,3 +526,23 @@ Implementer C's first build put `tools/list` at 10,563 bytes, 323 over the 10,24
   Supersedes the 247-char text in "Contracts & data".
 
 Tests updated against this revision (rewritten, not weakened): `mcp-server/test/get-blast-radius.test.ts` (caller shape, key list, files filter now asserts `downstream` only), `server.test.ts` (description constant). The byte-cap assertion itself is unchanged.
+
+## Revision 5.2 (2026-09-28): verifier and reviewer follow-ups
+
+plan-verifier (run 1) returned AC7 and AC22 as not met on process, S7 as partial, and six unmapped hunks; security-reviewer passed with one coverage gap; architecture-reviewer passed with three minor placement findings. The main session settles them here.
+
+- **Client proof tests edited after red-first (AC7, AC22).** Implementer B found two defects in `BlastRadiusCard.test.tsx`, confirmed by the main session:
+  - "Tree/Graph toggle swaps the view" asserted `queryByText("b.ts:10")` is absent in Graph view, but AC22 and `BlastGraph.test.tsx` require the caller node label to be `file:line`, so no implementation could pass both.
+  - `document.querySelector("svg")` stood in for "no graph", which forbids every lucide icon the design needs.
+
+  test-writer rewrote them in commit `db1f99e`. The toggle is now asserted by view-specific markers: the tree's symbol-header button and the graph's `aria-label`. "No graph" is now `queryByLabelText(graph.ariaLabel)`. AC7's tree-absent check (`queryByText("b.ts:10")`) is unchanged. These rewrites are the proofs for AC7 and AC22 from this revision on.
+- **S7 `FakeSeed.blastByPr` type.** It is widened to `Omit<BlastRadius,'reason'> & { reason?: string | null }` so that the red-first fixtures, which type `reason` as a plain string, compile. The double casts back to `BlastRadius` at its boundary. Accepted as the Step 7 interface.
+- **Graph polish (AC22, P3).** The main session screenshotted the first graph at 1440px: labels overlapped, nodes had no boxes, and a symbol with no callers dangled. Accepted additions:
+  - boxed nodes and cubic edges;
+  - caller label `basename:line`, with the full path and any truncated label in `<title>`;
+  - symbols without edges left out of the drawing (`toGraphModel` is unchanged);
+  - a legend;
+  - `GRAPH_NODE_STYLE` and `GRAPH_LEGEND_KEY` in `constants.ts`, the legend styles in `styles.ts`, and `graph.legend.{symbol,callers,endpoints,crons}` in `blast.json`.
+- **INSIGHTS entries.** The entries implementers A and B recorded through engineering-insights belong to Delivery.
+- **AC19 cross-workspace proof.** A new integration test, `blast.it.test.ts` › "PR in another workspace → 404", seeds a PR in a second workspace and expects 404 with no facade call.
+- **Architecture minor findings, accepted as-is.** `pickLinkSha`, `toGraphModel` and `REASON_LABEL_KEY` each have one consumer but live in the card-level `helpers.ts`/`constants.ts`, because this plan's Step 5 placed them there and the red-first tests import them from there. Moving them would be churn for no behavioural gain. They are listed as known deviations in the PR.
