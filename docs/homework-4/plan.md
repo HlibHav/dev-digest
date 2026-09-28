@@ -576,3 +576,14 @@ field over changing the verbatim descriptions:
     as Cyrillic and emoji.
   - AC32: `notice` is placed as above, verbatim.
   - AC33: the worst-case size caps in AC21 still hold with the notice added.
+
+### Revision 2.2, part 2: contract gaps from plan-verification, settled by the main session
+- **`run_id` field:** `z.guid()` replaces `z.uuid()`. The red-first fixture
+  `11111111-1111-1111-1111-111111111111` breaks RFC 4122's variant nibble. `run_id` is only compared,
+  never put into a URL, so the looser shape costs no safety.
+- **`ReviewOut.agent`** is optional. The Contracts row and AC8's M1 JSON disagreed; AC8 wins.
+- **New error texts.** Two errors the implementation needed are now part of the contract:
+  - `E13` `DevDigest did not start a run for <agent> on PR #<pr> — retry devdigest_run_agent_on_pr.`
+  - `E14` `Run <run_id> finished but its review was not found — call devdigest_get_findings with this run_id.`
+  E14 replaces the reuse of E10's wording for a run that is `done` but has no review. E10 stays
+  only for a run_id that doesn't appear among the PR's runs.
