@@ -57,6 +57,19 @@ def rewritten(command: str, profile: str = "architecture", unsandboxed: bool = F
     return output["updatedInput"]
 
 
+def deny_reason(command: str, profile: str = "architecture") -> str:
+    """The reason the hook gives for denying `command`; fails if it allows it."""
+    payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": command}})
+    env = {**os.environ, "CLAUDE_PROJECT_DIR": str(ROOT)}
+    out = subprocess.run(
+        [sys.executable, str(HOOK), profile], input=payload, capture_output=True, text=True, env=env
+    )
+    assert out.returncode == 0, out.stderr
+    output = json.loads(out.stdout)["hookSpecificOutput"]
+    assert output["permissionDecision"] == "deny", output
+    return output["permissionDecisionReason"]
+
+
 class CompoundCommands(unittest.TestCase):
     """`;` and `&&` join allowed segments; the hook checks each and hands the shell `&&`.
 
@@ -273,6 +286,15 @@ class CodeRunsOnlyInTheSandbox(unittest.TestCase):
         ]:
             with self.subTest(cmd=cmd):
                 self.assertEqual(decide(cmd, profile), "deny")
+
+    def test_unwrapped_code_run_names_the_wrapped_command(self) -> None:
+        # The refusal hands the agent the exact command to run instead, quoting kept.
+        for cmd, profile in [
+            ("pnpm --dir server exec vitest run test/foo.test.ts", "test"),
+            ("pnpm --dir server exec vitest run --exclude '**/*.it.test.ts'", "verify"),
+        ]:
+            with self.subTest(cmd=cmd):
+                self.assertIn(f"run it through the sandbox: {W}{cmd}", deny_reason(cmd, profile))
 
     def test_wrapped_and_non_executing_allowed(self) -> None:
         for cmd, profile in [

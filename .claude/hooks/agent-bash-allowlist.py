@@ -361,17 +361,18 @@ def check(command: str, profile: str, unsandboxed: bool) -> str:
     """Judge every segment; return the command as the shell should receive it."""
     segments = split_segments(command)
     for segment in segments:
-        check_segment([w.text for w in segment], profile, unsandboxed)
+        check_segment([w.text for w in segment], render([segment]), profile, unsandboxed)
     return render(segments)
 
 
-def check_segment(words: list[str], profile: str, unsandboxed: bool) -> None:
+def check_segment(words: list[str], rendered: str, profile: str, unsandboxed: bool) -> None:
+    """Judge one segment; `rendered` is how the shell will receive it, for the refusal message."""
     if words[0] == WRAPPER:
         if not code_run_allowed(words[1:], profile):
             raise Refused(f"{WRAPPER} only wraps the test and lint runs of the `{profile}` profile")
         return  # srt can't start inside another macOS sandbox, so this may run unsandboxed
     if code_run_allowed(words, profile):
-        raise Refused(f"this runs repo code, so run it through the sandbox: {WRAPPER} {command}")
+        raise Refused(f"this runs repo code, so run it through the sandbox: {WRAPPER} {rendered}")
     if integration_suite(words, profile):
         return  # Docker can't run inside the session sandbox either
     if not read_only_allowed(words, profile):
