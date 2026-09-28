@@ -1,0 +1,21 @@
+[21:46:29.559] INFO (29930): incoming request
+    reqId: "req-1u"
+    req: {
+      "method": "GET",
+      "url": "/pulls/509f8039-0250-4bfa-ab54-b88dac0a20dc/blast",
+      "host": "localhost:3201",
+      "remoteAddress": "127.0.0.1",
+      "remotePort": 60952
+    }
+[21:46:29.578] INFO (29930): blast: read repo-intel index
+    prId: "509f8039-0250-4bfa-ab54-b88dac0a20dc"
+    repoId: "57bbf045-f4fb-4d57-bd66-80f5b9770243"
+    source: "index"
+    degraded: false
+    reason: null
+    symbols: 2
+    callers: 2
+[21:46:29.578] INFO (29930): request completed
+    reqId: "req-1u"
+    res: {
+      "statusCode": 200

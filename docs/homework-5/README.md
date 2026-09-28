@@ -7,6 +7,7 @@ repo-intel index built at clone time. No model call, no re-parse.
 |---|---|
 | [plan.md](plan.md) | Development Plan by the `planner` subagent, plus revisions 5.1–5.3 by the main session |
 | [../../server/docs/blast-radius.md](../../server/docs/blast-radius.md) | How the feature works today, with a Mermaid data-flow diagram (`doc-writer`) |
+| [evidence/](evidence/) | Raw proof behind the video's last two scenes: `claude-code-get-blast-radius.jsonl`, the stream-json transcript of a headless `claude -p --mcp-config .mcp.json` run against the local API; `api-log-blast-read.log`, the API log around one blast read (`source: "index"`); and `demo-api-requests.log`, every API call during the take (40 GET, 0 writes). Scenes 9–10 render these files as pages. |
 | ADR | `../decisions/2026-09-28-blast-radius-contract.md` (outside the repo): nullish `degraded`, `reason` and caller `rank` on the shared `BlastRadius` contract |
 
 ## What was built
