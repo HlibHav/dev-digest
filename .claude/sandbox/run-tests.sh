@@ -43,7 +43,7 @@ trap 'rm -rf "$TMP" "$SETTINGS"' EXIT
 # The rest of node_modules/.vite holds vite's dependency cache, which is code a later run outside
 # the sandbox would load, so the sandbox may write only the vitest subdirectory. srt can't create
 # that directory's parents, so it is created here, before the sandbox starts.
-for pkg in server client reviewer-core; do
+for pkg in server client reviewer-core mcp-server; do
   if [ -d "$TARGET_ROOT/$pkg/node_modules" ]; then
     mkdir -p "$TARGET_ROOT/$pkg/node_modules/.vite/vitest"
   fi

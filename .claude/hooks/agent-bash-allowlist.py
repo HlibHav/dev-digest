@@ -85,7 +85,7 @@ GIT_READ_SUBCOMMANDS = {"diff", "log", "show", "status", "merge-base", "rev-pars
 # abbreviation git would accept (`--outp`, `--ext`, `--textc`) is refused too.
 GIT_FORBIDDEN_LONG = ("output", "ext-diff", "textconv", "exec-path", "git-dir", "work-tree", "config-env")
 
-PACKAGES = ("server", "client", "reviewer-core", "e2e")
+PACKAGES = ("server", "client", "reviewer-core", "e2e", "mcp-server")
 
 # Every command that executes repo code must be prefixed with this, verbatim, from the repo root.
 WRAPPER = ".claude/sandbox/run-tests.sh"
@@ -267,11 +267,11 @@ def code_run_allowed(words: list[str], profile: str) -> bool:
     if profile == "architecture":
         return False
     if words[:2] == ["pnpm", "--dir"]:
-        if pkg_dir(d, ("client",)) and tail == ["test"]:
+        if pkg_dir(d, ("client", "mcp-server")) and tail == ["test"]:
             return True
         if pkg_dir(d, ("server",)) and tail == ["exec", "vitest", "run", "--exclude", "**/*.it.test.ts"]:
             return True
-        if pkg_dir(d, ("server", "client")) and tail[:3] == ["exec", "vitest", "run"] and len(tail) > 3:
+        if pkg_dir(d, ("server", "client", "mcp-server")) and tail[:3] == ["exec", "vitest", "run"] and len(tail) > 3:
             return vitest_args_allowed(tail[3:])
     if words[:2] == ["npm", "--prefix"] and pkg_dir(d, ("reviewer-core",)):
         if tail == ["test"]:
@@ -350,7 +350,7 @@ def read_only_allowed(words: list[str], profile: str) -> bool:
         return True
     if len(words) >= 4:
         d, tail = words[2], words[3:]
-        if words[:2] == ["pnpm", "--dir"] and pkg_dir(d, ("server", "client")) and tail == ["typecheck"]:
+        if words[:2] == ["pnpm", "--dir"] and pkg_dir(d, ("server", "client", "mcp-server")) and tail == ["typecheck"]:
             return True
         if words[:2] == ["npm", "--prefix"] and pkg_dir(d, ("reviewer-core", "e2e")) and tail == ["run", "typecheck"]:
             return True

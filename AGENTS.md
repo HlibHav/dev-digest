@@ -56,6 +56,7 @@ Ports and machine-specific overrides live in `CLAUDE.local.md` when present.
 | `client/` | `pnpm typecheck` | `pnpm test` |
 | `reviewer-core/` | `npm run typecheck` | `npm test` |
 | `e2e/` | `npm run typecheck` | `npm run e2e:hermetic` |
+| `mcp-server/` | `pnpm typecheck` | `pnpm test` |
 
 No linter or formatter is configured in any package: typecheck + tests are the gate, plus
 `server/`'s import-boundary check (`pnpm lint:boundaries`, dependency-cruiser). A change in
