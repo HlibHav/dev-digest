@@ -10,6 +10,8 @@ fixed — add to the one that fits.
 
 ## What Doesn't Work
 
+- **2026-09-28** — Asserting only `decide(cmd) == "deny"` cannot catch a bug in `.claude/hooks/agent-bash-allowlist.py`. Its `main()` turns every unexpected exception into a deny (`hook error (NameError)`), so a crashing branch still returns `deny` and the test stays green. The refusal for an unwrapped test run referenced an undefined `command` for exactly this reason, and every `CodeRunsOnlyInTheSandbox` case passed. A test for a refusal branch must assert the reason text through `deny_reason()`. A command the refusal suggests must come from `render([segment])`, not `" ".join(words)`, which drops the quotes around a glob such as `'**/*.it.test.ts'` so the hook then denies its own suggestion. Evidence: `.claude/hooks/agent-bash-allowlist.py:438`, `.claude/hooks/tests/test_agent_bash_allowlist.py:60`
+
 - **2026-09-26** — `pr_files` has no status column, so "the PR touches this path" is not "the PR added this file". The first Intent Layer rebuilt any linked doc whose patch had `+` lines from that patch, which handed the model only the changed hunk of a *modified* plan. Only a file the PR adds carries its whole content in the patch; GitHub's per-file patch for it opens with the hunk header `@@ -0,0 `, and that is the test to use. Everything else is read from the base-branch clone. Evidence: `server/src/modules/reviews/intent-helpers.ts:286`, `server/src/adapters/github/octokit.ts:110`
 
 - **2026-09-20** — A review of a PR nobody has opened sees an **empty diff**, completes, and costs money: it reports 0 findings with `Reviewing 0 changed file(s)` in the run log. `loadDiff` tries `git diff base...head` in the clone first, but `fetchPullHead` has no production caller, so an unmerged PR's head sha is never in the clone and the call throws; the fallback reconstructs the diff from `pr_files.patch`, which only `GET /pulls/:id` fills (it refreshes from GitHub). Open the PR in the UI once — or call `GET /pulls/:id` — before measuring anything about a review. Evidence: `server/src/modules/reviews/diff-loader.ts:20`, `server/src/modules/pulls/routes.ts:227`, `server/src/adapters/git/simple-git.ts:72`
@@ -44,6 +46,8 @@ fixed — add to the one that fits.
 - **2026-09-26** — A JSDoc block that spells out a glob such as `**/*.md` closes the comment at the `*/` inside it; `tsc` then reports a cascade of syntax errors from the middle of the doc text (first hit: `classify.ts(17,53)`) with nothing pointing at the comment. Describe glob patterns in words inside `/** … */` comments (or use `//` lines), never a literal `*/`. Evidence: `server/src/modules/smart-diff/classify.ts:15`
 
 ## Session Notes
+
+- **2026-09-28** — Bash-allowlist hook: the unsandboxed-run refusal raised `NameError` instead of naming the `run-tests.sh` command (PR #25) → What Doesn't Work. Evidence: `.claude/hooks/agent-bash-allowlist.py:375`
 
 - **2026-09-26** — Mentor follow-ups: `POST /pulls/:id/intent` re-derive (forced refresh + cache bypass, 502 on failure), `security` Bash-allowlist profile for the new security-reviewer agent → Codebase Patterns. Evidence: `server/src/modules/reviews/intent-service.ts:309`
 
