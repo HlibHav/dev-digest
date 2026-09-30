@@ -1,4 +1,18 @@
 {
+  "title": "Blast radius",
+  "loading": "Loading blast radius…",
+  "errorTitle": "Couldn't load the blast radius",
+  "incomplete": "Incomplete index",
+  "reason": {
+    "noData": "No code index for this repo yet, so callers come from a text search or are missing.",
+    "indexPartial": "The code index stopped early, so some callers may be missing.",
+    "indexFailed": "The last indexing run failed, so callers may be missing.",
+    "repoTooLarge": "The repo is too large to index fully, so callers may be missing.",
+    "flagOff": "Code indexing is turned off on this server."
+  },
+  "resync": "Resync index",
+  "resyncing": "Resyncing…",
+  "resyncQueued": "Resync queued. Reload in a minute to see the new map.",
   "stat": {
     "symbols": "symbols",
     "callers": "callers",
@@ -10,9 +24,16 @@
     "graph": "graph"
   },
   "callerCount": "{count} callers",
+  "noCallers": "no callers",
   "noDownstream": "{count} changed symbol(s), no downstream callers found.",
   "graph": {
     "empty": "No downstream callers to graph.",
-    "ariaLabel": "Blast radius graph"
+    "ariaLabel": "Blast radius graph",
+    "legend": {
+      "symbol": "changed symbol",
+      "callers": "callers",
+      "endpoints": "endpoints",
+      "crons": "crons"
+    }
   }
 }

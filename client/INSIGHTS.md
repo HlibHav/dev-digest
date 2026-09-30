@@ -26,6 +26,9 @@ fixed — add to the one that fits.
 
 ## Recurring Errors & Fixes
 
+- **2026-09-28** — Every vendored `Icon.*` (SectionLabel's `icon` prop, `Chip`'s `icon` prop, `Button`'s `icon`/loading spinner) renders a lucide `<svg>`. A test that uses `document.querySelector("svg")` as a stand-in for "no graph rendered" (rather than `queryByLabelText("Blast radius graph")`) fails the moment ANY icon appears anywhere in that render — not just the graph. Drop icon props from components under test with that assertion, or ask for the assertion to be scoped to the graph's `aria-label`. Evidence: `client/src/app/repos/[repoId]/pulls/[number]/_components/OverviewTab/_components/BlastRadiusCard/BlastRadiusCard.test.tsx:96,129`, `client/src/vendor/ui/primitives/Chip.tsx:22`
+  - **2026-09-28** — Refined: the test was the bug, not the icons. `test-writer` fixed the assertion to `queryByLabelText("Blast radius graph")` for "no graph" and to `getByRole("button", { name: /foo/ })` for "still on tree", so a bare `svg` query is gone from the suite. Icons (`SectionLabel`'s, and `Globe`/`Clock` on the endpoint/cron chips) are back — nothing about the design needs to drop them; only scope a "no graph" assertion to the graph's own `aria-label`, never to `document.querySelector('svg')` globally. Evidence: `client/src/app/repos/[repoId]/pulls/[number]/_components/OverviewTab/_components/BlastRadiusCard/BlastRadiusCard.test.tsx:131-137`, `BlastRadiusCard.tsx:45,68`, `_components/BlastTree/BlastTree.tsx:75,85`
+
 ## Session Notes
 
 - **2026-09-26** — Smart Diff: Files changed grouped by role, findings inline under the diff line, order switch → Codebase Patterns, Tool & Library Notes. Evidence: `client/src/app/repos/[repoId]/pulls/[number]/_components/DiffTab/DiffTab.tsx:32`
@@ -36,5 +39,7 @@ fixed — add to the one that fits.
 
 - **2026-09-16** — Severity counter pills with filter in the findings panel → Tool & Library Notes
   - **2026-09-16** — Refined: the session's main code change, the pill row rendered for present severities. Evidence: `client/src/app/repos/[repoId]/pulls/[number]/_components/FindingsPanel/FindingsPanel.tsx:75`
+
+- **2026-09-28** — Blast radius card (homework-5, implementer B): `useBlastRadius` hook, `BlastRadiusCard` + `BlastTree`/`BlastGraph`/`IndexNotice`, OverviewTab two-column grid → Recurring Errors & Fixes. Evidence: `client/src/app/repos/[repoId]/pulls/[number]/_components/OverviewTab/_components/BlastRadiusCard/BlastRadiusCard.tsx:1`
 
 ## Open Questions

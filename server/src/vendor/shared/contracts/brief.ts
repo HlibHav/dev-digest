@@ -64,10 +64,21 @@ export const ChangedSymbol = z.object({
 });
 export type ChangedSymbol = z.infer<typeof ChangedSymbol>;
 
+/** Why a blast-radius result is incomplete (homework-5). */
+export const BlastDegradedReason = z.enum([
+  'flag_off',
+  'index_failed',
+  'index_partial',
+  'repo_too_large',
+  'no_data',
+]);
+export type BlastDegradedReason = z.infer<typeof BlastDegradedReason>;
+
 export const BlastCaller = z.object({
   name: z.string(),
   file: z.string(),
   line: z.number().int(),
+  rank: z.number().nullish(),
 });
 export type BlastCaller = z.infer<typeof BlastCaller>;
 
@@ -83,6 +94,8 @@ export const BlastRadius = z.object({
   changed_symbols: z.array(ChangedSymbol),
   downstream: z.array(DownstreamImpact),
   summary: z.string(),
+  degraded: z.boolean().nullish(),
+  reason: BlastDegradedReason.nullish(),
 });
 export type BlastRadius = z.infer<typeof BlastRadius>;
 

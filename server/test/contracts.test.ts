@@ -285,3 +285,45 @@ describe('PR list findings contracts', () => {
     expect(PrMeta.parse(pr).latest_findings).toBeUndefined();
   });
 });
+
+describe('BlastRadius degraded/reason/rank (homework-5, AC16)', () => {
+  it('BlastRadius accepts degraded/reason/rank and legacy payloads', () => {
+    const withNewFields = BlastRadius.parse({
+      changed_symbols: [{ name: 'rateLimit', file: 'a.ts', kind: 'function' }],
+      downstream: [
+        {
+          symbol: 'rateLimit',
+          callers: [{ name: 'publicRouter', file: 'b.ts', line: 23, rank: 5 }],
+          endpoints_affected: ['GET /x'],
+          crons_affected: ['c'],
+        },
+      ],
+      summary: 's',
+      degraded: true,
+      reason: 'index_partial',
+    });
+    expect(withNewFields.degraded).toBe(true);
+    expect(withNewFields.reason).toBe('index_partial');
+    expect(withNewFields.downstream[0]!.callers[0]!.rank).toBe(5);
+
+    // A legacy payload without the new fields still parses.
+    const legacy = BlastRadius.parse({
+      changed_symbols: [],
+      downstream: [],
+      summary: 's',
+    });
+    expect(legacy.degraded).toBeUndefined();
+    expect(legacy.reason).toBeUndefined();
+  });
+
+  it('rejects an unknown reason', () => {
+    expect(() =>
+      BlastRadius.parse({
+        changed_symbols: [],
+        downstream: [],
+        summary: 's',
+        reason: 'not_a_real_reason',
+      }),
+    ).toThrow();
+  });
+});

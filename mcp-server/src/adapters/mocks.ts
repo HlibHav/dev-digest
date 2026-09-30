@@ -7,11 +7,19 @@ import type {
   RunSummary,
   ReviewRecord,
   ConventionsPage,
+  BlastRadius,
 } from '@devdigest/shared';
 import { ApiError, type ApiClient } from '../ports/api-client.js';
 
 /** Fixture data for one `FakeApiClient`. Every array uses the shared contract types, so a
- * red-first test seeds exactly what the real API would return. */
+ * red-first test seeds exactly what the real API would return.
+ *
+ * `blastByPr`'s `reason` is widened to a plain `string | null` (instead of the shared
+ * `BlastDegradedReason` literal union): red-first test fixtures build ad-hoc blast-radius
+ * objects without importing that enum, and TypeScript won't narrow a bare `string` to a
+ * literal union on assignment. `FakeApiClient.getBlastRadius` casts back to `BlastRadius` at
+ * the boundary, the same way `HttpApiClient.request` casts unchecked wire data (`data as T`,
+ * `adapters/http-api-client.ts:113`). */
 export type FakeSeed = {
   repos: Repo[];
   pullsByRepo: Record<string, PrMeta[]>;
@@ -21,6 +29,7 @@ export type FakeSeed = {
   runsByPr: Record<string, RunSummary[]>;
   reviewsByPr: Record<string, ReviewRecord[]>;
   conventionsByRepo: Record<string, ConventionsPage>;
+  blastByPr?: Record<string, Omit<BlastRadius, 'reason'> & { reason?: string | null }>;
 };
 
 export type FakeApiClientOptions = {
@@ -90,6 +99,20 @@ export class FakeApiClient implements ApiClient {
   async listConventions(repoId: string): Promise<ConventionsPage> {
     this.record('listConventions', [repoId]);
     return this.seed.conventionsByRepo[repoId] ?? { candidates: [], scan: null };
+  }
+
+  async getBlastRadius(prId: string): Promise<BlastRadius> {
+    this.record('getBlastRadius', [prId]);
+    const radius = this.seed.blastByPr?.[prId];
+    if (!radius) {
+      throw new ApiError(`PR ${prId} not found`, {
+        status: 404,
+        code: 'not_found',
+        method: 'GET',
+        path: `/pulls/${prId}/blast`,
+      });
+    }
+    return radius as BlastRadius;
   }
 
   private record(method: keyof ApiClient, args: unknown[]): void {

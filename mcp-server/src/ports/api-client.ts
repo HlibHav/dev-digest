@@ -7,6 +7,7 @@ import type {
   RunSummary,
   ReviewRecord,
   ConventionsPage,
+  BlastRadius,
 } from '@devdigest/shared';
 
 /** The port every use case calls through. Only `adapters/http-api-client.ts` implements it
@@ -20,6 +21,7 @@ export interface ApiClient {
   listRuns(prId: string): Promise<RunSummary[]>;
   listReviews(prId: string): Promise<ReviewRecord[]>;
   listConventions(repoId: string): Promise<ConventionsPage>;
+  getBlastRadius(prId: string): Promise<BlastRadius>;
 }
 
 /** Raised by `HttpApiClient` (Step 1) and consumed by `toToolError` (Step 2). */

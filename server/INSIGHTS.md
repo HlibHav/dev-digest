@@ -8,6 +8,8 @@ fixed — add to the one that fits.
 
 ## What Works
 
+- **2026-09-28** — To make a route's response provably match its shared contract, declare `schema: { response: { 200: <ZodSchema> } }`: the zod serializer set in `app.ts` runs `safeParse` on the way out, strips keys outside the contract, and turns a non-conforming body into a 500 `internal_error` instead of leaking it. `GET /pulls/:id/blast` is the first route to do this; any field you want on the wire (e.g. caller `rank`) must therefore be in the contract, or it silently disappears. Evidence: `server/src/modules/blast/routes.ts:26`, `server/test/blast.it.test.ts:230`
+
 ## What Doesn't Work
 
 - **2026-09-26** — `pr_files` has no status column, so "the PR touches this path" is not "the PR added this file". The first Intent Layer rebuilt any linked doc whose patch had `+` lines from that patch, which handed the model only the changed hunk of a *modified* plan. Only a file the PR adds carries its whole content in the patch; GitHub's per-file patch for it opens with the hunk header `@@ -0,0 `, and that is the test to use. Everything else is read from the base-branch clone. Evidence: `server/src/modules/reviews/intent-helpers.ts:286`, `server/src/adapters/github/octokit.ts:110`
@@ -23,6 +25,10 @@ fixed — add to the one that fits.
 
 ## Codebase Patterns
 
+- **2026-09-28** — `repoIntel.getBlastRadius` never reports an incomplete index on its own: the persistent path returns `degraded: false` with no `reason` for a `partial` index, and it never emits `index_partial` or `flag_off`. A consumer that must say "index incomplete" reads `getIndexState` itself and derives `index_partial`. Its `MAX_CALLERS_PER_SYMBOL` is also applied as one global `slice` over all callers after the rank sort, not per symbol, so a busy symbol can starve the others before any per-symbol cap runs. Evidence: `server/src/modules/repo-intel/service.ts:386`, `server/src/modules/blast/helpers.ts:133`
+
+- **2026-09-28** — Blast-radius endpoints come from `factsByFile`, keyed by the **caller's** file, and the facade looks one hop out only (`BFS_DEPTH` is unused there). A changed helper shows an HTTP endpoint only when a direct caller is itself a file with `app.get('/…')`-style routes; a helper reached through `service.ts` → `routes.ts` shows none. To demo or test it, pick a helper a `routes.ts` imports directly (e.g. `rowsToSettings` → `settings/routes.ts`). Evidence: `server/src/adapters/codeindex/extract.ts:186`, `server/src/modules/blast/helpers.ts:92`
+
 - **2026-09-26** — `PullsService.refreshPullDetail` refreshes only the body, files, commits and line counts; `title` and `head_sha` move only when the PR list syncs (`GET /repos/:id/pulls`). It also never throws on a GitHub failure (no token, offline): it logs and serves what is stored. So a feature that "refreshes the PR first" (the intent re-derive) still sees the old head until the list is opened, and must not treat a successful refresh as proof that GitHub answered. Evidence: `server/src/modules/pulls/service.ts:39`, `server/src/modules/pulls/routes.ts:64`
 
 - **2026-09-16** — `GET /runs/:id/trace` returns the `run_traces.trace` jsonb as stored, with no zod parse, so a field added to `RunStats` is simply absent on traces written before the change. Declare it `.nullish()` and make the client treat `undefined` like `null` (e.g. `stats.cost_usd` → "—"). Evidence: `server/src/modules/reviews/repository/run.repo.ts:190`, `server/src/vendor/shared/contracts/trace.ts:69`
@@ -36,6 +42,8 @@ fixed — add to the one that fits.
 
 - **2026-09-20** — Structured output is where cheap OpenRouter models diverge, and the failures do not look alike. On the conventions extraction (a strict `json_schema` call, ~24k chars of prompt): `google/gemini-2.5-flash` answers `400 Provider returned error` in seconds, `deepseek/deepseek-v4-flash` accepts it and then runs past a 100s budget without returning, and `openai/gpt-4.1-mini` completes in ~12s. Pick a model for a structured feature by trying it, not by price — and keep the failure visible, because a timeout and a schema rejection arrive through completely different paths. Evidence: `server/src/modules/conventions/constants.ts:47`, `server/src/modules/conventions/service.ts:160`
   - **2026-09-25** — Confirmed on a smaller call, with one new failure mode. The intent extraction (`PrIntentExtraction`, a few k chars, 20 s per attempt, no retry) was run 18× per model: `openai/gpt-4.1-mini` 18/18, p95 5.3 s; `google/gemini-2.5-flash-lite` 18/18, p95 1.3 s, but on a thin-body PR with a linked issue it put the issue's unrelated fixes into `in_scope` — valid JSON, invented content; `openai/gpt-oss-120b` 18/18 with p95 18.5 s, at the wall; `deepseek/deepseek-v4-flash` pinned to parasail 16/18; `openai/gpt-oss-20b` 12/18. Schema-valid is not the bar for an extraction model — check that the fields say only what the sources say. Evidence: `server/src/vendor/shared/contracts/platform.ts:59`, `server/src/modules/reviews/intent-constants.ts:1`
+
+- **2026-09-28** — `server/tsconfig.json`'s `include` is `src/**/*.ts` only, so `pnpm typecheck` never sees `server/test/**`. A red-first test file that imports a not-yet-created module (e.g. `../src/modules/blast/helpers.js`) makes `pnpm typecheck` pass clean while the same import fails loudly under `vitest run` — "typecheck is green" says nothing about whether the module a red test names actually exists yet; only running the test file (or `tsc` with a wider `include`) proves that. Evidence: `server/tsconfig.json:26`, `server/test/blast-helpers.test.ts:2`
 
 - **2026-09-16** — drizzle's `sum()` helper returns a **string** (`sql\`sum(...)\`.mapWith(String)`), so a money or count total built with it breaks a `z.number()` contract and `toBeCloseTo`. Write the aggregate raw as `sql<number | null>\`sum(${col})\``: postgres-js already returns `double precision` as a number, and drizzle never runs a decoder on `null`, so an all-null sum stays `null` rather than `0`. Evidence: `server/node_modules/drizzle-orm/sql/functions/aggregate.js:17`, `server/src/modules/pulls/routes.ts:137`
 
@@ -65,5 +73,9 @@ fixed — add to the one that fits.
 - **2026-09-25** — Intent Layer (PR motivation → review prompt): `pr_intent` schema extension, `IntentService`, `GET /pulls/:id/intent`, `PullsService.refreshPullDetail` extraction [D6], `uses_intent` per agent [D5], reviewer-core `renderIntentBlock` → What Doesn't Work. Evidence: `server/src/modules/reviews/intent-service.ts:1`
 
 - **2026-09-25** — Intent Layer review-fix iteration (F1 derive gating, F1b hermetic mocks, F2 commit sanitising, F4 malformed-link handling, F5 pure input-hash helper, F7 one `PullsService` factory) → What Doesn't Work (comment). Evidence: `server/src/modules/pulls/wiring.ts:1`
+
+- **2026-09-28** — Blast Radius (homework-5, implementer A, steps 1–3): `BlastDegradedReason` + `degraded`/`reason`/`rank` added to the shared `BlastRadius` contract, `blast` module (`helpers.ts` pure mapper, `service.ts`, `wiring.ts`, `routes.ts`) registered in `server/src/modules/index.ts` → Tool & Library Notes. Evidence: `server/src/modules/blast/service.ts:1`
+
+- **2026-09-28** — Blast Radius wrap-up (homework-5): added the response-schema pattern (What Works) and two facade facts (Codebase Patterns: no `index_partial` from the facade + global caller cap; endpoints only via direct route-file callers). Evidence: `server/src/modules/blast/routes.ts:26`
 
 ## Open Questions

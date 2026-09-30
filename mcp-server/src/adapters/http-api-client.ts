@@ -7,6 +7,7 @@ import type {
   RunSummary,
   ReviewRecord,
   ConventionsPage,
+  BlastRadius,
 } from '@devdigest/shared';
 import { ApiError, type ApiClient } from '../ports/api-client.js';
 
@@ -64,6 +65,10 @@ export class HttpApiClient implements ApiClient {
       `/repos/${encodeURIComponent(repoId)}/conventions`,
       'object',
     );
+  }
+
+  async getBlastRadius(prId: string): Promise<BlastRadius> {
+    return this.request<BlastRadius>('GET', `/pulls/${encodeURIComponent(prId)}/blast`, 'object');
   }
 
   private async request<T>(
