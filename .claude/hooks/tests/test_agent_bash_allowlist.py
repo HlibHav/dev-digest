@@ -302,6 +302,45 @@ class CodeRunsOnlyInTheSandbox(unittest.TestCase):
         self.assertEqual(decide(f"pnpm --dir {other}/server exec vitest run .it.test", "verify", unsandboxed=True), "deny")
 
 
+class McpServerPackage(unittest.TestCase):
+    """Decision E: the sandbox and allowlist widen to `mcp-server/`, mirroring `server`/`client`."""
+
+    def test_wrapped_allowed(self) -> None:
+        for cmd, profile in [
+            (W + "pnpm --dir mcp-server exec vitest run test/x.test.ts", "test"),
+            (W + "pnpm --dir mcp-server test", "test"),
+            (W + "pnpm --dir mcp-server exec vitest run test/x.test.ts", "verify"),
+            (W + "pnpm --dir mcp-server test", "verify"),
+        ]:
+            with self.subTest(cmd=cmd):
+                self.assertEqual(decide(cmd, profile), "allow")
+
+    def test_typecheck_allowed_read_only(self) -> None:
+        for profile in ("verify", "test"):
+            with self.subTest(profile=profile):
+                self.assertEqual(decide("pnpm --dir mcp-server typecheck", profile), "allow")
+
+    def test_unwrapped_denied(self) -> None:
+        for cmd, profile in [
+            ("pnpm --dir mcp-server exec vitest run test/x.test.ts", "test"),
+            ("pnpm --dir mcp-server test", "test"),
+        ]:
+            with self.subTest(cmd=cmd):
+                self.assertEqual(decide(cmd, profile), "deny")
+
+    def test_denied_for_security(self) -> None:
+        for cmd in [
+            W + "pnpm --dir mcp-server test",
+            "pnpm --dir mcp-server typecheck",
+        ]:
+            with self.subTest(cmd=cmd):
+                self.assertEqual(decide(cmd, "security"), "deny")
+
+    def test_test_run_denied_for_architecture(self) -> None:
+        # architecture may typecheck (like server/client) but not run mcp-server's test suite.
+        self.assertEqual(decide(W + "pnpm --dir mcp-server test", "architecture"), "deny")
+
+
 class SessionSandboxEscape(unittest.TestCase):
     """`dangerouslyDisableSandbox` is accepted only where srt or Docker needs it."""
 

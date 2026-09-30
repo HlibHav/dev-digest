@@ -35,7 +35,7 @@ import sys
 from pathlib import Path
 
 TEST_ALLOW = (
-    re.compile(r"^(?:server/(?:src|test)|reviewer-core/(?:src|test)|client/src)/.+\.test\.tsx?$"),
+    re.compile(r"^(?:server/(?:src|test)|reviewer-core/(?:src|test)|client/src|mcp-server/test)/.+\.test\.tsx?$"),
     re.compile(r"^e2e/specs/\d{2}-[a-z0-9-]+\.flow\.json$"),
 )
 # Not writable by test-writer even when TEST_ALLOW matches. plan-verifier's Docker suite runs
@@ -43,8 +43,11 @@ TEST_ALLOW = (
 # server/test/helpers/; so test-writer may add no helper, and `.it.test` may appear in a path
 # only as the file's own `.it.test.ts` suffix. Every file that suite runs from test-writer is
 # then an `*.it.test.ts`, which the main session reads first (2026-09-25 security review).
+# `mcp-server/test/support/` holds the in-process client harness (Step 0), same reasoning as
+# `server/test/helpers/`: test-writer may not add or change it.
 TEST_DENY_RX = (
     re.compile(r"^server/test/helpers/"),
+    re.compile(r"^mcp-server/test/support/"),
     re.compile(r"\.it\.test(?!\.ts$)"),
 )
 TEST_DENY = {

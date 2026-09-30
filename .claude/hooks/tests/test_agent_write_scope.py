@@ -38,6 +38,7 @@ class TestsProfile(unittest.TestCase):
             "client/src/app/x/_components/Foo/Foo.test.tsx",
             "reviewer-core/test/core.test.ts",
             "e2e/specs/10-agent-summary.flow.json",
+            "mcp-server/test/new-thing.test.ts",
         ]:
             with self.subTest(path=path):
                 self.assertEqual(decide("tests", path), "allow")
@@ -53,6 +54,9 @@ class TestsProfile(unittest.TestCase):
             "client/src/test/setup.ts",
             "/etc/passwd",
             "server/test/../src/app.ts",
+            "mcp-server/src/x.ts",
+            "mcp-server/test/support/x.ts",
+            "mcp-server/test/support/in-process-client.ts",
         ]:
             with self.subTest(path=path):
                 self.assertEqual(decide("tests", path), "deny")
