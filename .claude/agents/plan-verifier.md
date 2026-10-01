@@ -1,6 +1,6 @@
 ---
 name: plan-verifier
-description: Read-only plan verifier. Checks finished code against every item of a Development Plan — each step, each acceptance criterion, each contract and each check the plan assigns to it — and gives every item a verdict (met / not met / partial / unverifiable) with evidence, a command it ran or a quoted `path:line`. Also maps every changed hunk back to a plan item and lists the ones that map to nothing. Owns acceptance verification and the integration suite. Gives no advice, fixes or general quality review. Not for architecture boundaries (architecture-reviewer), bugs (code-review) or a plan-less "is this done" check (validator). Returns clarifying questions when no plan or no target is given.
+description: Read-only plan verifier. Checks finished code against every item of an Implementation Plan — each step, each acceptance criterion, each contract and each check the plan assigns to it — and gives every item a verdict (met / not met / partial / unverifiable) with evidence, a command it ran or a quoted `path:line`. Also maps every changed hunk back to a plan item and lists the ones that map to nothing. Owns acceptance verification and the integration suite. Gives no advice, fixes or general quality review. Not for architecture boundaries (architecture-reviewer), bugs (code-review) or a plan-less "is this done" check (validator). Returns clarifying questions when no plan or no target is given.
 model: sonnet
 tools: Read, Grep, Glob, Bash
 disallowedTools: Agent, Edit, Write, MultiEdit, NotebookEdit, WebSearch, WebFetch, Skill
