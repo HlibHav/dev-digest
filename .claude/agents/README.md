@@ -89,23 +89,26 @@ coupled change). The main session saves the plan as `docs/plans/YYYY-MM-DD-<feat
 Spec-driven and test-driven development meet at the acceptance criteria. The spec says what must
 be true; a red-first test is that same statement, executable and failing before any code exists.
 
-0. **spec-creator** picks the tier from `docs/sdd-cascade.md`. Direct changes skip the spec;
-   the others get a spec whose `AC-N` criteria are EARS statements with proof tags, and
-   `implementation-planner` works from the approved spec (Status `approved`, no open
-   `[NEEDS CLARIFICATION]`) instead of a brainstorm request.
-1. **brainstorm** classifies the idea (spike, bounded, architectural), writes back what was said
-   and what it assumed, and self-reviews its request so every criterion is testable and tagged
-   with its proof: `red-first unit`, `red-first integration`, `e2e` or `browser (main session)`.
-2. **implementation-planner** copies the spec's criteria and their tags verbatim, reviews them and
-   sends any fix back to spec-creator instead of rewriting them, and lists the red-first criteria
-   under `## Red-first`. Each step is a test-first cycle: which red tests it turns green, which unit
-   tests the implementer writes first, what it consumes and produces, and the command that proves
-   it.
-3. **test-writer** (outer loop) turns the `## Red-first` list into failing tests and proves each
+1. **brainstorm** (only for a rough idea) classifies it (spike, bounded, architectural), writes
+   back what was said and what it assumed, and hands spec-creator a self-reviewed request whose
+   draft criteria carry a proof tag: `red-first unit`, `red-first integration`, `e2e` or
+   `browser (main session)`.
+2. **spec-creator** picks the tier from `docs/sdd-cascade.md`. Direct changes skip the spec and
+   get a one-sentence intent; the others get a spec whose `AC-N` criteria are EARS statements
+   with proof tags. The user approves it.
+3. **implementation-planner** works from the approved spec (Status `approved`, no open
+   `[NEEDS CLARIFICATION]`) and the execution mode the user chose. It restates every requirement
+   as a checkable `R1`, `R2`… linked to the spec, copies the `AC-N` lines and their tags
+   verbatim, sends any fix back to spec-creator instead of rewriting them, and lists the
+   red-first criteria under `## Red-first`. Each step is a test-first cycle: which red tests it
+   turns green, which unit tests the implementer writes first, what it consumes and produces,
+   and the command that proves it.
+4. **test-writer** (outer loop) turns the `## Red-first` list into failing tests and proves each
    fails for the right reason; the main session commits them.
-4. **implementer** (inner loop) writes its own unit tests first for internals, then the smallest
-   code that turns everything green, without touching the red tests.
-5. **plan-verifier** traces criterion → test → code both ways and diffs the red tests against
+5. **implementer** (inner loop; one per lane in multi-agent mode) writes its own unit tests
+   first for internals, then the smallest code that turns everything green, without touching
+   the red tests.
+6. **plan-verifier** traces criterion → test → code both ways and diffs the red tests against
    the red-first commit.
 
 When a test and the spec disagree, the spec is corrected first and the test follows it; nobody
@@ -158,8 +161,7 @@ reviewers had sliced the same diff 28 times.
 
 Scope splits that are easy to get wrong:
 - **researcher vs. implementation-planner.** The planner doesn't browse. When a plan needs
-  external facts, the planner lists them under *Risks & open questions*, and the caller runs
-  `researcher`.
+  external facts, the planner lists them under *Risks*, and the caller runs `researcher`.
 - **test-writer vs. implementer.** The test-writer writes only tests, and the implementer only
   code. Red-first tests are read-only for the implementer, so neither can grade its own work.
 - **architecture-reviewer vs. pr-self-review.** The reviewer covers the two architecture skills
