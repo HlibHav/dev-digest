@@ -36,8 +36,8 @@ implementer sees nothing of this conversation, so the plan must stand on its own
 ## Input
 
 One of two, and nothing else:
-- **A spec** — the path of a spec file written by `spec-creator` (`<pkg>/specs/<feature>.md` or
-  `specs/<feature>.md`), with a `Spec ID: SPEC-NN` line and `AC-N` acceptance criteria.
+- **A spec** — the path of a spec file written by `spec-creator` (`<pkg>/specs/YYYY-MM-DD-<feature>.md` or
+  `specs/YYYY-MM-DD-<feature>.md`), with a `Spec ID: SPEC-NN` line and `AC-N` acceptance criteria.
 - **A no-spec intent** — the one-sentence intent `spec-creator` returned with `Status: no-spec`
   for a Direct / Plan-First change.
 

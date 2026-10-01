@@ -22,8 +22,9 @@ Discovery-First is the only tier that ends in a choice, not a plan. Its spec car
 `Status: discovery`, and once an option is picked the same file is re-tiered to Lightweight or
 Full and grows the remaining sections. It is never copied into a new file.
 
-Architecture in the Full cascade is not written in the spec. The spec states behaviour and
-contracts. The architecture goes to the `implementation-planner` and, when it outlives the task, to an ADR.
+Architecture in the Full cascade is not written in the spec. The spec states behaviour, and may
+show workflows (Mermaid), communication between services and modules, and contracts, all
+without implementation details. The architecture goes to the `implementation-planner` and, when it outlives the task, to an ADR.
 
 ## Scorecard
 
@@ -52,10 +53,11 @@ spec records who overrode it.
 
 | Spec touches | Folder |
 |---|---|
-| One package | `<pkg>/specs/<feature>.md` (`server`, `client`, `reviewer-core`, `mcp-server`) |
-| Two or more packages | `specs/<feature>.md` at the repo root |
+| One package | `<pkg>/specs/YYYY-MM-DD-<feature>.md` (`server`, `client`, `reviewer-core`, `mcp-server`) |
+| Two or more packages | `specs/YYYY-MM-DD-<feature>.md` at the repo root |
 
-`e2e/specs/` holds flow JSON, not prose specs. Design inputs for a spec (screenshots, exported
+The date is the day the spec was created and never changes; an update keeps the file and adds
+a `## Changelog` row. `e2e/specs/` holds flow JSON, not prose specs. Design inputs for a spec (screenshots, exported
 frames) go next to it under `designs/<feature>/`.
 
 ## Versioning: three anchors

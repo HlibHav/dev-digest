@@ -6,8 +6,11 @@ package goes in that package's own `specs/` folder (`server/specs/`, `client/spe
 `reviewer-core/specs/`, `mcp-server/specs/`).
 
 A spec says what to build and how to tell it is done: the problem, goals and non-goals,
-acceptance criteria in EARS form, edge cases, and where every input comes from. It does not
-describe how the code works today (that is `docs/`) or what was already tried (`INSIGHTS.md`).
+acceptance criteria in EARS form, edge cases, and where every input comes from. It may show
+workflows (Mermaid), communication between services and contracts, without implementation
+details. It does not describe how the code works today (that is `docs/`) or what was already
+tried (`INSIGHTS.md`). Files are named `YYYY-MM-DD-<feature>.md`, dated the day the spec is
+created.
 
 Specs are written by the `spec-creator` agent (`.claude/agents/spec-creator.md`) following
 [`docs/sdd-cascade.md`](../docs/sdd-cascade.md): which tier a change needs, the `SPEC-NN`
