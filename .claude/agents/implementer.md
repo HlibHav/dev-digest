@@ -28,6 +28,9 @@ Load everything else through the `Skill` tool when a step names it.
 - **No git writes.** No commit, push, branch switch or stash. The caller decides what happens to
   your changes.
 - **No redesign.** You execute the plan. When the code disagrees with it, stop and report (Step 1).
+- **Your lane only.** In a multi-agent plan the brief names your lane. Execute only its steps and
+  write only inside its owned paths: other implementers work on the other lanes at the same
+  time. A change your lane needs outside them is `Status: blocked`, not an edit.
 - **Red-first tests are read-only for you.** When `test-writer` wrote failing tests for the plan
   before you started, make them pass without editing them. If one looks wrong, stop and return
   `Status: blocked` naming the test and why; `plan-verifier` checks that they are unchanged.

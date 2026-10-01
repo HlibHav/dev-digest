@@ -11,7 +11,7 @@ its own `.md` file, so read that file before you change the agent.
 | [brainstorm](brainstorm.md) | Turns a rough idea into options before planning: classifies it (spike / bounded / architectural), writes back what was said and what is assumed, asks the one question that changes the design most, proposes two or three approaches, and returns a self-reviewed request whose every criterion names its proof | `opus` | Read-only: `Read, Grep, Glob` (no `Bash`, `Skill`, `Write` or web) | A rough idea | **Brainstorm Brief** (`ready` / `needs-answers`) |
 | [spec-creator](spec-creator.md) | Specreator: picks the SDD tier (Direct / Lightweight / Full / Discovery-First, by the scorecard in `docs/sdd-cascade.md`), analyses the user's design sources and walks six clarification categories, returns blocking questions first, then writes a spec with a `SPEC-NN` id, EARS acceptance criteria, input provenance and a changelog | `opus` | `Read, Grep, Glob, Edit, Write`; no Bash, web or Skill. Writes limited by its prompt, not a hook, to `<pkg>/specs/*.md` and root `specs/*.md` | A feature request or a Brainstorm Brief's request, plus design sources (screenshots, text, Figma export, code paths), or the answers to its questions, or a bug / change against an existing spec | **Spec Report** (`no-spec` / `needs-answers` / `written` / `updated` / `no-change`) plus the spec file |
 | [researcher](researcher.md) | Answers one concrete question from the repo or from external sources, with evidence and an explicit "not found" list | `sonnet` | Read-only in the repo (`Read, Grep, Glob`); `WebSearch`, `WebFetch`; NotebookLM create/add/query only (no delete, share or studio) | A question plus its scope (repo / external / both) and what it feeds | **Repo report** or **External report**, or clarifying questions |
-| [implementation-planner](implementation-planner.md) | Turns an approved spec into an Implementation Plan that respects modules, skills, rules and `INSIGHTS.md`: reviews the requirements and recommends improvements, traces every `AC-N` to steps and tests, and asks whether to run multi-agent or single-agent. Writes no spec and never changes a criterion | `opus` | Read-only: `Read, Grep, Glob` (no `Skill`, `Bash`, `Write` or web) | An approved spec from spec-creator, or its no-spec intent for a Direct change (optionally a researcher report) | **Implementation Plan** (`Status: ready`) with a requirements review, the spec's criteria verbatim, a traceability table, a `## Red-first` list, test-first steps and an execution-mode question, or questions (`needs-answers`) that go back to spec-creator or to the user |
+| [implementation-planner](implementation-planner.md) | Turns an approved spec into an Implementation Plan that respects modules, skills, rules and `INSIGHTS.md`: reviews the requirements and recommends improvements, traces every `AC-N` to steps and tests, and shapes the steps for the execution mode the user chose (parallel lanes with non-overlapping owned paths, or one linear pass). Writes no spec and never changes a criterion | `opus` | Read-only: `Read, Grep, Glob` (no `Skill`, `Bash`, `Write` or web) | An approved spec from spec-creator, or its no-spec intent for a Direct change, plus the execution mode the user chose (optionally a researcher report) | **Implementation Plan** (`Status: ready`) with a requirements review, the spec's criteria verbatim, a traceability table, a `## Red-first` list, lanes (multi-agent) and test-first steps, saved by the main session as `docs/plans/YYYY-MM-DD-<feature>.md`; or questions (`needs-answers`), including the mode when the brief lacks it, that go back to spec-creator or to the user |
 | [test-writer](test-writer.md) | Writes tests for BE and UI in two modes: red-first from a plan's acceptance criteria, or backfill for existing code | `sonnet` | `Read, Grep, Glob, Edit, Write, Bash, Skill`; hooks limit writes to test paths and Bash to the `test` profile; every test run inside `srt`; writes but doesn't run integration tests or e2e | A plan (red-first) or named files (backfill) | **Test Report**: criterion → test → evidence, plus test files in the working tree |
 | [implementer](implementer.md) | Executes the plan in the backend and the UI, self-reviews how its own code is written, and runs typecheck plus the existing unit tests | `sonnet` | `Read, Grep, Glob, Edit, Write, Bash, Skill`; preloads `engineering-insights`, `onion-architecture`, `frontend-ui-architecture`; no commit, push or research | An Implementation Plan with `Status: ready`, after the user chose multi-agent | **Implementation Report** (`done` / `partial` / `blocked`) plus uncommitted changes in the working tree |
 | [architecture-reviewer](architecture-reviewer.md) | Checks a diff against the onion and client boundaries, runs `lint:boundaries` and the route test, reports what the lint can't see | `opus` | Read-only: `Read, Grep, Glob, Bash`; a hook limits Bash to the `architecture` profile; preloads both architecture skills | A target (`base..head`, branch or uncommitted tree) | **Architecture Review**: findings with severity, rule, `path:line` and evidence; `pass` / `fail` |
@@ -38,7 +38,8 @@ flowchart LR
   FEAT[feature + design sources] --> SC[spec-creator] -- Spec Report + spec file --> S
   S -- chosen approach as a request --> SC
   SC -- approved spec or no-spec intent --> P[implementation-planner]
-  P -- Implementation Plan + execution-mode question --> S
+  S -- spec + execution mode --> P
+  P -- Implementation Plan --> S
   S -. external facts .-> P
   P -- plan --> TW[test-writer]
   TW -- red tests + Test Report --> S
@@ -69,11 +70,19 @@ already existed, not a substitute.
 
 ## Execution mode: multi-agent or single-agent
 
-Before anything runs, the main session asks the user the plan's execution-mode question with
-AskUserQuestion. **Multi-agent** runs the flow above. **Single-agent** runs the same steps in the
-main session alone, with no subagents: it writes and commits the red-first tests, executes the
-steps test-first, then runs the implementer checks and every check under *Checks for
-reviewers* itself. The plan's steps don't change between the modes.
+Before it runs `implementation-planner`, the main session asks the user with AskUserQuestion
+whether the work runs multi-agent or single-agent, and passes the answer in the planner's brief.
+The plan is shaped for that mode; a brief without a mode gets the question back with the
+planner's recommendation (multi-agent for non-trivial work, single-agent for a small or tightly
+coupled change). The main session saves the plan as `docs/plans/YYYY-MM-DD-<feature>.md`.
+
+- **Multi-agent** runs the flow above with several implementers at once: one per lane of the
+  plan's `## Lanes` table, each briefed with its lane's steps and owned paths, started when the
+  lanes it waits for (`after:`) are done. Owned paths never overlap between lanes that run
+  together, and contracts come first as lane 0.
+- **Single-agent** runs the plan's one linear sequence in the main session alone, with no
+  subagents: it writes and commits the red-first tests, executes the steps test-first, then
+  runs the implementer checks and every check under *Checks for reviewers* itself.
 
 ## Spec and tests: one loop inside another
 
@@ -87,11 +96,11 @@ be true; a red-first test is that same statement, executable and failing before 
 1. **brainstorm** classifies the idea (spike, bounded, architectural), writes back what was said
    and what it assumed, and self-reviews its request so every criterion is testable and tagged
    with its proof: `red-first unit`, `red-first integration`, `e2e` or `browser (main session)`.
-2. **implementation-planner** copies the spec's criteria and their tags verbatim, reviews them
-   and sends any fix back to spec-creator instead of rewriting them, and lists the red-first
-   criteria under `## Red-first`. Each step is a test-first cycle: which red tests it turns green, which unit
-   tests the implementer writes first, what it consumes and produces, and the command that
-   proves it.
+2. **implementation-planner** copies the spec's criteria and their tags verbatim, reviews them and
+   sends any fix back to spec-creator instead of rewriting them, and lists the red-first criteria
+   under `## Red-first`. Each step is a test-first cycle: which red tests it turns green, which unit
+   tests the implementer writes first, what it consumes and produces, and the command that proves
+   it.
 3. **test-writer** (outer loop) turns the `## Red-first` list into failing tests and proves each
    fails for the right reason; the main session commits them.
 4. **implementer** (inner loop) writes its own unit tests first for internals, then the smallest
@@ -106,8 +115,8 @@ checked by the main session, so it is visible in the plan rather than silently u
 
 ## Who owns which check
 
-The implementation planner writes each check under *Checks for reviewers* with its owner, and the implementer's
-**Handoff to reviewers** repeats that split.
+The implementation planner writes each check under *Checks for reviewers* with its owner, and the
+implementer's **Handoff to reviewers** repeats that split.
 
 | Check | Owner |
 |---|---|
@@ -240,14 +249,14 @@ echo '{"tool_name":"Bash","tool_input":{"command":"rm x"}}' | .claude/hooks/agen
 
 ## Shared contract: which skills govern which paths
 
-The implementation planner, the implementer and the test-writer read the surface→skill routing table in step
-3 of [`../skills/pr-self-review/SKILL.md`](../skills/pr-self-review/SKILL.md). They read it with
-Read and never invoke the skill, because invoking it runs the review. The architecture-reviewer
+The implementation planner, the implementer and the test-writer read the surface→skill routing table
+in step 3 of [`../skills/pr-self-review/SKILL.md`](../skills/pr-self-review/SKILL.md). They read it
+with Read and never invoke the skill, because invoking it runs the review. The architecture-reviewer
 cites severities from step 5 of the same file.
 
-The implementation planner writes the skills into every step. The implementer invokes each named skill, or
-explains the skip under *Deviations*. The test-writer loads only the routed skills that carry
-test rules. Change that table and you change four agents.
+The implementation planner writes the skills into every step. The implementer invokes each named
+skill, or explains the skip under *Deviations*. The test-writer loads only the routed skills that
+carry test rules. Change that table and you change four agents.
 
 ## Where their rules come from
 
