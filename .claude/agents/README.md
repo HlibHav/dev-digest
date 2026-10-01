@@ -9,6 +9,7 @@ its own `.md` file, so read that file before you change the agent.
 | Agent | Responsibility | Model | Permissions | Input | Output |
 |---|---|---|---|---|---|
 | [brainstorm](brainstorm.md) | Turns a rough idea into options before planning: classifies it (spike / bounded / architectural), writes back what was said and what is assumed, asks the one question that changes the design most, proposes two or three approaches, and returns a self-reviewed request whose every criterion names its proof | `opus` | Read-only: `Read, Grep, Glob` (no `Bash`, `Skill`, `Write` or web) | A rough idea | **Brainstorm Brief** (`ready` / `needs-answers`) |
+| [spec-creator](spec-creator.md) | Specreator: picks the SDD tier (Direct / Lightweight / Full / Discovery-First, by the scorecard in `docs/sdd-cascade.md`), analyses the user's design sources and walks six clarification categories, returns blocking questions first, then writes a spec with a `SPEC-NN` id, EARS acceptance criteria, input provenance and a changelog | `opus` | `Read, Grep, Glob, Edit, Write`; no Bash, web or Skill. Writes limited by its prompt, not a hook, to `<pkg>/specs/*.md` and root `specs/*.md` | A feature request or a Brainstorm Brief's request, plus design sources (screenshots, text, Figma export, code paths), or the answers to its questions, or a bug / change against an existing spec | **Spec Report** (`no-spec` / `needs-answers` / `written` / `updated` / `no-change`) plus the spec file |
 | [researcher](researcher.md) | Answers one concrete question from the repo or from external sources, with evidence and an explicit "not found" list | `sonnet` | Read-only in the repo (`Read, Grep, Glob`); `WebSearch`, `WebFetch`; NotebookLM create/add/query only (no delete, share or studio) | A question plus its scope (repo / external / both) and what it feeds | **Repo report** or **External report**, or clarifying questions |
 | [implementation-planner](implementation-planner.md) | Turns an approved spec into an Implementation Plan that respects modules, skills, rules and `INSIGHTS.md`: reviews the requirements and recommends improvements, traces every `AC-N` to steps and tests, and asks whether to run multi-agent or single-agent. Writes no spec and never changes a criterion | `opus` | Read-only: `Read, Grep, Glob` (no `Skill`, `Bash`, `Write` or web) | An approved spec from spec-creator, or its no-spec intent for a Direct change (optionally a researcher report) | **Implementation Plan** (`Status: ready`) with a requirements review, the spec's criteria verbatim, a traceability table, a `## Red-first` list, test-first steps and an execution-mode question, or questions (`needs-answers`) that go back to spec-creator or to the user |
 | [test-writer](test-writer.md) | Writes tests for BE and UI in two modes: red-first from a plan's acceptance criteria, or backfill for existing code | `sonnet` | `Read, Grep, Glob, Edit, Write, Bash, Skill`; hooks limit writes to test paths and Bash to the `test` profile; every test run inside `srt`; writes but doesn't run integration tests or e2e | A plan (red-first) or named files (backfill) | **Test Report**: criterion → test → evidence, plus test files in the working tree |
@@ -18,7 +19,7 @@ its own `.md` file, so read that file before you change the agent.
 | [security-reviewer](security-reviewer.md) | Reviews a diff for security defects in the changed lines — workspace scoping, input validation, secrets, prompt injection into the review LLM, SSRF and path traversal, unsafe rendering, agent-hook holes — and never executes the code under review | `opus` | Read-only: `Read, Grep, Glob, Bash`; a hook limits Bash to the `security` profile (read-only git, `diff`, `gh pr view`; no test, lint or typecheck run); preloads `security` | A target (`base..head`, branch or uncommitted tree) | **Security Review**: attack surface, findings with severity, rule, `path:line`, evidence and exploit path; `pass` / `fail` |
 | [doc-writer](doc-writer.md) | Documents implemented features and turns plans or other material into docs with Mermaid diagrams, in the right `docs/` or `specs/` section | `sonnet` | `Read, Grep, Glob, Edit, Write, Skill`, no Bash; a hook limits writes to docs paths; preloads `mermaid-diagram` | A subject plus material (plan, report, verified code) | **Documentation Report**: files, claim → `path:line`, index updates, ADR and insight candidates |
 
-All nine are flat: none has the `Agent` tool, so none spawns subagents.
+All ten are flat: none has the `Agent` tool, so none spawns subagents.
 
 None of them can ask the user, because Claude Code removes `AskUserQuestion` from every subagent.
 When the input is too vague to act on, each agent returns its questions to the calling session,
@@ -34,7 +35,8 @@ session records them through that skill.
 flowchart LR
   Q[question] --> R[researcher] -- report --> S((main session))
   IDEA[rough idea] --> B[brainstorm] -- Brainstorm Brief --> S
-  S -- chosen approach as a request --> SC[spec-creator]
+  FEAT[feature + design sources] --> SC[spec-creator] -- Spec Report + spec file --> S
+  S -- chosen approach as a request --> SC
   SC -- approved spec or no-spec intent --> P[implementation-planner]
   P -- Implementation Plan + execution-mode question --> S
   S -. external facts .-> P
@@ -78,6 +80,10 @@ reviewers* itself. The plan's steps don't change between the modes.
 Spec-driven and test-driven development meet at the acceptance criteria. The spec says what must
 be true; a red-first test is that same statement, executable and failing before any code exists.
 
+0. **spec-creator** picks the tier from `docs/sdd-cascade.md`. Direct changes skip the spec;
+   the others get a spec whose `AC-N` criteria are EARS statements with proof tags, and
+   `implementation-planner` works from the approved spec (Status `approved`, no open
+   `[NEEDS CLARIFICATION]`) instead of a brainstorm request.
 1. **brainstorm** classifies the idea (spike, bounded, architectural), writes back what was said
    and what it assumed, and self-reviews its request so every criterion is testable and tagged
    with its proof: `red-first unit`, `red-first integration`, `e2e` or `browser (main session)`.
@@ -211,6 +217,10 @@ inside a hook is a deny (the audit instead reports that it could not check). Reg
 including the bypasses found in the 2026-09-24 security review, run with
 `python3 -m unittest discover -s .claude/hooks/tests`.
 
+**spec-creator has no hook, deliberately (Glib, 2026-10-01).** Its write limit (spec paths
+only) lives in its prompt. The main session checks `git status` after each run and reverts
+anything outside `specs/` folders. The trade-off is in `../decisions/2026-10-01-spec-creator-agent.md`.
+
 **What stays open, deliberately.** Integration tests (`*.it.test.ts`) need Docker, and Docker
 access escapes any sandbox (a container can mount the host). So test-writer writes them but
 doesn't run them, and the main session reads every file test-writer added or changed before
@@ -297,6 +307,9 @@ The other agents rest on these sources, checked on 2026-09-24:
 | [Nygard — Documenting Architecture Decisions](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions) | An ADR records one decision and doesn't change; feature docs describe the current state | ADR candidates go to the main session |
 | [Google style — Timeless documentation](https://developers.google.com/style/timeless-documentation) | Document the current state; no "new" or "now" | doc-writer's wording rule |
 | [C4 model](https://c4model.com/), [Mermaid on GitHub](https://github.blog/developer-skills/github/include-diagrams-markdown-files-mermaid/) | Context and Container levels carry most value; Mermaid renders natively and diffs as text | doc-writer's diagram rule |
+| EARS — Mavin, Wilkinson, Harwood, Novak (Rolls-Royce), IEEE RE'09 | Five requirement patterns that separate condition from response | spec-creator's acceptance criteria |
+| [Morris — Humans and agents](https://martinfowler.com/articles/exploring-gen-ai/humans-and-agents.html) | Humans on the loop: improve the harness, not each artifact | The tiered cascade in `docs/sdd-cascade.md` |
+| [InfoQ — Enterprise SDD](https://www.infoq.com/articles/enterprise-spec-driven-development/) (SpecOps) | Fix a wrong spec before the code; one bug, one lesson in the spec | spec-creator's update mode |
 
 Judgement calls that are **not** from these sources:
 - the model split (Opus brainstorms, plans and reviews architecture and security; Sonnet
