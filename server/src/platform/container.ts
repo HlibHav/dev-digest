@@ -31,7 +31,7 @@ import { ReviewRepository } from '../modules/reviews/repository.js';
 import type { RepoIntel } from '../modules/repo-intel/types.js';
 import { RepoIntelService } from '../modules/repo-intel/service.js';
 import { type DepGraph, DepCruiseGraph } from '../adapters/depgraph/index.js';
-import { type Tokenizer, TiktokenTokenizer } from '../adapters/tokenizer/index.js';
+import { type Tokenizer, TiktokenTokenizer, withByteCeiling } from '../adapters/tokenizer/index.js';
 
 /**
  * DI container. One per app instance. Holds config, db, the JobRunner,
@@ -81,6 +81,7 @@ export class Container {
   private _repoIntel?: RepoIntel;
   private _depgraph?: DepGraph;
   private _tokenizer?: Tokenizer;
+  private _boundedTokenizer?: Tokenizer;
   private _priceBook?: PriceBook;
 
   constructor(config: AppConfig, db: Db, private overrides: ContainerOverrides = {}) {
@@ -146,6 +147,16 @@ export class Container {
     if (this.overrides.tokenizer) return this.overrides.tokenizer;
     this._tokenizer ??= new TiktokenTokenizer();
     return this._tokenizer;
+  }
+
+  /**
+   * `tokenizer` behind a byte ceiling (ADR 2026-10-02): text above ~256 KB is
+   * estimated as ceil(bytes / 4) instead of encoded. Project Context counting
+   * only; other users keep `tokenizer`.
+   */
+  get boundedTokenizer(): Tokenizer {
+    this._boundedTokenizer ??= withByteCeiling(this.tokenizer);
+    return this._boundedTokenizer;
   }
 
   /**

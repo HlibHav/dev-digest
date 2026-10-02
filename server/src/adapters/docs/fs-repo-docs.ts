@@ -35,6 +35,18 @@ function isInside(rootReal: string, target: string): boolean {
   return rel !== '' && !rel.startsWith('..') && !isAbsolute(rel);
 }
 
+/**
+ * A resolved symlink target is a doc only by the same rules as a plain path:
+ * relative to the clone root it ends in `.md` and no segment (file name
+ * included) is an excluded or hidden name. Blocks `notes.md -> .git/config`.
+ */
+function isDocTarget(rootReal: string, target: string): boolean {
+  if (!isInside(rootReal, target)) return false;
+  const segments = relative(rootReal, target).split(sep);
+  if (!segments[segments.length - 1]!.toLowerCase().endsWith('.md')) return false;
+  return !segments.some(isExcludedSegment);
+}
+
 export class FsRepoDocs implements RepoDocs {
   async list(root: string): Promise<RepoDocEntry[]> {
     const rootReal = await realpath(root);
@@ -53,7 +65,7 @@ export class FsRepoDocs implements RepoDocs {
     try {
       const rootReal = await realpath(root);
       const real = await realpath(join(rootReal, ...segments));
-      if (!isInside(rootReal, real)) return null;
+      if (!isDocTarget(rootReal, real)) return null;
       const st = await stat(real);
       if (!st.isFile()) return null;
       return await readFile(real, 'utf8');
@@ -82,7 +94,7 @@ export class FsRepoDocs implements RepoDocs {
           if ((err as NodeJS.ErrnoException).code === 'ENOENT') continue;
           throw err;
         }
-        if (!isInside(rootReal, file)) continue;
+        if (!isDocTarget(rootReal, file)) continue;
       } else if (!st.isFile()) {
         continue;
       }

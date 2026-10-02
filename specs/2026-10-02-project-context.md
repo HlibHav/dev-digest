@@ -347,3 +347,4 @@ All JSON is snake_case. Shapes are behavioural; the plan decides where they live
 | 2026-10-02 | Status → approved | Glib approved the draft ("ok") |
 | 2026-10-02 | AC-6: page footer shows "N tokens total" instead of design-1's chunk count | Glib's decision: the user sees the token cost of docs while choosing them |
 | 2026-10-02 | Closed NC-2, NC-4b, NC-6, NC-10, NC-11, NC-12, NC-14, NFR-perf with the planner's defaults (plan R48–R55) | Glib accepted all eight defaults |
+| 2026-10-02 | Token counts: tokenizer up to ~256 KB, `ceil(bytes/4)` estimate above it; no size cap (NC-4b kept). Validation errors answer 422 | Glib, after security finding SR-1; ADR 2026-10-02-project-context-token-estimate-ceiling |

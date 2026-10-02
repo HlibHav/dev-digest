@@ -12,7 +12,7 @@ export function buildProjectContextService(container: Container): ProjectContext
   return new ProjectContextService({
     repo: new ProjectContextRepository(container.db),
     docs: container.repoDocs,
-    tokenizer: container.tokenizer,
+    tokenizer: container.boundedTokenizer,
     now: () => new Date(),
   });
 }

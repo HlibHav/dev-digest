@@ -64,6 +64,13 @@ d('Project Context routes (Testcontainers pg + temp clone)', () => {
     // A directory symlink to outside, and a file symlink to outside.
     await symlink(outside, join(clone, 'docs', 'link'));
     await symlink(join(outside, 'x.md'), join(clone, 'specs', 'evil.md'));
+    // SR-3: in-clone symlinks named .md whose targets are not docs.
+    await mkdir(join(clone, '.git'), { recursive: true });
+    await writeFile(join(clone, '.git', 'config'), '[core]\n\tsecret = 1\n');
+    await mkdir(join(clone, 'node_modules'), { recursive: true });
+    await writeFile(join(clone, 'node_modules', 'x.md'), '# vendored');
+    await symlink(join('.git', 'config'), join(clone, 'notes.md'));
+    await symlink(join('node_modules', 'x.md'), join(clone, 'vendored.md'));
 
     const name = `ctx-${randomUUID()}`;
     const [repo] = await pg.handle.db
@@ -185,6 +192,20 @@ d('Project Context routes (Testcontainers pg + temp clone)', () => {
       url: `/repos/${repoId}/context/file?path=${encodeURIComponent('specs/evil.md')}`,
     });
     expect(file.statusCode).toBe(404);
+  });
+
+  it('SR-3: a .md symlink whose target is .git/config or under node_modules is neither listed nor readable', async () => {
+    const a = await app();
+    const res = await a.inject({ method: 'GET', url: `/repos/${repoId}/context` });
+    const paths = ContextDocList.parse(res.json()).files.map((f) => f.path);
+    for (const p of ['notes.md', 'vendored.md']) {
+      expect(paths).not.toContain(p);
+      const file = await a.inject({
+        method: 'GET',
+        url: `/repos/${repoId}/context/file?path=${encodeURIComponent(p)}`,
+      });
+      expect(file.statusCode).toBe(404);
+    }
   });
 
   it('AC-4: serves a listed doc and answers 404 for traversal and non-listed paths', async () => {

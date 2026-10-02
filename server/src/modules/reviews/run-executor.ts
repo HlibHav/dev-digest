@@ -289,10 +289,10 @@ export class ReviewRunExecutor {
       if (rendered) {
         injectable.forEach((d, k) => {
           d.text = rendered.docs[k]!.text;
-          d.tokens = this.container.tokenizer.count(d.text);
+          d.tokens = this.container.boundedTokenizer.count(d.text);
         });
         specsBlock = rendered.block;
-        specsTokens = this.container.tokenizer.count(rendered.block);
+        specsTokens = this.container.boundedTokenizer.count(rendered.block);
         // A modified_by_pr doc's base text is sent, so it counts as read.
         specsRead = injectable.map((d) => d.path);
         runLog.info(`project context: ${specs.length} doc(s), ${specsTokens} tokens in the section`);

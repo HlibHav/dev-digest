@@ -1,5 +1,5 @@
 # State: project-context
-Stage: 3 Fix round 1 done · next: delta plan-verifier + architecture/security/code-review in parallel
+Stage: 3 Fix round 2 done · next: delta security + architecture re-review, /code-review (main), then close
 Spec: specs/2026-10-02-project-context.md (SPEC-2026-10-02-project-context) · Plan: docs/plans/2026-10-02-project-context.md · Mode: multi-agent
 Inputs: prompt none · designs design-1..4.png in the session scratchpad (S3 sources listed in the spec's Input provenance)
 Red-first: implementer-owned
@@ -22,6 +22,9 @@ Expected red: —
 | L3 server it (lane 3 run, Docker) | vitest run test/project-context-run.it.test.ts | 678f4f9+L3 | 10 passed (implementer-reported) |
 | R1 server | pnpm typecheck · vitest --exclude it | 5bfc60a+R1 | exit 0 · 33 files, 335 passed |
 | R1 client | pnpm typecheck · pnpm test | 5bfc60a+R1 | exit 0 · 50 files, 265 passed |
+| R1 delta plan-verifier | vitest run .it.test (Docker) | f3295d5 | 15 files, 89 passed; PV-1/2/4 closed |
+| R2 server | pnpm typecheck · vitest --exclude it | f3295d5+R2 | exit 0 · 34 files, 338 passed |
+| R2 project-context it (implementer, Docker) | vitest run project-context*.it.test | f3295d5+R2 | 23 passed |
 
 ## Findings ledger
 | id | source | severity | kind | `path:line` | round opened | status (open / closed / accepted / deferred) | round closed |
@@ -29,9 +32,13 @@ Expected red: —
 | MS-2 / PV-1 | main session + plan-verifier | major | local fix (lane 2) | `server/src/adapters/docs/fs-repo-docs.ts` | MAX_DOC_BYTES 1 MiB cap contradicts NC-4b (no max size) | L2 | closed | R1 |
 | MS-1 | main session (design check) | minor | local fix (lane 4) | `client/src/vendor/ui/nav.ts:37` SKILLS LAB vs design WORKSPACE | L1 | closed | R1 |
 | PV-2 | plan-verifier | must close (AC-33 partial) | local fix (lane 3) | `server/src/modules/reviews/run-executor.ts` specsRead drops modified_by_pr (R34) | R1 | closed | R1 |
-| PV-3 | plan-verifier | not met (review focus) | accepted deviation, pending user | `server/src/app.ts:116` duplicate-path PUT → 422 not 400 (app-wide zod mapping; spec names no code) | R1 | open | |
-| PV-5 | lane 2 report | major (product decision) | spec question | `server/src/adapters/tokenizer/index.ts` js-tiktoken stalls >10 min on a 1 MiB single-char run; with no size cap a pathological repo .md stalls the scan | R1 | open, ask Glib | |
+| PV-3 | plan-verifier | not met (review focus) | accepted deviation (Glib, ADR token-estimate-ceiling) | `server/src/app.ts:116` duplicate-path PUT → 422 not 400 (app-wide zod mapping; spec names no code) | R1 | open | |
+| PV-5 | lane 2 report | major (product decision) | spec question | `server/src/adapters/tokenizer/index.ts` js-tiktoken stalls >10 min on a 1 MiB single-char run; with no size cap a pathological repo .md stalls the scan | R1 | closed (pending SR re-review) | R2 |
 | PV-4 | plan-verifier | must close (AC-35 partial) | local fix (lane 3) | `server/test/project-context-run.it.test.ts` asserts specs_tokens > 0 only | R1 | closed | R1 |
+| AR (none) | architecture-reviewer | pass | — | lint:boundaries 0 violations; route test 8 passed | R1 | — | |
+| SR-1 | security-reviewer | major | structural (lanes 2+3) | `server/src/modules/project-context/service.ts:259`, `adapters/tokenizer/index.ts:35` sync encode on unbounded text = PV-5 | R1 | closed (pending SR re-review) | R2 |
+| SR-2 | security-reviewer | major | partly accepted | `run-executor.ts` resolveForRun tokenize per run + uncapped prompt (prompt size: accepted, Q8 display-only; tokenize: fixed with SR-1) | R1 | accepted (prompt size, Glib Q8) + closed (tokenize, R2) | R2 |
+| SR-3 | security-reviewer | major | local fix (lane 2) | `server/src/adapters/docs/fs-repo-docs.ts:47-59,78-89` .md suffix + exclusions checked on link name, not realpath target (notes.md -> .git/config) | R1 | closed (pending SR re-review) | R2 |
 
 ## Log
 - 2026-10-02 — /implement started at dc93891 on feat/project-context; lane slices extracted from the plan
@@ -41,3 +48,5 @@ Expected red: —
 - 2026-10-02 — L3 lane 3 done: resolver port in run-executor, wired in reviews/routes.ts (app.ts ReviewService only reaps stale runs, needs no resolver). Plan "review-focus" run cases not mapped to lane 3 rows; plan-verifier to judge. Gate green.
 - 2026-10-02 — plan-verifier at 5bfc60a: gaps (24 met, 20 partial, 1 not met). 18 partials are "no red run recorded" only — main-session brief condensed reports and dropped the lanes' red-run tables (lanes 2,4,5,6 did report red runs); not code gaps. Integration 15 files / 88 passed. Fix round 1: PV-1 lane 2, PV-2+PV-4 lane 3, MS-1 lane 4.
 - 2026-10-02 — Fix round 1: PV-1 (cap removed, >1 MiB test red→green), PV-2 (specs_read includes modified_by_pr, red→green), PV-4 (exact specs_tokens assertion), MS-1 (nav in WORKSPACE, red→green). New PV-5: tokenizer stall risk without a size cap. Gate green; project-context it tests run by lanes (12 + 10 passed), plan-verifier to confirm.
+- 2026-10-02 — architecture-reviewer: pass. security-reviewer: fail (SR-1, SR-2, SR-3 major). Glib: ceiling on counting only; keep 422. ADR written.
+- 2026-10-02 — Fix round 2 (structural, alone): SR-3 realpath target re-checked (isDocTarget), SR-1 withByteCeiling decorator via container.boundedTokenizer (256 KB, ceil(bytes/4)); red→green. Gate green.

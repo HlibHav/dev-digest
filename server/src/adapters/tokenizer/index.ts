@@ -24,6 +24,27 @@ export function approxTokens(text: string): number {
   return Math.ceil(text.length / 4);
 }
 
+/**
+ * Largest text (UTF-8 bytes) handed to the real encoder by `withByteCeiling`.
+ * js-tiktoken's synchronous `encode()` can stall for minutes on pathological
+ * input (a 1 MiB run of one character), blocking the event loop.
+ */
+export const TOKENIZER_BYTE_CEILING = 256 * 1024;
+
+/**
+ * Decorator: above the byte ceiling the count is the estimate
+ * `ceil(bytes / 4)` and the wrapped counter is never called. Used by Project
+ * Context only; `container.tokenizer` itself is unchanged.
+ */
+export function withByteCeiling(inner: Tokenizer, ceilingBytes = TOKENIZER_BYTE_CEILING): Tokenizer {
+  return {
+    count(text: string): number {
+      const bytes = Buffer.byteLength(text, 'utf8');
+      return bytes > ceilingBytes ? Math.ceil(bytes / 4) : inner.count(text);
+    },
+  };
+}
+
 export class TiktokenTokenizer implements Tokenizer {
   private enc?: Tiktoken;
   private broken = false;
