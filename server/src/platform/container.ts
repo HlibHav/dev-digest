@@ -6,6 +6,7 @@ import type {
   CodeIndex,
   Embedder,
   LLMProvider,
+  RepoDocs,
 } from '@devdigest/shared';
 import type { AppConfig } from './config.js';
 import type { Db } from '../db/client.js';
@@ -15,6 +16,7 @@ import { LocalSecretsProvider } from '../adapters/secrets/local.js';
 import { LocalNoAuthProvider } from '../adapters/auth/local.js';
 import { OctokitGitHubClient } from '../adapters/github/octokit.js';
 import { SimpleGitClient } from '../adapters/git/simple-git.js';
+import { FsRepoDocs } from '../adapters/docs/fs-repo-docs.js';
 import { RipgrepCodeIndex } from '../adapters/codeindex/ripgrep.js';
 import { OpenAIProvider } from '../adapters/llm/openai.js';
 import { AnthropicProvider } from '../adapters/llm/anthropic.js';
@@ -45,6 +47,7 @@ export interface ContainerOverrides {
   git?: GitClient;
   codeIndex?: CodeIndex;
   embedder?: Embedder;
+  repoDocs?: RepoDocs;
   /** Pre-built providers by id (skip key lookup). */
   llm?: Partial<Record<'openai' | 'anthropic' | 'openrouter', LLMProvider>>;
   /** repo-intel facade (T1.1+) — tests inject mock RepoIntel implementations. */
@@ -66,6 +69,7 @@ export class Container {
   private _github?: GitHubClient;
   private _codeIndex?: CodeIndex;
   private _embedder?: Embedder;
+  private _repoDocs?: RepoDocs;
   private llmCache = new Map<string, LLMProvider>();
 
   // Shared repositories for cross-cutting entities (agents, reviews/pulls,
@@ -92,6 +96,13 @@ export class Container {
     if (this.overrides.git) return this.overrides.git;
     this._git ??= new SimpleGitClient(this.config.cloneDir);
     return this._git;
+  }
+
+  /** Project-context docs inside a clone (list / read). */
+  get repoDocs(): RepoDocs {
+    if (this.overrides.repoDocs) return this.overrides.repoDocs;
+    this._repoDocs ??= new FsRepoDocs();
+    return this._repoDocs;
   }
 
   get agentsRepo(): AgentsRepository {
