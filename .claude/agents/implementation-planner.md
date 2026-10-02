@@ -156,7 +156,10 @@ write a single step, and record the mode in the plan's `Execution mode:` field.
   - order the lanes as a DAG: a lane names the lanes it waits for (`after:`), and nothing else
     blocks it;
   - contracts first: a shared schema, its client mirror, a migration or a port that two lanes
-    consume is its own lane 0, and the consuming lanes wait for it;
+    consume is its own lane 0, and the consuming lanes wait for it. Lane 0 holds only the
+    contract, its mirror and the fixtures it breaks; it may end with a consumer package's
+    typecheck red, which the consuming lane turns green. A consumer's implementation goes in
+    its own lane, never in lane 0;
   - a step two lanes would both need to touch goes in one lane, or the lanes run one after the
     other.
 - **Single-agent** — the main session runs everything itself, with no subagents: red-first tests,
@@ -179,8 +182,9 @@ coupled change where the handoffs cost more than they save.
   that proves it, in the **Traceability** table. Its proof tag comes from the spec unchanged.
   The main session copies the table into the spec's `## Traceability` after verification.
 - **List the red-first criteria under `## Red-first`:** every `AC-N` the spec tags
-  `red-first unit` or `red-first integration`, with the test path and name you propose. The
-  caller runs `test-writer` in red-first mode on that list before the implementer starts. An
+  `red-first unit` or `red-first integration`, with the test path and name you propose. In
+  multi-agent mode the caller runs `test-writer` in red-first mode on that list before the
+  implementer starts; in single-agent mode the main session writes those tests itself first. An
   empty list needs one line saying why (for example, a pure docs change or a no-spec intent).
 - **No-spec intent:** there are no `AC-N`. Don't invent them. Each step's **verify** line says
   what the check proves, and the `## Red-first` list is empty with that reason.
