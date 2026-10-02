@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { randomUUID } from 'node:crypto';
+import { eq } from 'drizzle-orm';
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -51,6 +52,18 @@ const EMPTY_REVIEW = { verdict: 'approve', summary: 'ok', score: 90, findings: [
 class ThrowingLLM extends MockLLMProvider {
   override async completeStructured<T>(): Promise<never> {
     throw new Error('llm exploded');
+  }
+}
+
+/** Holds every read until `release()`, so a test can cancel a run mid-resolution. */
+class GatedRepoDocs extends MockRepoDocs {
+  release!: () => void;
+  private gate = new Promise<void>((resolve) => {
+    this.release = resolve;
+  });
+  override async read(root: string, path: string): Promise<string | null> {
+    await this.gate;
+    return super.read(root, path);
   }
 }
 
@@ -298,6 +311,29 @@ d('Project Context run-time injection (Testcontainers pg)', () => {
     const agentId = await makeAgent(['specs/a.md']);
     const { status, trace } = await runReview(app, pr.id, agentId);
     expect(status).toBe('failed');
+    expect(trace.specs_read).toEqual(['specs/a.md']);
+    expect(trace.specs_docs).toEqual([expect.objectContaining({ path: 'specs/a.md', status: 'injected', text: 'A-DOC' })]);
+    expect(trace.prompt_assembly.specs).toContain('A-DOC');
+    expect(trace.prompt_assembly.specs_tokens).toBeGreaterThan(0);
+    await app.close();
+  });
+
+  it('AC-36: a cancelled run keeps the section, specs_read, snapshots and specs_tokens', async () => {
+    const repoDocs = new GatedRepoDocs({ files: { 'specs/a.md': 'A-DOC' } });
+    const { app, llm } = await appWith({ repoDocs });
+    const pr = await setup('/mock/clone');
+    const agentId = await makeAgent(['specs/a.md']);
+    const res = await app.inject({ method: 'POST', url: `/pulls/${pr.id}/review`, payload: { agentId } });
+    expect(res.statusCode).toBe(200);
+    const runId = res.json().runs[0].run_id as string;
+    const cancel = await app.inject({ method: 'POST', url: `/runs/${runId}/cancel` });
+    expect(cancel.statusCode).toBe(200);
+    repoDocs.release();
+    const row = await waitForRunTrace(pg.handle.db, runId);
+    const trace = row.trace as RunTrace;
+    const [run] = await pg.handle.db.select().from(t.agentRuns).where(eq(t.agentRuns.id, runId));
+    expect(run!.status).toBe('cancelled');
+    expect(llm.calls).toHaveLength(0);
     expect(trace.specs_read).toEqual(['specs/a.md']);
     expect(trace.specs_docs).toEqual([expect.objectContaining({ path: 'specs/a.md', status: 'injected', text: 'A-DOC' })]);
     expect(trace.prompt_assembly.specs).toContain('A-DOC');
