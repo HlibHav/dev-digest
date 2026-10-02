@@ -1,6 +1,6 @@
 # Spec: Project Context — attach repo docs to agents and skills, inject them, show them in the trace
 Spec ID: SPEC-2026-10-02-project-context
-Status: approved (Glib, 2026-10-02)
+Status: implemented (Glib, 2026-10-02)
 Tier: Full SDD — scorecard 6/6
 Supersedes: none
 Packages: server, reviewer-core, client
@@ -334,7 +334,7 @@ All JSON is snake_case. Shapes are behavioural; the plan decides where they live
 | AC-39 | red-first unit | old trace renders "—" | 16 | `SpecsReadRow.test.tsx` "legacy trace shows paths and —" | 9ab573e |
 | AC-40 | red-first unit | label + "317 tokens" | 16 | `RunTraceDrawer.test.tsx` "project context block label and 317 tokens" | 9ab573e |
 | AC-41 | red-first integration | delete agent → used_by drops | 2, 7 | `project-context.it.test.ts` "deleting agent/skill drops used_by" | ebf36fa, 678f4f9 |
-| AC-42 | browser (main session) | dev stack, one real review: attach, run, open trace, read doc, screenshots. Not an e2e flow, because flows ban LLM calls and the hermetic seed has no clone. Injection end to end is covered by the AC-23/33/34 integration tests (mock LLM), and the trace UI by the AC-37/38 unit tests | — | main-session browser check on the dev stack, 2026-10-02 (run 70b1dfb6 on PR #3; screenshots in the PR) | 6476dac |
+| AC-42 | browser (main session) | dev stack, one real review: attach, run, open trace, read doc, screenshots. Not an e2e flow, because flows ban LLM calls and the hermetic seed has no clone. Injection end to end is covered by the AC-23/33/34 integration tests (mock LLM), and the trace UI by the AC-37/38 unit tests | — | main-session browser check on the dev stack, 2026-10-02 (run 70b1dfb6 on PR #3; screenshots in `docs/plans/2026-10-02-project-context.assets/ac42-*.png`) | 6476dac |
 | AC-43 | red-first unit | sidebar item links to the repo's Project Context page, active there | 11 | `client/src/components/app-shell/ProjectContextNav.test.tsx` "sidebar links to the repo's Project Context page and marks it active" | 9ab573e, f3295d5 |
 
 ## Changelog
@@ -348,3 +348,4 @@ All JSON is snake_case. Shapes are behavioural; the plan decides where they live
 | 2026-10-02 | AC-6: page footer shows "N tokens total" instead of design-1's chunk count | Glib's decision: the user sees the token cost of docs while choosing them |
 | 2026-10-02 | Closed NC-2, NC-4b, NC-6, NC-10, NC-11, NC-12, NC-14, NFR-perf with the planner's defaults (plan R48–R55) | Glib accepted all eight defaults |
 | 2026-10-02 | Token counts: tokenizer up to ~256 KB, `ceil(bytes/4)` estimate above it; no size cap (NC-4b kept). Validation errors answer 422 | Glib, after security finding SR-1; ADR 2026-10-02-project-context-token-estimate-ceiling |
+| 2026-10-02 | Status → implemented; AC-42 screenshots saved under `docs/plans/2026-10-02-project-context.assets/` | Glib: "бери все це" after the build closed; screenshots retaken from run 70b1dfb6, no new review |
