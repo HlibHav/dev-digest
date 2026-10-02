@@ -5,7 +5,7 @@ import { AppError, NotFoundError } from '../../platform/errors.js';
 import type { AgentRow } from '../../db/rows.js';
 import { ReviewRepository } from './repository.js';
 import { type ReviewDto, type ReviewDtoFinding } from './helpers.js';
-import { ReviewRunExecutor, type Logger } from './run-executor.js';
+import { ReviewRunExecutor, type Logger, type ProjectContextResolver } from './run-executor.js';
 import { actOnFinding as actOnFindingImpl } from './findings.js';
 import { reviewToDto } from './helpers.js';
 import type { IntentDeriver } from './intent-service.js';
@@ -35,10 +35,11 @@ export class ReviewService {
   constructor(
     private container: Container,
     private intent?: IntentDeriver,
+    private projectContext?: ProjectContextResolver,
   ) {
     this.repo = new ReviewRepository(container.db);
     this.agents = container.agentsRepo;
-    this.executor = new ReviewRunExecutor(container, this.repo, this.agents, this.intent);
+    this.executor = new ReviewRunExecutor(container, this.repo, this.agents, this.intent, this.projectContext);
   }
 
   // ===========================================================================

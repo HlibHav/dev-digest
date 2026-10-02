@@ -31,6 +31,8 @@ import type {
   AuthWorkspace,
   SecretsProvider,
   SecretKey,
+  RepoDocs,
+  RepoDocEntry,
 } from '@devdigest/shared';
 import { parseUnifiedDiff } from './git/diff-parser.js';
 
@@ -305,6 +307,31 @@ export class MockCodeIndex implements CodeIndex {
   }
   async references(_repo: RepoRef, symbol: string): Promise<CodeReference[]> {
     return [{ fromPath: 'src/api/public/index.ts', toSymbol: symbol, line: 23 }];
+  }
+}
+
+// ---------- Mock RepoDocs ----------
+export interface MockRepoDocsOptions {
+  files?: Record<string, string>;
+  /** path -> error message: `read` throws for these. */
+  failures?: Record<string, string>;
+}
+
+export class MockRepoDocs implements RepoDocs {
+  private files: Record<string, string>;
+  private failures: Record<string, string>;
+  constructor(opts: MockRepoDocsOptions = {}) {
+    this.files = opts.files ?? {};
+    this.failures = opts.failures ?? {};
+  }
+  async list(): Promise<RepoDocEntry[]> {
+    return Object.keys(this.files)
+      .sort()
+      .map((path) => ({ path, size: this.files[path]!.length, content: this.files[path]! }));
+  }
+  async read(_root: string, path: string): Promise<string | null> {
+    if (path in this.failures) throw new Error(this.failures[path]);
+    return this.files[path] ?? null;
   }
 }
 

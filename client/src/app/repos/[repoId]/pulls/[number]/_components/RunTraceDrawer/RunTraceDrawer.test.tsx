@@ -72,4 +72,17 @@ describe("A5 Run Trace drawer (smoke)", () => {
     // LiveLogStream renders its filter input
     expect(screen.getByPlaceholderText("Filter log…")).toBeInTheDocument();
   });
+
+  it("AC-40: Prompt assembly labels the specs block as untrusted and shows its tokens", () => {
+    currentTrace = {
+      ...TRACE,
+      prompt_assembly: { ...TRACE.prompt_assembly, specs: "### a.md", specs_tokens: 321 },
+      specs_docs: [{ path: "specs/a.md", status: "injected", origin: "agent", tokens: 321, text: "x" }],
+    };
+    renderWithIntl(<RunTraceDrawer runId="r1" agentName="Security" prNumber={482} onClose={() => {}} />);
+    fireEvent.click(screen.getByText("Prompt assembly"));
+    const label = screen.getByText("Project context — attached specs (untrusted)");
+    expect(within(label.parentElement!).getByText("321 tokens")).toBeInTheDocument();
+    expect(screen.getByText("specs/a.md")).toBeInTheDocument();
+  });
 });
