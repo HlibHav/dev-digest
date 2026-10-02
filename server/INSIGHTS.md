@@ -29,6 +29,8 @@ fixed — add to the one that fits.
 
 ## Codebase Patterns
 
+- **2026-10-02** — Cancelling a review run is cooperative. `POST /runs/:id/cancel` sets a flag in `RunBus`, marks the row `cancelled` and ends the SSE stream immediately, but the executor only checks the flag at `checkCancelled`, before each diff chunk. A run that never reaches another checkpoint finishes normally and overwrites `cancelled` with `done`. Until bb675cd, `RunBus.complete()` also cleared the flag, and since `cancelRun` calls `complete()` right after `cancel()`, no run could be cancelled at all. No test covered it. A single-pass run cancelled during its one LLM call still ends `done`. To test a cancel deterministically, gate an adapter the run awaits before the checkpoint (a `RepoDocs.read` that waits on a promise), cancel, then release the gate. Evidence: `server/src/platform/sse.ts:76`, `reviewer-core/src/review/run.ts:173`, `server/test/project-context-run.it.test.ts:59`
+
 - **2026-09-28** — `repoIntel.getBlastRadius` never reports an incomplete index on its own: the persistent path returns `degraded: false` with no `reason` for a `partial` index, and it never emits `index_partial` or `flag_off`. A consumer that must say "index incomplete" reads `getIndexState` itself and derives `index_partial`. Its `MAX_CALLERS_PER_SYMBOL` is also applied as one global `slice` over all callers after the rank sort, not per symbol, so a busy symbol can starve the others before any per-symbol cap runs. Evidence: `server/src/modules/repo-intel/service.ts:386`, `server/src/modules/blast/helpers.ts:133`
 
 - **2026-09-28** — Blast-radius endpoints come from `factsByFile`, keyed by the **caller's** file, and the facade looks one hop out only (`BFS_DEPTH` is unused there). A changed helper shows an HTTP endpoint only when a direct caller is itself a file with `app.get('/…')`-style routes; a helper reached through `service.ts` → `routes.ts` shows none. To demo or test it, pick a helper a `routes.ts` imports directly (e.g. `rowsToSettings` → `settings/routes.ts`). Evidence: `server/src/adapters/codeindex/extract.ts:186`, `server/src/modules/blast/helpers.ts:92`
@@ -56,6 +58,8 @@ fixed — add to the one that fits.
 - **2026-09-26** — A JSDoc block that spells out a glob such as `**/*.md` closes the comment at the `*/` inside it; `tsc` then reports a cascade of syntax errors from the middle of the doc text (first hit: `classify.ts(17,53)`) with nothing pointing at the comment. Describe glob patterns in words inside `/** … */` comments (or use `//` lines), never a literal `*/`. Evidence: `server/src/modules/smart-diff/classify.ts:15`
 
 ## Session Notes
+
+- **2026-10-02** — Closing the plan-verifier gaps on Project Context (AC-36 cancelled run, AC-38 expand) surfaced the cancel-flag bug in `RunBus`. Recorded in Codebase Patterns. Evidence: `server/src/platform/sse.ts:76`
 
 - **2026-10-02** — Project Context (attach repo `.md` docs to agents and skills, inject them under a trusted framing, snapshot them in the trace): `project-context` module, `FsRepoDocs`, `container.boundedTokenizer`. Recorded in What Doesn't Work ×2 (server) and Codebase Patterns (client). Evidence: `server/src/modules/project-context/service.ts:1`
 
