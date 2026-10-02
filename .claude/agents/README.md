@@ -111,8 +111,8 @@ coupled change). The main session saves the plan as `docs/plans/YYYY-MM-DD-<feat
   never overlap between lanes that run together, and contracts come first as lane 0.
   - **Lane slice.** Each implementer's brief holds only its slice of the plan, copied verbatim:
     the header, *Constraints*, *Skills for the implementer*, its *Lanes* row, its steps, the
-    *Red-first* rows they turn green and the *Contracts & data* items they touch, plus the
-    plan's saved path. The whole plan went to every lane before, and at ~18k tokens it was
+    *Red-first* rows they turn green and the *Contracts & data* items they touch, the text of
+    each `AC-N` those steps trace to, plus the plan's saved path. The whole plan went to every lane before, and at ~18k tokens it was
     re-sent on each of ~90 requests (profiled 2026-09-28).
   - **Package gate.** Lanes share one working tree, so a lane runs only targeted tests and
     judges typecheck on its own paths: a sibling lane may be mid-change, and lane 0 may end with
@@ -194,7 +194,8 @@ the first three items; plan-verifier gets the fourth as well.
    Checks table with `brief` in the exit column and does not run the command again. A row with
    another sha, or a check with no row, is run as before.
 4. **plan-verifier only:** the full plan, the Implementation Reports and the Test Report's
-   **Tests** table when there is one.
+   **Tests** table when there is one, each as the agent returned it, never summarised: a
+   condensed report loses the red-run rows and every criterion they prove reads `partial`.
 
 What this saved, measured on the intent-layer PR (2026-09-26): plan-verifier had re-run three
 typechecks and four unit suites the main session had just run, ~8 turns and 5 minutes; the two

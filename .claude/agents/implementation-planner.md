@@ -168,7 +168,8 @@ write a single step, and record the mode in the plan's `Execution mode:` field.
     return `blocked`;
   - each lane's implementer gets only its slice of the plan (the header, *Constraints*,
     *Skills for the implementer*, its *Lanes* row, its steps, the *Red-first* rows they turn
-    green, the *Contracts & data* items they touch), so a lane's steps must stand on that slice:
+    green, the *Contracts & data* items they touch, the text of the `AC-N` they trace to), so a
+    lane's steps must stand on that slice:
     every name a step consumes from another lane is spelled out in its `interfaces` line;
   - lanes share one working tree, so a lane runs only targeted tests and the typecheck of its
     owned paths; the main session runs each touched package's typecheck and unit suite once per
@@ -254,6 +255,18 @@ Check the plan against the spec with fresh eyes, and fix what you find in place:
    empty list means you looked and found none.
 7. **Proportion:** a plan longer than the code it describes has written the code; replace
    bodies with signatures and test names.
+8. **Design, status codes, reachability:** each check below has already cost a fix round.
+   - *Design:* every UI step's placement (nav group, tab, section, label) matches the design
+     frames in the brief; where it doesn't, or no frame shows it, say so under **Open
+     questions & recommendations** (the nav item went into SKILLS LAB while the frames said
+     WORKSPACE).
+   - *Status codes:* a step or test that expects an error code names the one the app really
+     returns. Read the app's error mapping (`server/src/app.ts`), not the spec's or your memory:
+     zod validation errors map to 422 app-wide, not 400.
+   - *Reachability:* a new tab, route or page is reachable from the existing UI, and the file
+     that gates it (a `VALID_TABS` list, a route registry, `server/src/modules/index.ts`, a nav
+     config) is on a step and in a lane's owned paths. The agent page's `VALID_TABS` lacked
+     `"context"`, no lane owned it, and the plan gap surfaced only mid-build.
 
 ## Output — the Implementation Plan
 
