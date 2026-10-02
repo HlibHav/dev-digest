@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   withByteCeiling,
   TOKENIZER_BYTE_CEILING,
+  TOKENIZER_MAX_RUN,
   type Tokenizer,
 } from '../src/adapters/tokenizer/index.js';
 
@@ -23,7 +24,8 @@ describe('withByteCeiling (SR-1)', () => {
   it('calls the counter at exactly the ceiling', () => {
     const inner = spyCounter();
     const t = withByteCeiling(inner);
-    const text = 'a'.repeat(TOKENIZER_BYTE_CEILING);
+    // Broken into short words: a single 256 KB run would now be estimated (SR-4).
+    const text = `${'a'.repeat(63)} `.repeat(TOKENIZER_BYTE_CEILING / 64);
     expect(t.count(text)).toBe(text.length);
     expect(inner.count).toHaveBeenCalledTimes(1);
   });
@@ -32,5 +34,20 @@ describe('withByteCeiling (SR-1)', () => {
     const inner = spyCounter();
     expect(withByteCeiling(inner).count('hello')).toBe(5);
     expect(inner.count).toHaveBeenCalledWith('hello');
+  });
+
+  it('SR-4: a long run of non-whitespace is estimated, the counter is not called', () => {
+    const inner = spyCounter();
+    const text = 'a'.repeat(1000);
+    expect(withByteCeiling(inner).count(text)).toBe(Math.ceil(1000 / 4));
+    expect(inner.count).not.toHaveBeenCalled();
+  });
+
+  it('SR-4: a run at the limit, and normal multi-line text, still use the counter', () => {
+    const inner = spyCounter();
+    const t = withByteCeiling(inner);
+    t.count('a'.repeat(TOKENIZER_MAX_RUN));
+    t.count('# Title\n\nsome prose here\n' + 'word '.repeat(500));
+    expect(inner.count).toHaveBeenCalledTimes(2);
   });
 });

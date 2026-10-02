@@ -60,8 +60,8 @@ export class FsRepoDocs implements RepoDocs {
     if (!path.toLowerCase().endsWith('.md')) return null;
     const segments = path.split('/');
     if (path.startsWith('/') || segments.some((s) => s === '' || s === '.' || s === '..')) return null;
-    // The file name itself may not be an excluded name either, only directories matter here.
-    if (segments.slice(0, -1).some(isExcludedSegment)) return null;
+    // Every segment, the file name included, must pass the same rule `list` applies.
+    if (segments.some(isExcludedSegment)) return null;
     try {
       const rootReal = await realpath(root);
       const real = await realpath(join(rootReal, ...segments));
@@ -75,37 +75,51 @@ export class FsRepoDocs implements RepoDocs {
     }
   }
 
+  /**
+   * An entry that cannot be read (EACCES, removed mid-walk) is skipped, so one bad
+   * file does not fail the whole listing. The adapter has no logger, so the skip is
+   * silent. Only the root itself (resolved in `list`) may still throw.
+   */
   private async walk(rootReal: string, dir: string, out: RepoDocEntry[]): Promise<void> {
-    const names = await readdir(dir);
-    for (const name of names) {
-      const full = join(dir, name);
-      const st = await lstat(full);
-      if (st.isDirectory()) {
-        if (isExcludedSegment(name)) continue;
-        await this.walk(rootReal, full, out);
-        continue;
-      }
-      if (!name.toLowerCase().endsWith('.md')) continue;
-      let file = full;
-      if (st.isSymbolicLink()) {
-        try {
-          file = await realpath(full);
-        } catch (err) {
-          if ((err as NodeJS.ErrnoException).code === 'ENOENT') continue;
-          throw err;
-        }
-        if (!isDocTarget(rootReal, file)) continue;
-      } else if (!st.isFile()) {
-        continue;
-      }
-      const target = await stat(file);
-      if (!target.isFile()) continue;
-      const content = await readFile(file, 'utf8');
-      out.push({
-        path: relative(rootReal, full).split(sep).join('/'),
-        size: target.size,
-        content,
-      });
+    let names: string[];
+    try {
+      names = await readdir(dir);
+    } catch {
+      return;
     }
+    for (const name of names) {
+      try {
+        await this.visit(rootReal, dir, name, out);
+      } catch {
+        continue;
+      }
+    }
+  }
+
+  private async visit(rootReal: string, dir: string, name: string, out: RepoDocEntry[]): Promise<void> {
+    const full = join(dir, name);
+    const st = await lstat(full);
+    if (st.isDirectory()) {
+      if (isExcludedSegment(name)) return;
+      await this.walk(rootReal, full, out);
+      return;
+    }
+    // Same rule as `read`: a hidden file name is excluded like a hidden directory.
+    if (isExcludedSegment(name) || !name.toLowerCase().endsWith('.md')) return;
+    let file = full;
+    if (st.isSymbolicLink()) {
+      file = await realpath(full);
+      if (!isDocTarget(rootReal, file)) return;
+    } else if (!st.isFile()) {
+      return;
+    }
+    const target = await stat(file);
+    if (!target.isFile()) return;
+    const content = await readFile(file, 'utf8');
+    out.push({
+      path: relative(rootReal, full).split(sep).join('/'),
+      size: target.size,
+      content,
+    });
   }
 }

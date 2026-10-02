@@ -111,6 +111,8 @@ export class ProjectContextService {
       this.ports.repo.agentPaths(agentId),
       this.ports.repo.enabledSkillDocs(workspaceId, agentId),
     ]);
+    // Same rule as the run (buildEffectiveDocList): the first occurrence of a path wins.
+    const seen = new Set(own);
     return {
       attached: own.map((path, order) => ({
         path,
@@ -119,13 +121,15 @@ export class ProjectContextService {
         present: known.has(path),
       })),
       inherited: skillDocs.flatMap((s) =>
-        s.paths.map((path) => ({
-          path,
-          skill_id: s.skillId,
-          skill_name: s.skillName,
-          tokens: known.get(path) ?? 0,
-          present: known.has(path),
-        })),
+        s.paths
+          .filter((path) => !seen.has(path) && seen.add(path))
+          .map((path) => ({
+            path,
+            skill_id: s.skillId,
+            skill_name: s.skillName,
+            tokens: known.get(path) ?? 0,
+            present: known.has(path),
+          })),
       ),
     };
   }

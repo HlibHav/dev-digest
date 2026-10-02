@@ -164,6 +164,24 @@ describe('ProjectContextService docs', () => {
     ]);
   });
 
+  it('CR-4: inherited drops paths the agent attached itself and repeats from earlier skills', async () => {
+    const svc = build(
+      docs(),
+      store({
+        agentPaths: async () => ['specs/a.md'],
+        enabledSkillDocs: async () => [
+          { skillId: 's1', skillName: 'One', paths: ['specs/a.md', 'README.md'] },
+          { skillId: 's2', skillName: 'Two', paths: ['README.md', 'gone.md'] },
+        ],
+      }),
+    );
+    const ctx = await svc.getAgentContext(WS, 'agent-1', REPO);
+    expect(ctx.inherited.map((i) => [i.path, i.skill_id])).toEqual([
+      ['README.md', 's1'],
+      ['gone.md', 's2'],
+    ]);
+  });
+
   it('skill context serializes the present docs the way a run would send them', async () => {
     const svc = build(docs(), store({ skillPaths: async () => ['specs/a.md', 'gone.md'] }));
     const ctx = await svc.getSkillContext(WS, 's1', REPO);
