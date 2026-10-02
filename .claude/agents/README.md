@@ -12,11 +12,11 @@ its own `.md` file, so read that file before you change the agent.
 | [spec-creator](spec-creator.md) | Specreator: picks the SDD tier (Direct / Lightweight / Full / Discovery-First, by the scorecard in `docs/sdd-cascade.md`), analyses the user's design sources and walks six clarification categories, returns blocking questions and research requests first (the main session runs one `researcher` per request in parallel), then writes a spec with a `SPEC-YYYY-MM-DD-<feature>` id, EARS acceptance criteria with proof tags and verification hints, non-functional requirements, input provenance, a seeded traceability table and a changelog, and ends with a final self-check | `opus` | `Read, Grep, Glob, Edit, Write`; no Bash, web or subagents; preloads `mermaid-diagram` and `security`. A PreToolUse hook (`agent-write-scope.py specs`) denies writes outside `<pkg>/specs/*.md` and root `specs/*.md` | A feature request or a Brainstorm Brief's request, plus design sources (screenshots, text, Figma export, code paths), or the answers to its questions, or a bug / change against an existing spec | **Spec Report** (`no-spec` / `needs-answers` / `needs-research` / `written` / `updated` / `no-change`) plus the spec file |
 | [researcher](researcher.md) | Answers one concrete question from the repo or from external sources, with evidence and an explicit "not found" list | `sonnet` | Read-only in the repo (`Read, Grep, Glob`); `WebSearch`, `WebFetch`; NotebookLM create/add/query only (no delete, share or studio) | A question plus its scope (repo / external / both) and what it feeds | **Repo report** or **External report**, or clarifying questions |
 | [implementation-planner](implementation-planner.md) | Turns an approved spec into an Implementation Plan that respects modules, skills, rules and `INSIGHTS.md`: verifies the requirements (restates each as a checkable `R1`, `R2`… linked to the spec), asks and recommends, traces every `AC-N` to steps and tests, and shapes the steps for the execution mode the user chose (parallel lanes with non-overlapping owned paths, or one linear pass). Writes no spec and never changes a criterion | `opus` | Read-only: `Read, Grep, Glob` (no `Skill`, `Bash`, `Write` or web) | An approved spec from spec-creator, or its no-spec intent for a Direct change, plus the execution mode the user chose (optionally a researcher report) | **Implementation Plan** (`Status: ready`) with verified requirements, open questions and recommendations, the spec's criteria verbatim, a traceability table, a `## Red-first` list, lanes (multi-agent) and test-first steps, saved by the main session as `docs/plans/YYYY-MM-DD-<feature>.md`; or questions (`needs-answers`), including the mode when the brief lacks it, that go back to spec-creator or to the user |
-| [test-writer](test-writer.md) | Writes tests for BE and UI in two modes: red-first from a plan's acceptance criteria, or backfill for existing code | `sonnet` | `Read, Grep, Glob, Edit, Write, Bash, Skill`; hooks limit writes to test paths and Bash to the `test` profile; every test run inside `srt`; writes but doesn't run integration tests or e2e | A plan (red-first) or named files (backfill) | **Test Report**: criterion → test → evidence, plus test files in the working tree |
+| [test-writer](test-writer.md) | Writes tests for BE and UI in two modes: red-first from a plan's acceptance criteria, or backfill for existing code. **Paused in `/implement`**: implementers own the red-first tests there | `sonnet` | `Read, Grep, Glob, Edit, Write, Bash, Skill`; hooks limit writes to test paths and Bash to the `test` profile; every test run inside `srt`; writes but doesn't run integration tests or e2e | A plan (red-first) or named files (backfill) | **Test Report**: criterion → test → evidence, plus test files in the working tree |
 | [implementer](implementer.md) | Executes the plan in the backend and the UI, self-reviews how its own code is written, and runs targeted tests in a lane (typecheck plus the unit suite for a whole plan); fixes reviewer findings in fix mode | `sonnet` | `Read, Grep, Glob, Edit, Write, Bash, Skill`; preloads `onion-architecture`, `frontend-ui-architecture`; no commit, push, research or `INSIGHTS.md` write | Its lane's slice of an Implementation Plan with `Status: ready` (multi-agent), or reviewer findings (fix mode) | **Implementation Report** (`done` / `partial` / `blocked`) with insight candidates, plus uncommitted changes in the working tree |
-| [architecture-reviewer](architecture-reviewer.md) | Checks a diff against the onion and client boundaries, runs `lint:boundaries` and the route test, reports what the lint can't see | `opus` | Read-only: `Read, Grep, Glob, Bash`; a hook limits Bash to the `architecture` profile; preloads both architecture skills | A target (`base..head`, branch or uncommitted tree) | **Architecture Review**: findings with severity, rule, `path:line` and evidence; `pass` / `fail` |
+| [architecture-reviewer](architecture-reviewer.md) | Checks a diff against the onion and client boundaries, runs `lint:boundaries` and the route test, reports what the lint can't see | `sonnet` | Read-only: `Read, Grep, Glob, Bash`; a hook limits Bash to the `architecture` profile; preloads both architecture skills | A target (`base..head`, branch or uncommitted tree) | **Architecture Review**: findings with severity, rule, `path:line` and evidence; `pass` / `fail` |
 | [plan-verifier](plan-verifier.md) | Checks finished code against every plan item and traces every hunk back to the plan; no advice | `sonnet` | Read-only: `Read, Grep, Glob, Bash`; a hook limits Bash to the `verify` profile | A plan, a target, optionally the Test Report | **Plan Verification**: a verdict with evidence per item, unmapped changes; `verified` / `gaps` |
-| [security-reviewer](security-reviewer.md) | Reviews a diff for security defects in the changed lines — workspace scoping, input validation, secrets, prompt injection into the review LLM, SSRF and path traversal, unsafe rendering, agent-hook holes — and never executes the code under review | `opus` | Read-only: `Read, Grep, Glob, Bash`; a hook limits Bash to the `security` profile (read-only git, `diff`, `gh pr view`; no test, lint or typecheck run); preloads `security` | A target (`base..head`, branch or uncommitted tree) | **Security Review**: attack surface, findings with severity, rule, `path:line`, evidence and exploit path; `pass` / `fail` |
+| [security-reviewer](security-reviewer.md) | Reviews a diff for security defects in the changed lines — workspace scoping, input validation, secrets, prompt injection into the review LLM, SSRF and path traversal, unsafe rendering, agent-hook holes — and never executes the code under review | `sonnet` | Read-only: `Read, Grep, Glob, Bash`; a hook limits Bash to the `security` profile (read-only git, `diff`, `gh pr view`; no test, lint or typecheck run); preloads `security` | A target (`base..head`, branch or uncommitted tree) | **Security Review**: attack surface, findings with severity, rule, `path:line`, evidence and exploit path; `pass` / `fail` |
 | [doc-writer](doc-writer.md) | Documents implemented features and turns plans or other material into docs with Mermaid diagrams, in the right `docs/` or `specs/` section | `sonnet` | `Read, Grep, Glob, Edit, Write, Skill`, no Bash; a hook limits writes to docs paths; preloads `mermaid-diagram` | A subject plus material (plan, report, verified code) | **Documentation Report**: files, claim → `path:line`, index updates, ADR and insight candidates |
 
 All ten are flat: none has the `Agent` tool, so none spawns subagents.
@@ -44,7 +44,7 @@ flowchart LR
   S -- spec + execution mode --> P
   P -- Implementation Plan --> S
   S -. external facts .-> P
-  P -- plan --> TW[test-writer]
+  P -. plan, paused in /implement .-> TW[test-writer]
   TW -- red tests + Test Report --> S
   S -- commit red tests + lane slice of the plan --> I[implementer]
   I -- Implementation Report --> S
@@ -58,7 +58,7 @@ flowchart LR
   S -- verified: /code-review on the bundle --> S
   AR -- Architecture Review --> S
   SR -- Security Review --> S
-  S -- findings, fix mode, at most 2 rounds --> I
+  S -- triaged findings, fix mode, at most 3 rounds --> I
   S -- plan + verified code --> DW[doc-writer]
 ```
 
@@ -72,17 +72,30 @@ Review runs in two stages. **plan-verifier first**: it is the cheap completeness
 It gains nothing from running later, because it marks other owners' checks `unverifiable` with
 the owner named. **Then, in parallel**, on the same head: `architecture-reviewer`,
 `security-reviewer` and the main session's `/code-review` (correctness bugs, which no agent in
-this set looks for). All three are read-only and independent.
+this set looks for). All three are read-only and independent. `security-reviewer` runs only when
+the diff touches a security surface (the list is in `.claude/skills/implement/SKILL.md`, Step 2);
+a skip is recorded with its reason.
 
-**Fix loop.** The main session hands the findings to the implementer in fix mode (each finding
-with its `path:line`, plus the plan slice it concerns), reruns the package gate, and re-runs only
-the reviewer whose findings were fixed, on the new head. At most two rounds; after that the
-main session takes it to the user. A finding that says the plan or the spec is wrong goes back to
-`implementation-planner` or `spec-creator`, not into a fix.
+**Fix loop.** Each finding gets a stable id (`PV-n`, `AR-n`, `SR-n`, `CR-n`) and is triaged
+before it is routed: a local fix goes to its lane's implementer in fix mode (with its
+`path:line` and plan slice); a structural move across lanes goes to one implementer that runs
+alone and owns the union of those lanes' paths; a finding that says the plan or the spec is
+wrong stops the chain for `implementation-planner` or `spec-creator`, which the user runs by
+hand; an accepted deviation gets an ADR. After each round the main session reruns the package
+gate and re-runs the reviewer whose findings were fixed on the delta, with its previous ids, so
+it confirms each one closed and looks only for regressions. plan-verifier re-runs after a
+structural move, and security-reviewer when the round touched a security surface. At most three
+rounds, and earlier the main session takes it to the user when a round doesn't lower the open
+count or a closed id reopens. The procedure lives in `/implement`.
 
 The red-first leg is required whenever the plan's `## Red-first` list names
-criteria: the implementer blocks without a red-first commit, and plan-verifier marks those
-criteria `partial` when the leg was skipped. Backfill after the implementer is for code that
+criteria: the implementer blocks without a red-first commit or a `Red-first: implementer-owned`
+brief, and plan-verifier marks those criteria `partial` when the leg was skipped. Under
+`/implement` the brief is `implementer-owned`: `test-writer` is paused to save tokens, each lane
+writes its red-first tests before the code and records the red run, and plan-verifier checks
+that run instead of diffing a red-first commit. Writer and grader are then the same agent for
+those tests, which is the trade-off accepted in
+`../decisions/2026-10-02-implement-command-and-model-downgrade.md`. Backfill after the implementer is for code that
 already existed, not a substitute.
 
 ## Execution mode: multi-agent or single-agent
@@ -130,12 +143,13 @@ be true; a red-first test is that same statement, executable and failing before 
    turns green, which unit tests the implementer writes first, what it consumes and produces,
    and the command that proves it.
 4. **test-writer** (outer loop) turns the `## Red-first` list into failing tests and proves each
-   fails for the right reason; the main session commits them.
+   fails for the right reason; the main session commits them. Paused under `/implement`: there
+   each lane writes its own red-first rows first (`Red-first: implementer-owned`).
 5. **implementer** (inner loop; one per lane in multi-agent mode) writes its own unit tests
    first for internals, then the smallest code that turns everything green, without touching
    the red tests.
 6. **plan-verifier** traces criterion → test → code both ways and diffs the red tests against
-   the red-first commit.
+   the red-first commit, or, under `implementer-owned`, checks the red run in the report.
 
 When a test and the spec disagree, the spec is corrected first and the test follows it; nobody
 edits a test to fit the code. What no test can state (layout, colour) is tagged `browser` and
@@ -154,8 +168,8 @@ implementer's **Handoff to reviewers** repeats that split.
 | correctness bugs (`/code-review` on the bundle) | main session, in parallel with the two reviewers |
 | `pnpm lint:boundaries`, the onion-architecture step 9 report, `route-adapter-calls.test.ts` | architecture-reviewer |
 | acceptance verification | plan-verifier |
-| integration tests (`*.it.test.ts`, Docker) as a review check | plan-verifier, after the main session has read test-writer's new ones |
-| red-first run of test-writer's integration tests | main session (Docker can't run inside test-writer's sandbox) |
+| integration tests (`*.it.test.ts`, Docker) as a review check | plan-verifier, after the main session has read the new ones (test-writer's or the implementers') |
+| red-first run of test-writer's integration tests | main session (Docker can't run inside test-writer's sandbox); under `/implement` no one: implementer-written integration tests are read by the main session and run green by plan-verifier only |
 | unchanged red-first tests | plan-verifier |
 | e2e (`npm run e2e:hermetic`) | main session: it rebuilds `client/.next` and breaks a running dev server (`e2e/INSIGHTS.md`), and its ports live in `CLAUDE.local.md` |
 | `pr-self-review` | main session: it writes a verdict artifact |
@@ -191,6 +205,7 @@ Scope splits that are easy to get wrong:
   external facts, the planner lists them under *Risks*, and the caller runs `researcher`.
 - **test-writer vs. implementer.** The test-writer writes only tests, and the implementer only
   code. Red-first tests are read-only for the implementer, so neither can grade its own work.
+  Under `/implement` this split is suspended: the implementer writes its red-first tests too.
 - **architecture-reviewer vs. pr-self-review.** The reviewer covers the two architecture skills
   in depth and runs their checks. `pr-self-review` routes the whole diff to every skill and gates
   `gh pr create`.
@@ -351,8 +366,9 @@ The other agents rest on these sources, checked on 2026-09-24:
 | [InfoQ — Enterprise SDD](https://www.infoq.com/articles/enterprise-spec-driven-development/) (SpecOps) | Fix a wrong spec before the code; one bug, one lesson in the spec | spec-creator's update mode |
 
 Judgement calls that are **not** from these sources:
-- the model split (Opus brainstorms, plans and reviews architecture and security; Sonnet
-  executes, writes tests, verifies and documents);
+- the model split (Opus brainstorms, specs and plans; Sonnet executes, writes tests, reviews
+  architecture and security, verifies and documents; the two reviewers moved from Opus to
+  Sonnet on 2026-10-02 for cost);
 - re-reading the plan's Constraints before each step (a goal-drift guard);
 - limiting the implementer's self-review to code writing plus the existing tests;
 - the 150-call budget and the stop after two failed attempts;

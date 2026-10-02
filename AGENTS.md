@@ -112,7 +112,8 @@ No linter or formatter is configured in any package: typecheck + tests are the g
 - Building a feature spec-first (spec → plan → red-first tests → implementers → reviewers) →
   `docs/sdd-cascade.md` for how much spec it needs, then `.claude/agents/README.md` for the
   order, the briefs, lane slices, the package gate and the fix loop. The main session
-  orchestrates; read that file before starting the chain.
+  orchestrates. `spec-creator` and `implementation-planner` are run by hand; once a plan is
+  saved, `/implement <plan-path>` runs the rest.
 - Agent prompt templates, model choice → `docs/agent-prompts/`
 - Whether a skill actually changes a review → `docs/skills-control-experiment.md`
 - Adding or changing backend code (`server/src/**`, `reviewer-core/src/**`) → the

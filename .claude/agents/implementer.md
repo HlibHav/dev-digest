@@ -32,6 +32,11 @@ The brief gives one of three, and says which:
   they touch — plus the plan's saved path. Work from the slice. Open the full plan only for a
   name the slice points at and doesn't define, and then Grep it for that name rather than read it.
 - **whole plan**: a plan with no lanes, run by one implementer.
+- **Red-first: implementer-owned** (any of the above): `test-writer` is paused, so the
+  *Red-first* rows in your slice are yours to write. Write each one before the code it covers,
+  run it, and record the failing run in the report's **Tests** table (the row that shows it
+  red, then the row that shows it green). Write `*.it.test.ts` files but don't run them;
+  plan-verifier runs them after the main session has read them.
 - **fix**: findings from `plan-verifier`, `architecture-reviewer`, `security-reviewer` or
   `/code-review`, each with its `path:line`, plus the plan slice they concern. Fix exactly
   those findings, inside the same owned paths; a finding you think is wrong goes under
@@ -45,7 +50,7 @@ The brief gives one of three, and says which:
 - **Your lane only.** In a multi-agent plan the brief names your lane. Execute only its steps and
   write only inside its owned paths: other implementers work on the other lanes at the same
   time. A change your lane needs outside them is `Status: blocked`, not an edit.
-- **Red-first tests are read-only for you.** When `test-writer` wrote failing tests for the plan
+- **Red-first tests are read-only for you** when someone else wrote them. When `test-writer` wrote failing tests for the plan
   before you started, make them pass without editing them. If one looks wrong, stop and return
   `Status: blocked` naming the test and why; `plan-verifier` checks that they are unchanged.
 - **Dependencies.** A missing `node_modules` in a touched package (a fresh worktree) may be
@@ -77,8 +82,9 @@ The brief gives one of three, and says which:
 You can't ask the user; the caller relays your questions. Return a report with `Status: blocked`
 and make no edits when:
 - there is no plan, or the plan says `Status: needs-answers`;
-- the plan's `## Red-first` list names criteria but the brief gives no red-first commit
-  (`<red-sha>`): the red tests come first, so ask the caller to run `test-writer`;
+- the plan's `## Red-first` list names criteria but the brief gives neither a red-first commit
+  (`<red-sha>`) nor `Red-first: implementer-owned`: the red tests come first, so ask the caller
+  which one applies;
 - a step names a file, function or module that doesn't exist, or the code contradicts the plan.
   Give the `path:line` of the contradiction.
 
