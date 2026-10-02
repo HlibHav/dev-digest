@@ -54,14 +54,14 @@ Save as: docs/plans/2026-10-02-project-context.md
 | R45 | Docs come from the local clone. Run-time resolution makes no network call and no new LLM call. | NFR Performance, Cost | verified |
 | R46 | A failure to read the attachment store is logged, and the run continues without project context. A repo with no clone leaves every doc `unreadable`. | NFR Reliability; Workflows | verified |
 | R47 | Every new string goes through `client/messages/en/*.json`, in English. | NFR i18n | verified |
-| R48 | Changing attachments creates no agent or skill version. | NC-2 | assumed default (confirm) |
-| R49 | No maximum doc size or file count. Files are decoded as UTF-8, so invalid bytes become U+FFFD. | NC-4b | assumed default (confirm) |
-| R50 | Counts come from the server tokenizer (`container.tokenizer`) and show as "≈ N tokens". | NC-6 | assumed default (confirm) |
-| R51 | The empty state reads "No Markdown docs found in this repository's default branch. Attach docs to agents and skills from their Context tabs." | NC-10 | assumed default (confirm) |
-| R52 | No active repo: the page and both tabs show a "Select a repository" notice. Not cloned (`cloned: false`): they show a "This repository isn't cloned yet" notice and no list. | NC-11 | assumed default (confirm) |
-| R53 | No privacy note about doc text going to the LLM provider. | NC-12 | assumed default (confirm) |
-| R54 | An empty attached doc is injected as an empty block and snapshotted with `text: ""`. | NC-14, Edge cases | assumed default (confirm) |
-| R55 | No latency threshold. The scan result is cached in process per repo until Refresh or a restart. | NFR-perf | assumed default (confirm) |
+| R48 | Changing attachments creates no agent or skill version. | NC-2 | confirmed (Glib, 2026-10-02) |
+| R49 | No maximum doc size or file count. Files are decoded as UTF-8, so invalid bytes become U+FFFD. | NC-4b | confirmed (Glib, 2026-10-02) |
+| R50 | Counts come from the server tokenizer (`container.tokenizer`) and show as "≈ N tokens". | NC-6 | confirmed (Glib, 2026-10-02) |
+| R51 | The empty state reads "No Markdown docs found in this repository's default branch. Attach docs to agents and skills from their Context tabs." | NC-10 | confirmed (Glib, 2026-10-02) |
+| R52 | No active repo: the page and both tabs show a "Select a repository" notice. Not cloned (`cloned: false`): they show a "This repository isn't cloned yet" notice and no list. | NC-11 | confirmed (Glib, 2026-10-02) |
+| R53 | No privacy note about doc text going to the LLM provider. | NC-12 | confirmed (Glib, 2026-10-02) |
+| R54 | An empty attached doc is injected as an empty block and snapshotted with `text: ""`. | NC-14, Edge cases | confirmed (Glib, 2026-10-02) |
+| R55 | No latency threshold. The scan result is cached in process per repo until Refresh or a restart. | NFR-perf | confirmed (Glib, 2026-10-02) |
 
 ## Open questions & recommendations
 - **I changed a contract: the list response.** Contracts, `GET /repos/:id/context`. The spec says "→ array of docs", but AC-5a, AC-6 and NC-11 need a scan time and a clone flag. The plan returns the envelope `ContextDocList { cloned, scanned_at, files }`. The brief allows route changes. Not blocking.

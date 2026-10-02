@@ -143,17 +143,17 @@ Non-goals:
 - The PR edits an attached spec (design-4's PR #482): base version injected and flagged (AC-26).
 - Two runs of the same agent at once: each resolves and snapshots its own docs; the snapshots don't share state.
 - A doc that changes on the default branch between two runs: each trace shows the text its own run sent.
-- An empty `.md` file: listed with 0 tokens; when attached, injected as an empty block and snapshotted with empty text. [NEEDS CLARIFICATION: inject or skip empty docs]
+- An empty `.md` file: listed with 0 tokens; when attached, injected as an empty block and snapshotted with empty text. Decided (Glib, 2026-10-02, NC-14): inject as an empty block.
 - A very large doc: shown with its real token count, and no cap applies (Non-goals). A context-window overflow surfaces as the run's normal provider failure.
 - Map-reduce: the section is repeated in every per-file call (AC-17); `specs_tokens` is per prompt, not per run.
-- The Agent or Skill Context tab with no active repository, or a repository not yet cloned. [NEEDS CLARIFICATION: NC-11]
+- The Agent or Skill Context tab with no active repository, or a repository not yet cloned. Decided (Glib, 2026-10-02, NC-11): no active repo → a "Select a repository" notice; not cloned → a "This repository isn't cloned yet" notice and no list.
 - Very long paths and deep trees: the path text wraps or truncates with the full path available on hover; no row hides its checkbox.
 - Old traces: AC-39.
 
 ## Non-functional requirements
 
 - Performance:
-  - Listing docs with token counts: [NEEDS CLARIFICATION: latency threshold and the largest repo size it must hold for].
+  - Listing docs with token counts: no threshold (Glib, 2026-10-02); the scan result is cached in process per repo until Refresh or a restart.
   - Run-time resolution adds no network call; docs come from the local clone. Beyond reading the attached files, it adds no measurable cost to a run.
 - Cost:
   - No new LLM call.
@@ -163,13 +163,13 @@ Non-goals:
   - Doc text is untrusted: it is fenced and framed (AC-28 to AC-32).
   - Only listed paths are readable (AC-4), inside the clone with no symlink escape (AC-3).
   - The preview is sanitised (AC-8).
-  - Doc content is sent to the agent's LLM provider. [NEEDS CLARIFICATION: NC-12, a privacy note in the UI]
+  - Doc content is sent to the agent's LLM provider. Decided (Glib, 2026-10-02, NC-12): no privacy note in the UI.
 - Accessibility:
   - None beyond existing: the doc list, its checkboxes, Preview and reorder follow the agent Skills tab, including its keyboard reordering.
   - Status marks in the trace carry text, not only colour.
 - i18n:
   - Every new user-facing string goes through the client's message namespaces, English only.
-  - The Project Context empty-state copy that today promises "every agent … reads them" is rewritten to describe attachment. [NEEDS CLARIFICATION: NC-10, the new wording]
+  - The Project Context empty-state copy that today promises "every agent … reads them" is rewritten to describe attachment. Decided (Glib, 2026-10-02, NC-10): "No Markdown docs found in this repository's default branch. Attach docs to agents and skills from their Context tabs."
 - Reliability:
   - A missing or unreadable doc never fails a run (AC-24, AC-25).
   - A failure to resolve attachments at all is logged, and the run continues without project context.
@@ -279,14 +279,14 @@ All JSON is snake_case. Shapes are behavioural; the plan decides where they live
 
 ## Open questions
 
-- [NEEDS CLARIFICATION: NC-2 — does attaching, detaching or reordering docs create a new agent version or skill version, as a skill link change does for agents?] — non-blocking (would add one AC).
-- [NEEDS CLARIFICATION: NC-4b — a maximum doc size or file count for the list, and how non-UTF-8 `.md` files are shown] — non-blocking.
-- [NEEDS CLARIFICATION: NC-6 — is a server-side, model-agnostic count marked "≈" acceptable, given the agent's model may tokenise differently?] — non-blocking.
-- [NEEDS CLARIFICATION: NC-10 — new empty-state wording for the Project Context page] — non-blocking.
-- [NEEDS CLARIFICATION: NC-11 — what the page and both Context tabs show when no repository is active or the repository is not cloned] — non-blocking.
-- [NEEDS CLARIFICATION: NC-12 — should the UI warn that attached doc text is sent to the LLM provider?] — non-blocking.
-- [NEEDS CLARIFICATION: NC-14 — inject or skip an empty attached doc] — non-blocking.
-- [NEEDS CLARIFICATION: NFR-perf — latency threshold for listing docs and the largest repo it must cover] — non-blocking.
+- Decided NC-2 (Glib, 2026-10-02): attaching, detaching or reordering docs creates no agent or skill version.
+- Decided NC-4b (Glib, 2026-10-02): no maximum doc size or file count; files decode as UTF-8, invalid bytes become U+FFFD.
+- Decided NC-6 (Glib, 2026-10-02): the server-side, model-agnostic count is shown as "≈ N tokens".
+- Decided NC-10 (Glib, 2026-10-02): see the empty-state wording above.
+- Decided NC-11 (Glib, 2026-10-02): see Edge cases.
+- Decided NC-12 (Glib, 2026-10-02): no warning.
+- Decided NC-14 (Glib, 2026-10-02): inject as an empty block.
+- Decided NFR-perf (Glib, 2026-10-02): no latency threshold; in-process scan cache per repo.
 
 ## Traceability
 
@@ -346,3 +346,4 @@ All JSON is snake_case. Shapes are behavioural; the plan decides where they live
 | 2026-10-02 | AC-42 proof `e2e` → `browser (main session)`; metric 2 compares against the sum of `specs_docs[].tokens`; Problem corrected (no sidebar item exists), AC-43 adds it | update mode: e2e flows ban LLM calls and the hermetic seed has no clone; `specs_tokens` includes framing, labels and reminder; the nav claim was wrong. AC-42 decided by Glib, the rest by the main session |
 | 2026-10-02 | Status → approved | Glib approved the draft ("ok") |
 | 2026-10-02 | AC-6: page footer shows "N tokens total" instead of design-1's chunk count | Glib's decision: the user sees the token cost of docs while choosing them |
+| 2026-10-02 | Closed NC-2, NC-4b, NC-6, NC-10, NC-11, NC-12, NC-14, NFR-perf with the planner's defaults (plan R48–R55) | Glib accepted all eight defaults |
