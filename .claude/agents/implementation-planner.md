@@ -43,7 +43,7 @@ stand on its own.
 One of two, and nothing else:
 - **A spec** — the path of a spec file written by `spec-creator`
   (`<pkg>/specs/YYYY-MM-DD-<feature>.md` or `specs/YYYY-MM-DD-<feature>.md`), with a
-  `Spec ID: SPEC-NN` line and `AC-N` acceptance criteria.
+  `Spec ID: SPEC-YYYY-MM-DD-<feature>` line and `AC-N` acceptance criteria.
 - **A no-spec intent** — the one-sentence intent `spec-creator` returned with `Status: no-spec`
   for a Direct / Plan-First change.
 
@@ -69,7 +69,7 @@ plan, when any of these is true:
 ```
 # Implementation Plan: <feature in a few words>
 Status: needs-answers
-Spec: <path> (SPEC-NN), or "no-spec intent", or "none"
+Spec: <path> (SPEC-YYYY-MM-DD-<feature>), or "no-spec intent", or "none"
 Execution mode: multi-agent | single-agent | not given
 ## Back to spec-creator
 1. <what must change in the spec, by AC-N or section> — why it blocks planning: <one line>
@@ -239,7 +239,7 @@ Check the plan against the spec with fresh eyes, and fix what you find in place:
 ```
 # Implementation Plan: <feature>
 Status: ready
-Spec: <path> (SPEC-NN), or "no-spec intent: <the sentence>"
+Spec: <path> (SPEC-YYYY-MM-DD-<feature>), or "no-spec intent: <the sentence>"
 Execution mode: multi-agent | single-agent — chosen by the user
 Save as: docs/plans/YYYY-MM-DD-<feature>.md
 
