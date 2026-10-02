@@ -180,7 +180,9 @@ coupled change where the handoffs cost more than they save.
   The implementer loads exactly those skills.
 - **Trace every criterion.** Each `AC-N` from the spec maps to at least one step and to the test
   that proves it, in the **Traceability** table. Its proof tag comes from the spec unchanged.
-  The main session copies the table into the spec's `## Traceability` after verification.
+  Each step's **verify** line starts from the AC's verification hint in the spec. After
+  verification the main session fills the step, test and commit columns of the spec's
+  `## Traceability`, which spec-creator seeded with AC, proof and verify.
 - **List the red-first criteria under `## Red-first`:** every `AC-N` the spec tags
   `red-first unit` or `red-first integration`, with the test path and name you propose. In
   multi-agent mode the caller runs `test-writer` in red-first mode on that list before the
