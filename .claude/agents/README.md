@@ -13,7 +13,7 @@ its own `.md` file, so read that file before you change the agent.
 | [researcher](researcher.md) | Answers one concrete question from the repo or from external sources, with evidence and an explicit "not found" list | `sonnet` | Read-only in the repo (`Read, Grep, Glob`); `WebSearch`, `WebFetch`; NotebookLM create/add/query only (no delete, share or studio) | A question plus its scope (repo / external / both) and what it feeds | **Repo report** or **External report**, or clarifying questions |
 | [implementation-planner](implementation-planner.md) | Turns an approved spec into an Implementation Plan that respects modules, skills, rules and `INSIGHTS.md`: verifies the requirements (restates each as a checkable `R1`, `R2`… linked to the spec), asks and recommends, traces every `AC-N` to steps and tests, and shapes the steps for the execution mode the user chose (parallel lanes with non-overlapping owned paths, or one linear pass). Writes no spec and never changes a criterion | `opus` | Read-only: `Read, Grep, Glob` (no `Skill`, `Bash`, `Write` or web) | An approved spec from spec-creator, or its no-spec intent for a Direct change, plus the execution mode the user chose (optionally a researcher report) | **Implementation Plan** (`Status: ready`) with verified requirements, open questions and recommendations, the spec's criteria verbatim, a traceability table, a `## Red-first` list, lanes (multi-agent) and test-first steps, saved by the main session as `docs/plans/YYYY-MM-DD-<feature>.md`; or questions (`needs-answers`), including the mode when the brief lacks it, that go back to spec-creator or to the user |
 | [test-writer](test-writer.md) | Writes tests for BE and UI in two modes: red-first from a plan's acceptance criteria, or backfill for existing code | `sonnet` | `Read, Grep, Glob, Edit, Write, Bash, Skill`; hooks limit writes to test paths and Bash to the `test` profile; every test run inside `srt`; writes but doesn't run integration tests or e2e | A plan (red-first) or named files (backfill) | **Test Report**: criterion → test → evidence, plus test files in the working tree |
-| [implementer](implementer.md) | Executes the plan in the backend and the UI, self-reviews how its own code is written, and runs typecheck plus the existing unit tests | `sonnet` | `Read, Grep, Glob, Edit, Write, Bash, Skill`; preloads `engineering-insights`, `onion-architecture`, `frontend-ui-architecture`; no commit, push or research | An Implementation Plan with `Status: ready`, after the user chose multi-agent | **Implementation Report** (`done` / `partial` / `blocked`) plus uncommitted changes in the working tree |
+| [implementer](implementer.md) | Executes the plan in the backend and the UI, self-reviews how its own code is written, and runs targeted tests in a lane (typecheck plus the unit suite for a whole plan); fixes reviewer findings in fix mode | `sonnet` | `Read, Grep, Glob, Edit, Write, Bash, Skill`; preloads `onion-architecture`, `frontend-ui-architecture`; no commit, push, research or `INSIGHTS.md` write | Its lane's slice of an Implementation Plan with `Status: ready` (multi-agent), or reviewer findings (fix mode) | **Implementation Report** (`done` / `partial` / `blocked`) with insight candidates, plus uncommitted changes in the working tree |
 | [architecture-reviewer](architecture-reviewer.md) | Checks a diff against the onion and client boundaries, runs `lint:boundaries` and the route test, reports what the lint can't see | `opus` | Read-only: `Read, Grep, Glob, Bash`; a hook limits Bash to the `architecture` profile; preloads both architecture skills | A target (`base..head`, branch or uncommitted tree) | **Architecture Review**: findings with severity, rule, `path:line` and evidence; `pass` / `fail` |
 | [plan-verifier](plan-verifier.md) | Checks finished code against every plan item and traces every hunk back to the plan; no advice | `sonnet` | Read-only: `Read, Grep, Glob, Bash`; a hook limits Bash to the `verify` profile | A plan, a target, optionally the Test Report | **Plan Verification**: a verdict with evidence per item, unmapped changes; `verified` / `gaps` |
 | [security-reviewer](security-reviewer.md) | Reviews a diff for security defects in the changed lines — workspace scoping, input validation, secrets, prompt injection into the review LLM, SSRF and path traversal, unsafe rendering, agent-hook holes — and never executes the code under review | `opus` | Read-only: `Read, Grep, Glob, Bash`; a hook limits Bash to the `security` profile (read-only git, `diff`, `gh pr view`; no test, lint or typecheck run); preloads `security` | A target (`base..head`, branch or uncommitted tree) | **Security Review**: attack surface, findings with severity, rule, `path:line`, evidence and exploit path; `pass` / `fail` |
@@ -25,9 +25,10 @@ None of them can ask the user, because Claude Code removes `AskUserQuestion` fro
 When the input is too vague to act on, each agent returns its questions to the calling session,
 and that session asks the user.
 
-None of them writes `INSIGHTS.md` except the implementer, through its preloaded
-`engineering-insights`. The others end their report with **Insight candidates**, and the main
-session records them through that skill.
+None of them writes `INSIGHTS.md`. Each ends its report with **Insight candidates**, and the
+main session records them once through the `engineering-insights` skill. The implementer used
+to record them itself, but parallel lanes would write the same file at once
+(`../decisions/2026-10-02-sdd-chain-token-and-review-order.md`).
 
 ## How they connect
 
@@ -45,27 +46,41 @@ flowchart LR
   S -. external facts .-> P
   P -- plan --> TW[test-writer]
   TW -- red tests + Test Report --> S
-  S -- commit red tests --> I[implementer]
-  P -- plan --> I
-  I -- Implementation Report --> AR[architecture-reviewer]
-  S -- bundle path + checks already run --> AR
-  AR -- Architecture Review --> S
-  S -- bundle path + Architecture Review checks + checks already run --> PV[plan-verifier]
+  S -- commit red tests + lane slice of the plan --> I[implementer]
+  I -- Implementation Report --> S
+  S -- package gate per DAG level --> S
+  S -- plan + bundle path + checks already run --> PV[plan-verifier]
   I -- Implementation Report --> PV
-  P -- plan --> PV
   TW -- criterion → test map --> PV
   PV -- Plan Verification --> S
-  S -- bundle path --> SR[security-reviewer]
+  S -- verified: bundle path + checks already run --> AR[architecture-reviewer]
+  S -- verified: bundle path --> SR[security-reviewer]
+  S -- verified: /code-review on the bundle --> S
+  AR -- Architecture Review --> S
   SR -- Security Review --> S
+  S -- findings, fix mode, at most 2 rounds --> I
   S -- plan + verified code --> DW[doc-writer]
 ```
 
 The main session is the orchestrator. It passes each artifact on verbatim, because a subagent
 sees no conversation history. The diff is the exception: it is never pasted into a brief. The
 main session runs `.claude/scripts/review-bundle.sh <base>...<head> <out-dir>` once and passes
-the path (see *Brief for reviewers*). The two reviewers run one after the other,
-architecture-reviewer first, because plan-verifier reuses its check results instead of
-running them again. The red-first leg is required whenever the plan's `## Red-first` list names
+the path (see *Brief for reviewers*).
+
+Review runs in two stages. **plan-verifier first**: it is the cheap completeness gate, and a
+`gaps` verdict goes back to the implementer before any other review is spent on unfinished code.
+It gains nothing from running later, because it marks other owners' checks `unverifiable` with
+the owner named. **Then, in parallel**, on the same head: `architecture-reviewer`,
+`security-reviewer` and the main session's `/code-review` (correctness bugs, which no agent in
+this set looks for). All three are read-only and independent.
+
+**Fix loop.** The main session hands the findings to the implementer in fix mode (each finding
+with its `path:line`, plus the plan slice it concerns), reruns the package gate, and re-runs only
+the reviewer whose findings were fixed, on the new head. At most two rounds; after that the
+main session takes it to the user. A finding that says the plan or the spec is wrong goes back to
+`implementation-planner` or `spec-creator`, not into a fix.
+
+The red-first leg is required whenever the plan's `## Red-first` list names
 criteria: the implementer blocks without a red-first commit, and plan-verifier marks those
 criteria `partial` when the leg was skipped. Backfill after the implementer is for code that
 already existed, not a substitute.
@@ -79,9 +94,18 @@ planner's recommendation (multi-agent for non-trivial work, single-agent for a s
 coupled change). The main session saves the plan as `docs/plans/YYYY-MM-DD-<feature>.md`.
 
 - **Multi-agent** runs the flow above with several implementers at once: one per lane of the
-  plan's `## Lanes` table, each briefed with its lane's steps and owned paths, started when the
-  lanes it waits for (`after:`) are done. Owned paths never overlap between lanes that run
-  together, and contracts come first as lane 0.
+  plan's `## Lanes` table, started when the lanes it waits for (`after:`) are done. Owned paths
+  never overlap between lanes that run together, and contracts come first as lane 0.
+  - **Lane slice.** Each implementer's brief holds only its slice of the plan, copied verbatim:
+    the header, *Constraints*, *Skills for the implementer*, its *Lanes* row, its steps, the
+    *Red-first* rows they turn green and the *Contracts & data* items they touch, plus the
+    plan's saved path. The whole plan went to every lane before, and at ~18k tokens it was
+    re-sent on each of ~90 requests (profiled 2026-09-28).
+  - **Package gate.** Lanes share one working tree, so a lane runs only targeted tests and
+    judges typecheck on its own paths: a sibling lane may be mid-change, and lane 0 may end with
+    a consumer's typecheck red. After every lane of a DAG level is done, the main session runs
+    each touched package's typecheck and unit suite once and records the results for the
+    *Checks already run* table.
 - **Single-agent** runs the plan's one linear sequence in the main session alone, with no
   subagents: it writes and commits the red-first tests, executes the steps test-first, then
   runs the implementer checks and every check under *Checks for reviewers* itself.
@@ -125,7 +149,9 @@ implementer's **Handoff to reviewers** repeats that split.
 
 | Check | Owner |
 |---|---|
-| typecheck and the existing unit tests of each touched package | implementer |
+| targeted runs of a lane's own and red-first tests; typecheck judged on its owned paths | implementer (lane) |
+| typecheck and the existing unit tests of each touched package | main session, once per DAG level (multi-agent); implementer for a whole plan; the main session itself in single-agent mode |
+| correctness bugs (`/code-review` on the bundle) | main session, in parallel with the two reviewers |
 | `pnpm lint:boundaries`, the onion-architecture step 9 report, `route-adapter-calls.test.ts` | architecture-reviewer |
 | acceptance verification | plan-verifier |
 | integration tests (`*.it.test.ts`, Docker) as a review check | plan-verifier, after the main session has read test-writer's new ones |
@@ -138,7 +164,7 @@ implementer's **Handoff to reviewers** repeats that split.
 ## Brief for reviewers
 
 A reviewer's brief carries the target and everything already known about it, so the agent
-spends its turns on judgment, not on re-deriving facts the main session has. Both reviewers get
+spends its turns on judgment, not on re-deriving facts the main session has. Every reviewer gets
 the first three items; plan-verifier gets the fourth as well.
 
 1. **Target:** `<base>...<head>` and the head sha.
@@ -153,9 +179,8 @@ the first three items; plan-verifier gets the fourth as well.
    A row whose sha equals the target's head is evidence: the reader quotes it in its own
    Checks table with `brief` in the exit column and does not run the command again. A row with
    another sha, or a check with no row, is run as before.
-4. **plan-verifier only:** the plan, the Implementation Report, the Test Report's **Tests**
-   table when there is one, and the **Checks run** table from the Architecture Review, which
-   is why plan-verifier runs second.
+4. **plan-verifier only:** the full plan, the Implementation Reports and the Test Report's
+   **Tests** table when there is one.
 
 What this saved, measured on the intent-layer PR (2026-09-26): plan-verifier had re-run three
 typechecks and four unit suites the main session had just run, ~8 turns and 5 minutes; the two

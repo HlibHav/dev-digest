@@ -120,9 +120,10 @@ criterion to the test that should prove it.
 
 ## Step 3 — Collect evidence for each item
 
-- **Checks already run:** the brief's *Checks already run* table (and the **Checks run** table
-  of an Architecture Review it includes) lists commands the main session or an earlier agent
-  ran, each with a head sha and a result line. A row whose sha equals the target's head is
+- **Checks already run:** the brief's *Checks already run* table lists commands the main
+  session ran (its package gate after the last DAG level) or an earlier agent ran, each with a
+  head sha and a result line. You run before the other reviewers, so there is no review output
+  to reuse. A row whose sha equals the target's head is
   evidence: quote it in your Checks table with `brief` in the exit column and don't run that
   command again. A row with another sha, or a check with no row, you run yourself.
 - **Steps:** compare the files the step names with the diff's stat. When the brief gives a

@@ -161,7 +161,14 @@ write a single step, and record the mode in the plan's `Execution mode:` field.
     typecheck red, which the consuming lane turns green. A consumer's implementation goes in
     its own lane, never in lane 0;
   - a step two lanes would both need to touch goes in one lane, or the lanes run one after the
-    other.
+    other;
+  - each lane's implementer gets only its slice of the plan (the header, *Constraints*,
+    *Skills for the implementer*, its *Lanes* row, its steps, the *Red-first* rows they turn
+    green, the *Contracts & data* items they touch), so a lane's steps must stand on that slice:
+    every name a step consumes from another lane is spelled out in its `interfaces` line;
+  - lanes share one working tree, so a lane runs only targeted tests and the typecheck of its
+    owned paths; the main session runs each touched package's typecheck and unit suite once per
+    DAG level, after every lane at that level is done.
 - **Single-agent** — the main session runs everything itself, with no subagents: red-first tests,
   the steps test-first, the implementer checks, then every check under **Checks for
   reviewers**. Write one linear sequence ordered for one context: contracts first, then each
@@ -194,20 +201,28 @@ coupled change where the handoffs cost more than they save.
   obra/superpowers): which red tests this step turns green; the unit tests the implementer
   writes first for internals the red tests don't reach, by name with their key assertion; the
   `interfaces` it consumes from earlier steps and produces for later ones, as exact names and
-  signatures; and the command that proves the step with the output that means it passed. A step
+  signatures; and the command that proves the step with the output that means it passed. That
+  **verify** command is a targeted run — one test file, or one file with `-t '<name>'` — never
+  a package's whole suite; whole-suite runs belong to the checks below. A step
   decides what the implementer can't decide alone and nothing more: no function bodies the
   signature and tests already determine, no "handle edge cases" lines that decide nothing.
-- **Split the checks strictly.** Checks for the implementer are exactly two per touched package:
-  typecheck and the unit test command from the root `CLAUDE.md` Check table (for `server/`, the
-  command that excludes `*.it.test.ts`), plus the `server` checks after a `reviewer-core` change.
+- **Split the checks strictly.** Checks for the implementer depend on the mode:
+  - **multi-agent:** per lane, the targeted runs of the lane's tests and red-first tests, plus
+    the typecheck of each touched package judged on the lane's owned paths only. Each touched
+    package's typecheck and unit suite (the root `CLAUDE.md` Check table; for `server/`, the
+    command that excludes `*.it.test.ts`), plus the `server` checks after a `reviewer-core`
+    change, go to the main session's gate after each DAG level;
+  - **single-agent:** exactly two per touched package, typecheck and that unit test command,
+    plus the `server` checks after a `reviewer-core` change.
   Everything else goes under **Checks for reviewers**, even when a skill tells the author to run
-  it, and each check names its one owner:
-  - `architecture-reviewer`: `pnpm lint:boundaries`, the onion-architecture step 9 report and
-    the route-adapter-calls test;
+  it, and each check names its one owner. They run in this order: `plan-verifier` first, then
+  the other three in parallel:
   - `plan-verifier`: acceptance verification and the integration tests (`*.it.test.ts`,
     Docker);
+  - `architecture-reviewer`: `pnpm lint:boundaries`, the onion-architecture step 9 report and
+    the route-adapter-calls test;
   - `security-reviewer`: security review of the diff, including `.claude/hooks/**`;
-  - main session: e2e and `pr-self-review`.
+  - main session: `/code-review` of the diff for correctness, e2e and `pr-self-review`.
   The implementer's scope is set by its agent definition, not by the skills it loads.
 - When the spec and a test would disagree, the spec wins: flag the conflict under
   **Open questions & recommendations**. Nobody adjusts a test to fit code, and you don't adjust
@@ -299,13 +314,15 @@ Save as: docs/plans/YYYY-MM-DD-<feature>.md
 <shared schema + client mirror, migrations, i18n keys, seed; or "none">
 
 ## Checks for the implementer
-- <package>: `<typecheck command>` · `<unit test command>`   (nothing else — see Step 6)
+- multi-agent, per lane: `<targeted test command>` for each of the lane's test files · `<typecheck command>` judged on owned paths
+- multi-agent, main session after each DAG level / single-agent: <package>: `<typecheck command>` · `<unit test command>`
+  (nothing else — see Step 6)
 
-## Checks for reviewers
-- architecture-reviewer: <lint:boundaries, step 9 report, route-adapter-calls test — whichever apply>
+## Checks for reviewers          (plan-verifier first, then the rest in parallel)
 - plan-verifier: <AC-1…AC-n; integration tests (Docker) — whichever apply>
+- architecture-reviewer: <lint:boundaries, step 9 report, route-adapter-calls test — whichever apply>
 - security-reviewer: <security review — always, when the diff has code or hooks>
-- main session: <e2e, pr-self-review — whichever apply>
+- main session: <`/code-review`, e2e, pr-self-review — whichever apply>
 
 ## Out of scope
 - Writing or changing the spec (spec-creator), architecture review (architecture-reviewer),
