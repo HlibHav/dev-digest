@@ -11,6 +11,8 @@ describe("Project Context sidebar item", () => {
     render(<Sidebar ctx={{ activeKey: activeKeyFor("/repos/r1/context"), repoId: "r1" }} />);
     const link = screen.getByRole("link", { name: /project context/i });
     expect(link).toHaveAttribute("href", "/repos/r1/context");
+    // the item sits in the WORKSPACE group, not SKILLS LAB
+    expect(link.parentElement?.firstElementChild?.textContent).toBe("WORKSPACE");
     // the active marker is the 2.5px accent bar NavItem renders inside the row
     const row = link.firstElementChild as HTMLElement;
     expect(row.querySelector("span")).not.toBeNull();

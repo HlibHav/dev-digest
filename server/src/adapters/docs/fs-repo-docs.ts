@@ -25,9 +25,6 @@ export const EXCLUDED_DIRS: ReadonlySet<string> = new Set([
 /** Hidden folders are skipped too, except this one. */
 const ALLOWED_HIDDEN_DIR = '.devdigest';
 
-/** A single doc over this size is not discoverable (keeps a scan bounded). */
-export const MAX_DOC_BYTES = 1024 * 1024;
-
 function isExcludedSegment(segment: string): boolean {
   if (EXCLUDED_DIRS.has(segment)) return true;
   return segment.startsWith('.') && segment !== ALLOWED_HIDDEN_DIR;
@@ -58,7 +55,7 @@ export class FsRepoDocs implements RepoDocs {
       const real = await realpath(join(rootReal, ...segments));
       if (!isInside(rootReal, real)) return null;
       const st = await stat(real);
-      if (!st.isFile() || st.size > MAX_DOC_BYTES) return null;
+      if (!st.isFile()) return null;
       return await readFile(real, 'utf8');
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
@@ -90,7 +87,7 @@ export class FsRepoDocs implements RepoDocs {
         continue;
       }
       const target = await stat(file);
-      if (!target.isFile() || target.size > MAX_DOC_BYTES) continue;
+      if (!target.isFile()) continue;
       const content = await readFile(file, 'utf8');
       out.push({
         path: relative(rootReal, full).split(sep).join('/'),

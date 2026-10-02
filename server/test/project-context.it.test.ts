@@ -146,6 +146,28 @@ d('Project Context routes (Testcontainers pg + temp clone)', () => {
     }
   });
 
+  it('lists and reads a .md over 1 MiB (no maximum doc size)', async () => {
+    const a = await app();
+    const big = '# big\n' + 'lorem ipsum dolor sit amet\n'.repeat(40000);
+    await writeFile(join(clone, 'docs', 'big.md'), big);
+    try {
+      await a.inject({ method: 'POST', url: `/repos/${repoId}/context/reindex` });
+      const list = ContextDocList.parse(
+        (await a.inject({ method: 'GET', url: `/repos/${repoId}/context` })).json(),
+      );
+      expect(list.files.map((f) => f.path)).toContain('docs/big.md');
+      const res = await a.inject({
+        method: 'GET',
+        url: `/repos/${repoId}/context/file?path=${encodeURIComponent('docs/big.md')}`,
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.json().content).toBe(big);
+    } finally {
+      await rm(join(clone, 'docs', 'big.md'));
+      await a.inject({ method: 'POST', url: `/repos/${repoId}/context/reindex` });
+    }
+  });
+
   it('AC-3: does not follow directory symlinks', async () => {
     const a = await app();
     const res = await a.inject({ method: 'GET', url: `/repos/${repoId}/context` });

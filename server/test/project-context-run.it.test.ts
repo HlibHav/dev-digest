@@ -17,6 +17,7 @@ import {
 } from '../src/adapters/mocks.js';
 import * as t from '../src/db/schema.js';
 import type { RunTrace } from '@devdigest/shared';
+import { TiktokenTokenizer } from '../src/adapters/tokenizer/index.js';
 import type { RepoDocs } from '../src/vendor/shared/adapters.js';
 
 /**
@@ -244,6 +245,8 @@ d('Project Context run-time injection (Testcontainers pg)', () => {
       expect.objectContaining({ path: 'specs/public-api.md', status: 'modified_by_pr' }),
     ]);
     expect(trace.log.some((l) => l.msg.includes('modified by this PR'))).toBe(true);
+    // R34: the base text IS sent, so the doc counts as read.
+    expect(trace.specs_read).toEqual(['specs/public-api.md']);
     await app.close();
   });
 
@@ -279,6 +282,9 @@ d('Project Context run-time injection (Testcontainers pg)', () => {
     const section = trace.prompt_assembly.specs!;
     expect(section).toContain('OWN TEXT');
     expect(section).toContain('INHERITED TEXT');
+    // Definition pinned: the section body (the rendered block, without the
+    // `## Project context` heading), counted with the container's tokenizer.
+    expect(trace.prompt_assembly.specs_tokens).toBe(new TiktokenTokenizer().count(section));
     expect(trace.prompt_assembly.specs_tokens).toBeGreaterThan(0);
     await app.close();
   });
