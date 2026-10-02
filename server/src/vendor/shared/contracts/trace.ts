@@ -46,6 +46,8 @@ export const PromptAssembly = z.object({
   skills_tokens: z.number().int().nullish(),
   memory: z.string().nullish(),
   specs: z.string().nullish(),
+  /** Tokens contributed by the project-context (specs) block alone. */
+  specs_tokens: z.number().int().nullish(),
   /** Callers-of-changed-symbols digest (T1.3); null when absent. */
   callers: z.string().nullish(),
   /** Repo skeleton / map (T3); null when absent. Enables per-slot token
@@ -78,6 +80,23 @@ export const RunStats = z.object({
 });
 export type RunStats = z.infer<typeof RunStats>;
 
+export const SpecDocStatus = z.enum(['injected', 'not_found', 'unreadable', 'modified_by_pr']);
+export type SpecDocStatus = z.infer<typeof SpecDocStatus>;
+
+export const SpecDocOrigin = z.enum(['agent', 'skill']);
+export type SpecDocOrigin = z.infer<typeof SpecDocOrigin>;
+
+/** One project-context doc as the run saw it. */
+export const SpecDocSnapshot = z.object({
+  path: z.string(),
+  status: SpecDocStatus,
+  origin: SpecDocOrigin,
+  skill_name: z.string().nullish(),
+  tokens: z.number().int().nullish(),
+  text: z.string().nullish(),
+});
+export type SpecDocSnapshot = z.infer<typeof SpecDocSnapshot>;
+
 /** The single-document trace stored in `run_traces.trace`. */
 export const RunTrace = z.object({
   config: z.object({
@@ -94,6 +113,7 @@ export const RunTrace = z.object({
   raw_output: z.string(),
   memory_pulled: z.array(MemoryPulled),
   specs_read: z.array(z.string()),
+  specs_docs: z.array(SpecDocSnapshot).nullish(),
   log: z.array(RunLogLine),
 });
 export type RunTrace = z.infer<typeof RunTrace>;

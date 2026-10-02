@@ -261,13 +261,79 @@ export const PrCommentInput = z.object({
 export type PrCommentInput = z.infer<typeof PrCommentInput>;
 
 // ---- Project Context ----
+export const ContextDocCategory = z.enum(['specs', 'insights', 'docs', 'other']);
+export type ContextDocCategory = z.infer<typeof ContextDocCategory>;
+
+export const ContextUsedBy = z.object({
+  agents: z.number().int(),
+  skills: z.number().int(),
+});
+export type ContextUsedBy = z.infer<typeof ContextUsedBy>;
+
 export const SpecFile = z.object({
   path: z.string(),
   content: z.string().nullish(),
   size: z.number().int().nullish(),
   updated_at: z.string().nullish(),
+  category: ContextDocCategory,
+  tokens: z.number().int(),
+  used_by: ContextUsedBy,
 });
 export type SpecFile = z.infer<typeof SpecFile>;
+
+export const ContextDocList = z.object({
+  cloned: z.boolean(),
+  scanned_at: z.string().nullable(),
+  files: z.array(SpecFile),
+});
+export type ContextDocList = z.infer<typeof ContextDocList>;
+
+export const ContextDocContent = z.object({
+  path: z.string(),
+  content: z.string(),
+  tokens: z.number().int(),
+});
+export type ContextDocContent = z.infer<typeof ContextDocContent>;
+
+export const ContextDocQuery = z.object({ path: z.string().min(1).max(1024) });
+export type ContextDocQuery = z.infer<typeof ContextDocQuery>;
+
+export const ContextRepoQuery = z.object({ repo_id: z.string().uuid() });
+export type ContextRepoQuery = z.infer<typeof ContextRepoQuery>;
+
+export const ContextAttachment = z.object({
+  path: z.string(),
+  order: z.number().int(),
+  tokens: z.number().int(),
+  present: z.boolean(),
+});
+export type ContextAttachment = z.infer<typeof ContextAttachment>;
+
+export const InheritedContextDoc = z.object({
+  path: z.string(),
+  skill_id: z.string(),
+  skill_name: z.string(),
+  tokens: z.number().int(),
+  present: z.boolean(),
+});
+export type InheritedContextDoc = z.infer<typeof InheritedContextDoc>;
+
+export const AgentContext = z.object({
+  attached: z.array(ContextAttachment),
+  inherited: z.array(InheritedContextDoc),
+});
+export type AgentContext = z.infer<typeof AgentContext>;
+
+export const SkillContext = z.object({
+  attached: z.array(ContextAttachment),
+  serialized: z.string().nullable(),
+});
+export type SkillContext = z.infer<typeof SkillContext>;
+
+export const ContextAttachmentsInput = z
+  .object({ paths: z.array(z.string().min(1).max(1024)).max(200) })
+  .refine((v) => new Set(v.paths).size === v.paths.length, { message: 'duplicate path' });
+export type ContextAttachmentsInput = z.infer<typeof ContextAttachmentsInput>;
 
 export const IndexStatus = z.object({
   status: z.enum(['idle', 'cloning', 'parsing', 'embedding', 'done', 'error']),
