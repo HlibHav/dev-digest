@@ -162,6 +162,10 @@ write a single step, and record the mode in the plan's `Execution mode:` field.
     its own lane, never in lane 0;
   - a step two lanes would both need to touch goes in one lane, or the lanes run one after the
     other;
+  - a lane's owned paths include the wiring its new code needs outside its own folder: the
+    module registration in `server/src/modules/index.ts`, a barrel `index.ts`, the i18n file.
+    When two lanes need the same wiring file, it goes in lane 0. Without it the lane can only
+    return `blocked`;
   - each lane's implementer gets only its slice of the plan (the header, *Constraints*,
     *Skills for the implementer*, its *Lanes* row, its steps, the *Red-first* rows they turn
     green, the *Contracts & data* items they touch), so a lane's steps must stand on that slice:
