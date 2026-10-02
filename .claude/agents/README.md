@@ -255,9 +255,10 @@ inside a hook is a deny (the audit instead reports that it could not check). Reg
 including the bypasses found in the 2026-09-24 security review, run with
 `python3 -m unittest discover -s .claude/hooks/tests`.
 
-**spec-creator has no hook, deliberately (Glib, 2026-10-01).** Its write limit (spec paths
-only) lives in its prompt. The main session checks `git status` after each run and reverts
-anything outside `specs/` folders. The trade-off is in `../decisions/2026-10-01-spec-creator-agent.md`.
+**spec-creator's write limit is a hook (Glib, 2026-10-02).** It started with the limit in its
+prompt only (`../decisions/2026-10-01-spec-creator-agent.md`); `agent-write-scope.py specs` now
+denies any write outside `<pkg>/specs/*.md` and root `specs/*.md`, and the prompt still states the
+limit. It has no write audit: its only writes go through Write/Edit, which the hook sees.
 
 **What stays open, deliberately.** Integration tests (`*.it.test.ts`) need Docker, and Docker
 access escapes any sandbox (a container can mount the host). So test-writer writes them but
