@@ -44,4 +44,4 @@ brainstorm (optional) → spec-creator → spec (WHAT/WHY) → implementation-pl
 
 ## Contents
 
-- `2026-10-02-project-context.md` — Project Context: discover repo `.md` docs, attach them to agents and skills, inject them into review prompts, per-doc snapshot in the run trace (server, reviewer-core, client). Status: draft.
+- `2026-10-02-project-context.md` — Project Context: discover repo `.md` docs, attach them to agents and skills, inject them into review prompts, per-doc snapshot in the run trace (server, reviewer-core, client). Status: implemented.

@@ -328,9 +328,9 @@ All JSON is snake_case. Shapes are behavioural; the plan decides where they live
 | AC-33 | red-first integration | `specs_read` = injected paths in order | 10 | `project-context-run.it.test.ts` "specs_read lists injected paths in order" | 5bfc60a, f3295d5 |
 | AC-34 | red-first integration | snapshot text equals block text, origins | 10 | `project-context-run.it.test.ts` "snapshot text equals block text, origins agent/skill" | 5bfc60a |
 | AC-35 | red-first integration | `specs_tokens` equals section count | 10 | `project-context-run.it.test.ts` "specs_tokens equals count of the section" | 5bfc60a, f3295d5 |
-| AC-36 | red-first integration | failed run keeps snapshot | 10 | `project-context-run.it.test.ts` "failed run keeps the snapshot" | 5bfc60a |
+| AC-36 | red-first integration | failed run keeps snapshot | 10 | `project-context-run.it.test.ts` "failed run keeps the snapshot"; "a cancelled run keeps the section…" (red on the cancel-flag bug in `platform/sse.ts`, green after its fix) | 5bfc60a; cancelled: this PR |
 | AC-37 | red-first unit | status marks in "Specs read" | 16 | `SpecsReadRow.test.tsx` "four paths, three distinct status marks" | 9ab573e |
-| AC-38 | red-first unit | click path → exact text | 16 | `SpecsReadRow.test.tsx` "clicking an injected path shows the exact text and tokens" | 9ab573e |
+| AC-38 | red-first unit | click path → exact text | 16 | `SpecsReadRow.test.tsx` "clicking an injected path shows the exact text and tokens"; "expand lifts the height cap…" (backfill, fails when the toggle is broken) | 9ab573e; expand: this PR |
 | AC-39 | red-first unit | old trace renders "—" | 16 | `SpecsReadRow.test.tsx` "legacy trace shows paths and —" | 9ab573e |
 | AC-40 | red-first unit | label + "317 tokens" | 16 | `RunTraceDrawer.test.tsx` "project context block label and 317 tokens" | 9ab573e |
 | AC-41 | red-first integration | delete agent → used_by drops | 2, 7 | `project-context.it.test.ts` "deleting agent/skill drops used_by" | ebf36fa, 678f4f9 |

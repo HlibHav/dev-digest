@@ -57,6 +57,22 @@ describe("SpecsReadRow", () => {
     expect(screen.getByText("Delta body")).toBeInTheDocument();
   });
 
+  it("AC-38: expand lifts the height cap on the sent text, collapse restores it, a new doc opens collapsed", () => {
+    renderRow(trace({ specs_docs: DOCS }));
+    fireEvent.click(screen.getByRole("button", { name: /specs\/a\.md/ }));
+    const pre = () => screen.getByText(/^(Alpha|Delta) body$/);
+    expect(pre().style.maxHeight).toBe("160px");
+    fireEvent.click(screen.getByRole("button", { name: "expand" }));
+    expect(pre().style.maxHeight).toBe("");
+    fireEvent.click(screen.getByRole("button", { name: "collapse" }));
+    expect(pre().style.maxHeight).toBe("160px");
+    fireEvent.click(screen.getByRole("button", { name: "expand" }));
+    fireEvent.click(screen.getByRole("button", { name: /specs\/d\.md/ }));
+    expect(pre()).toHaveTextContent("Delta body");
+    expect(pre().style.maxHeight).toBe("160px");
+    expect(screen.getByRole("button", { name: "expand" })).toBeInTheDocument();
+  });
+
   it("AC-39: a trace without specs_docs falls back to specs_read paths rendered as —", () => {
     renderRow(trace({ specs_read: ["specs/old.md"] }));
     expect(screen.getByText("specs/old.md")).toBeInTheDocument();
