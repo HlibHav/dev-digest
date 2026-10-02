@@ -10,6 +10,8 @@ const labels: ContextDocListLabels = {
   notInRepo: "not in this repo",
   inheritedFrom: (skill) => `inherited from ${skill}`,
   dragHandle: (path) => `Reorder ${path}`,
+  select: (path) => `Attach ${path}`,
+  tokens: (n) => `≈ ${n.toLocaleString("en-US")} tokens`,
   empty: "No documents",
 };
 
@@ -84,10 +86,26 @@ describe("ContextDocList", () => {
     expect(screen.queryByRole("button", { name: "Reorder a.md" })).toBeNull();
   });
 
+  it("every row checkbox is named after its doc path", () => {
+    setup([row("specs/a.md"), row("docs/b.md", { checked: true })]);
+    expect(screen.getByRole("checkbox", { name: /specs\/a.md/ })).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: /docs\/b.md/ })).toBeInTheDocument();
+  });
+
+  it("an inherited row's checkbox is disabled and still named", () => {
+    setup([row("a.md", { checked: true, inheritedFrom: "rubric" })]);
+    expect(screen.getByRole("checkbox", { name: /a\.md/ })).toBeDisabled();
+  });
+
+  it("a per-doc token count reads as an approximate, grouped number", () => {
+    setup([row("a.md", { tokens: 1226 })]);
+    expect(screen.getByText("≈ 1,226 tokens")).toBeInTheDocument();
+  });
+
   it("a missing row says it is not in the repo, shows 0 tokens and has no preview", () => {
     setup([row("gone.md", { checked: true, present: false, tokens: 0, category: null })]);
     expect(screen.getByText("not in this repo")).toBeInTheDocument();
-    expect(screen.getByText("0")).toBeInTheDocument();
+    expect(screen.getByText("≈ 0 tokens")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Preview" })).toBeNull();
   });
 

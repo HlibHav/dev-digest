@@ -16,14 +16,28 @@ export function SpecsReadRow({ trace }: { trace: RunTrace }) {
   const [openPath, setOpenPath] = React.useState<string | null>(null);
   const [expanded, setExpanded] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
+  const timer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  React.useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current);
+    },
+    [],
+  );
 
   if (rows.length === 0) return <span style={s.specsNone}>{t("trace.config.none")}</span>;
 
   const active: SpecRow | undefined = rows.find((r) => r.path === openPath && isOpenable(r));
   const copy = () => {
-    void navigator.clipboard?.writeText(active?.text ?? "");
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1200);
+    const write = navigator.clipboard?.writeText(active?.text ?? "");
+    if (!write) return;
+    write.then(
+      () => {
+        setCopied(true);
+        if (timer.current) clearTimeout(timer.current);
+        timer.current = setTimeout(() => setCopied(false), 1200);
+      },
+      () => {},
+    );
   };
 
   return (

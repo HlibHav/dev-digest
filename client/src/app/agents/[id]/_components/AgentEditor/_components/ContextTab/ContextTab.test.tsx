@@ -115,7 +115,9 @@ describe("agent ContextTab", () => {
     renderTab();
     expect(screen.getByText("specs/gone.md")).toBeInTheDocument();
     expect(screen.getByText("not in this repo")).toBeInTheDocument();
-    expect(screen.getByText("≈ 10 tokens")).toBeInTheDocument();
+    // The total and a.md's own row both read "≈ 10 tokens"; the missing row reads 0.
+    expect(screen.getAllByText("≈ 10 tokens")).toHaveLength(2);
+    expect(screen.getByText("≈ 0 tokens")).toBeInTheDocument();
   });
 
   it.each([

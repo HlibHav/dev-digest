@@ -330,8 +330,38 @@ export const SkillContext = z.object({
 });
 export type SkillContext = z.infer<typeof SkillContext>;
 
+/**
+ * A doc path `RepoDocs.read` can serve. MUST match the rules in
+ * `FsRepoDocs` (`server/src/adapters/docs/fs-repo-docs.ts`): the contract cannot
+ * import the adapter, so the excluded set and the hidden-folder rule are repeated here.
+ */
+const DOC_EXCLUDED_SEGMENTS: ReadonlySet<string> = new Set([
+  'node_modules',
+  'vendor',
+  'dist',
+  'build',
+  'out',
+  '.next',
+  'coverage',
+]);
+const DOC_ALLOWED_HIDDEN_SEGMENT = '.devdigest';
+
+export function isServableDocPath(path: string): boolean {
+  if (!path.toLowerCase().endsWith('.md')) return false;
+  if (path.startsWith('/') || path.includes('\\')) return false;
+  const segments = path.split('/');
+  if (segments.some((seg) => seg === '' || seg === '.' || seg === '..')) return false;
+  return !segments.some(
+    (seg) => DOC_EXCLUDED_SEGMENTS.has(seg) || (seg.startsWith('.') && seg !== DOC_ALLOWED_HIDDEN_SEGMENT),
+  );
+}
+
 export const ContextAttachmentsInput = z
-  .object({ paths: z.array(z.string().min(1).max(1024)).max(200) })
+  .object({
+    paths: z
+      .array(z.string().min(1).max(1024).refine(isServableDocPath, { message: 'not a servable doc path' }))
+      .max(200),
+  })
   .refine((v) => new Set(v.paths).size === v.paths.length, { message: 'duplicate path' });
 export type ContextAttachmentsInput = z.infer<typeof ContextAttachmentsInput>;
 

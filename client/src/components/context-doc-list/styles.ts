@@ -24,6 +24,15 @@ export const s = {
     cursor: "grab",
     padding: 0,
   } satisfies CSSProperties,
+  inheritedCheckbox: { width: 16, height: 16, margin: 0, opacity: 0.6 } satisfies CSSProperties,
+  srOnly: {
+    position: "absolute",
+    width: 1,
+    height: 1,
+    overflow: "hidden",
+    clip: "rect(0 0 0 0)",
+    whiteSpace: "nowrap",
+  } satisfies CSSProperties,
   handleInactive: {
     display: "inline-flex",
     color: "var(--text-muted)",

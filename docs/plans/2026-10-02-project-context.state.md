@@ -1,5 +1,5 @@
 # State: project-context
-Stage: 4 Close · next: pr-self-review, then minor findings to Glib, PR on his word
+Stage: 4 Close done · next: push + PR on Glib's word (stacked on the planner PR)
 Spec: specs/2026-10-02-project-context.md (SPEC-2026-10-02-project-context) · Plan: docs/plans/2026-10-02-project-context.md · Mode: multi-agent
 Inputs: prompt none · designs design-1..4.png in the session scratchpad (S3 sources listed in the spec's Input provenance)
 Red-first: implementer-owned
@@ -30,6 +30,8 @@ Expected red: —
 | R3 lint:boundaries | pnpm lint:boundaries | R3 tree | no dependency violations (183 modules) |
 | R3 SR-4 bench | tsx tok-bench2 (bounded tokenizer) | R3 tree | 1 MB single run 0 ms; worst case 255 KB of 256-char runs 3416 ms (residual, minor) |
 | AC-42 browser (dev stack :3200/:3201) | agent-browser: attach 2 docs, run Security Reviewer on PR #3, open trace | 6476dac | run 70b1dfb6 done, specs_read 2 paths, specs_tokens 3019, cost $0.0003; screenshots 01–07 in scratchpad/ac42 |
+| minor batch client | pnpm typecheck · pnpm test | 231440d+batch | exit 0 · 50 files, 270 passed |
+| minor batch server | typecheck · unit · lint:boundaries · project-context.it | 231440d+batch | exit 0 · 35 files 343 passed · 0 violations · 23 passed |
 
 ## Findings ledger
 | id | source | severity | kind | `path:line` | round opened | status (open / closed / accepted / deferred) | round closed |
@@ -46,11 +48,11 @@ Expected red: —
 | SR-3 | security-reviewer | major | local fix (lane 2) | `server/src/adapters/docs/fs-repo-docs.ts:47-59,78-89` .md suffix + exclusions checked on link name, not realpath target (notes.md -> .git/config) | R1 | closed (pending SR re-review) | R2 |
 | SR-4 | security-reviewer (main session measured) | major | local fix (tokenizer) | `server/src/adapters/tokenizer/index.ts` withByteCeiling: js-tiktoken quadratic on long single-char runs — measured 16 KB → 14.1 s, 32 KB → 62.0 s, so a 256 KB doc stalls for hours | R2 | closed | R3 |
 | CR-1 | /code-review | medium | local fix (lane 2) | `server/src/adapters/docs/fs-repo-docs.ts` walk lists hidden `.md` files (e.g. `.draft.md`) that read/isDocTarget refuses | R2 | closed | R3 |
-| CR-2 | /code-review | medium | accepted per R55 (cache until Refresh/restart, Glib-confirmed); to user at close | `server/src/modules/project-context/service.ts` scanFor cache not invalidated on repo sync | R2 | open | |
+| CR-2 | /code-review | medium | accepted per R55 (cache until Refresh/restart, Glib-confirmed); to user at close | `server/src/modules/project-context/service.ts` scanFor cache not invalidated on repo sync | R2 | accepted (Glib, R55; noted in PR) | close |
 | CR-3 | /code-review | low | local fix (lane 2) | `fs-repo-docs.ts` walk rethrows any entry error → whole list 500 | R2 | closed | R3 |
 | CR-4 | /code-review | low | local fix (lane 2) | `service.ts` getAgentContext inherited not deduped vs own / other skills (run dedups) | R2 | closed | R3 |
-| MS-3 | main session (AC-42 browser) | minor | local fix (lane 5) | `client/src/components/context-doc-list/ContextDocList.tsx` row checkboxes have no accessible name (snapshot shows bare `checkbox`) | close | open | |
-| MS-4 | main session (AC-42 browser) | minor | local fix (lane 5) | per-doc token count in the Context tab shows a bare number (e.g. `1226`), no "tokens" unit / ≈ | close | open | |
+| MS-3 | main session (AC-42 browser) | minor | local fix (lane 5) | `client/src/components/context-doc-list/ContextDocList.tsx` row checkboxes have no accessible name (snapshot shows bare `checkbox`) | close | closed | minor batch |
+| MS-4 | main session (AC-42 browser) | minor | local fix (lane 5) | per-doc token count in the Context tab shows a bare number (e.g. `1226`), no "tokens" unit / ≈ | close | closed | minor batch |
 
 ## Log
 - 2026-10-02 — /implement started at dc93891 on feat/project-context; lane slices extracted from the plan
@@ -65,3 +67,4 @@ Expected red: —
 - 2026-10-02 — R2 re-review: security pass (SR-1, SR-3 closed; SR-2 accepted; new SR-4), architecture pass, /code-review 4 issues. Main session measured SR-4 (quadratic tokenizer). Round 3 (last): SR-4, CR-1, CR-3, CR-4.
 - 2026-10-02 — Fix round 3: SR-4 (run-length guard TOKENIZER_MAX_RUN=256), CR-1, CR-3, CR-4 closed red→green. Residual: adversarial 255 KB doc of 256-char runs costs ~3.4 s once per scan (minor, to user). Round limit reached; no further security re-review run — main session benchmarked SR-4 directly.
 - 2026-10-02 — Close: AC-42 checked in the browser (pass). Spec Traceability filled (44 rows). INSIGHTS: server ×2 + session note, client ×1 via engineering-insights. Minor MS-3, MS-4 from the browser pass; CR-2 to Glib.
+- 2026-10-02 — pr-self-review: ready (0 critical/major; 1 server minor, 15 client minor). Glib: fix UX+validation batch (MS-3, MS-4, path refine isServableDocPath, inherited checkbox disabled, copy only on success) — done red→green; rest deferred to the PR body; CR-2 accepted.

@@ -31,6 +31,10 @@ export interface ContextDocListLabels {
   notInRepo: string;
   inheritedFrom: (skill: string) => string;
   dragHandle: (path: string) => string;
+  /** Accessible name of a row's checkbox. */
+  select: (path: string) => string;
+  /** Per-doc token count, e.g. "≈ 1,226 tokens". */
+  tokens: (count: number) => string;
   empty: string;
 }
 
@@ -71,11 +75,20 @@ function DocRow({
       )}
 
       {inherited ? (
-        <span aria-disabled style={{ opacity: 0.6 }}>
-          <Checkbox checked onChange={() => {}} />
-        </span>
+        <input
+          type="checkbox"
+          checked
+          disabled
+          readOnly
+          aria-label={labels.select(row.path)}
+          style={s.inheritedCheckbox}
+        />
       ) : (
-        <Checkbox checked={row.checked} onChange={() => onToggle(row.path)} />
+        <Checkbox
+          checked={row.checked}
+          onChange={() => onToggle(row.path)}
+          label={<span style={s.srOnly}>{labels.select(row.path)}</span>}
+        />
       )}
 
       <span className="mono" style={s.path} title={row.path}>
@@ -86,7 +99,7 @@ function DocRow({
 
       <span style={s.spacer} />
       <span className="mono" style={s.tokens}>
-        {row.tokens}
+        {labels.tokens(row.tokens)}
       </span>
       {row.category && <Badge color="var(--text-secondary)">{row.category}</Badge>}
       {row.present && (

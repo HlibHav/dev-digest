@@ -36,6 +36,8 @@ export function ContextTab({ skill }: { skill: Skill }) {
     // A skill has no inherited rows; present only to satisfy the shared shape.
     inheritedFrom: () => "",
     dragHandle: (path) => t("context.dragHandle", { path }),
+    select: (path) => t("context.select", { path }),
+    tokens: (count) => t("context.tokens", { tokens: count }),
     empty: t("context.noDocs"),
   };
 

@@ -1,5 +1,5 @@
-import { describe, it, expect, afterEach } from "vitest";
-import { render, screen, cleanup, fireEvent } from "@testing-library/react";
+import { describe, it, expect, afterEach, vi } from "vitest";
+import { render, screen, cleanup, fireEvent, act } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import type { RunTrace } from "@devdigest/shared";
 import messages from "../../../../../../../../../../messages/en/runs.json";
@@ -67,5 +67,43 @@ describe("SpecsReadRow", () => {
   it("shows none when there is nothing", () => {
     renderRow(trace({}));
     expect(screen.getByText("none")).toBeInTheDocument();
+  });
+
+  it("copy shows the copied mark only after the write resolves, never when it rejects", async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error("denied"));
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    const { container } = renderRow(trace({ specs_docs: DOCS }));
+    fireEvent.click(screen.getByRole("button", { name: /specs\/a\.md/ }));
+    const btn = screen.getByRole("button", { name: "Copy" });
+    const before = btn.innerHTML;
+    await act(async () => {
+      fireEvent.click(btn);
+    });
+    expect(writeText).toHaveBeenCalledWith("Alpha body");
+    expect(btn.innerHTML).toBe(before);
+
+    writeText.mockResolvedValue(undefined);
+    await act(async () => {
+      fireEvent.click(btn);
+    });
+    expect(btn.innerHTML).not.toBe(before);
+    expect(container).toBeTruthy();
+  });
+
+  it("clears the copied timer on unmount", async () => {
+    vi.useFakeTimers();
+    const clear = vi.spyOn(globalThis, "clearTimeout");
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    const { unmount } = renderRow(trace({ specs_docs: DOCS }));
+    fireEvent.click(screen.getByRole("button", { name: /specs\/a\.md/ }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Copy" }));
+    });
+    clear.mockClear();
+    unmount();
+    expect(clear).toHaveBeenCalled();
+    vi.useRealTimers();
+    clear.mockRestore();
   });
 });

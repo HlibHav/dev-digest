@@ -321,6 +321,27 @@ d('Project Context routes (Testcontainers pg + temp clone)', () => {
     expect(res.statusCode).toBe(422);
   });
 
+  it.each(['../x.md', 'a.txt', 'node_modules/x.md', '/abs.md', 'a\\b.md', 'a//b.md', './a.md', '.git/x.md', 'docs/.hidden/a.md'])(
+    'rejects the unservable path %s',
+    async (bad) => {
+      const a = await app();
+      const id = await makeAgent();
+      const res = await a.inject({ method: 'PUT', url: `/agents/${id}/context`, payload: { paths: [bad] } });
+      expect(res.statusCode).toBe(422);
+    },
+  );
+
+  it('accepts a servable path under .devdigest', async () => {
+    const a = await app();
+    const id = await makeAgent();
+    const res = await a.inject({
+      method: 'PUT',
+      url: `/agents/${id}/context`,
+      payload: { paths: ['.devdigest/specs/a.md'] },
+    });
+    expect(res.statusCode).toBe(200);
+  });
+
   it('attachments are workspace-scoped', async () => {
     const a = await app();
     const [otherWs] = await pg.handle.db
