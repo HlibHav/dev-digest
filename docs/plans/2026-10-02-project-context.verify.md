@@ -173,3 +173,64 @@ Not unmapped: `RunTraceDrawer/styles.ts` (+29) maps to S16, and `DocPreviewModal
 - The page's Refresh button renders only when the doc list is non-empty (`ProjectContextView.tsx:42-60`). In the empty-state and not-cloned views there is no Refresh control.
 - `buildProjectContextService` is called in two places (`project-context/routes.ts:30` and `reviews/routes.ts`), giving two service instances with separate scan caches. The run resolver reads from the clone directly and does not use the cache.
 - No `reviewer-core/INSIGHTS.md` entry is in the diff, though the plan names reviewer-core for the insights step.
+
+## Delta re-verification
+
+- **Target:** HEAD `01eee54` on `feat/project-context`.
+- **Delta:** `git diff 5471c4e..HEAD`, which is bb675cd, 749c035 and 01eee54. It changes 6 files (+62/-5).
+- **Date:** 2026-10-02.
+
+### Gates
+
+| gate | command | exit | result line |
+|---|---|---|---|
+| server typecheck | `pnpm --dir server typecheck` | 0 | `tsc --noEmit -p tsconfig.json`, no diagnostics |
+| client typecheck | `pnpm --dir client typecheck` | 0 | `tsc --noEmit`, no diagnostics |
+| server unit | `.claude/sandbox/run-tests.sh pnpm --dir server exec vitest run --exclude '**/*.it.test.ts'` | 0 | `Test Files 35 passed (35) · Tests 343 passed (343)` |
+| server integration | `pnpm --dir server exec vitest run .it.test` (Docker up, sandbox off) | 0 | `Test Files 15 passed (15) · Tests 101 passed (101)`. `project-context-run.it.test.ts` shows `(11 tests)`, and both AC-36 tests are listed as passed. |
+| client tests | `.claude/sandbox/run-tests.sh pnpm --dir client test` | 0 | `Test Files 50 passed (50) · Tests 271 passed (271)`. `SpecsReadRow.test.tsx` shows `(7 tests)`. |
+
+- **Targeted integration run:** the hook refused a targeted `vitest run test/project-context-run.it.test.ts` outside the wrapper. Through the wrapper the file reported `11 skipped`, because Docker is not available there. The full `.it.test` run above is the evidence for that file.
+- **Compared with 9cf429f:** the integration count is 100 → 101 (the new AC-36 test) and the client count is 270 → 271 (the new AC-38 test). The server unit count is unchanged.
+
+### Verdicts
+
+| item | verdict | evidence |
+|---|---|---|
+| AC-36 (failed or cancelled run keeps section, `specs_read`, snapshot, `specs_tokens`) | met | **Failed half:** the existing test "AC-36: a failed run keeps…" passes in the integration run above. **Cancelled half:** the new test "AC-36: a cancelled run keeps the section, specs_read, snapshots and specs_tokens" (`server/test/project-context-run.it.test.ts`, hunk `@@ -305,+318`, test at about line 321) passes in the same run (376 ms). The test does the following. 1. It starts the run through the real route `POST /pulls/:id/review` and takes `runs[0].run_id`. 2. It cancels through the real route `POST /runs/${runId}/cancel` and asserts `statusCode` 200. A `GatedRepoDocs` holds `read()` until `release()`, so the cancel lands before the first checkpoint. 3. It reads the `agentRuns` row and asserts `status === 'cancelled'`. 4. It asserts `llm.calls` has length 0. 5. It asserts `trace.specs_read` equals `['specs/a.md']`. 6. It asserts `specs_docs` holds one `injected` entry with text `A-DOC`. 7. It asserts `prompt_assembly.specs` contains `A-DOC`. 8. It asserts `prompt_assembly.specs_tokens` is above 0. |
+| AC-38 (copy and expand) | met | The previous report noted that copy was covered by `writeText("Alpha body")` and expand was not tested. The new test "AC-38: expand lifts the height cap on the sent text, collapse restores it, a new doc opens collapsed" (`SpecsReadRow.test.tsx`, hunk `@@ -57,+57`, test at about line 60) passes in the client run. It asserts `maxHeight` `"160px"` when collapsed, `""` after the "expand" click, and `"160px"` after the "collapse" click. It then opens `specs/d.md` while expanded and asserts the text shows "Delta body", `maxHeight` is back to `"160px"`, and the button reads "expand" again. It matches the implementation: `SpecsReadRow.tsx:87-92` toggles `expanded` and sets `{ ...s.specPre, maxHeight: 160 }` when not expanded. Text-and-tokens and copy are covered by the existing tests, which still pass. |
+| `specs/README.md` status line | met | The hunk at `specs/README.md:47` changes `Status: draft` to `Status: implemented`. It now matches the spec file's own status, which the previous report recorded as `implemented`. |
+
+On the red-first claim in the spec row ("red on the cancel-flag bug"): I did not re-run the test against the pre-fix `sse.ts`. The evidence I have is the green run at HEAD and the `sse.ts` hunk (`server/src/platform/sse.ts:75-84`). A red-first check on the original `sse.ts` is not part of this delta pass.
+
+### Hunk map
+
+| hunk | maps to |
+|---|---|
+| `server/src/platform/sse.ts:75-84` (`RunBus.complete` no longer calls `this.cancelled.delete(runId)`, and the doc comment is updated) | **Unmapped.** `platform/sse.ts` is not in the plan's step list (S1 to S16) or its expected files. It serves AC-36: `cancelRun` calls `complete()` right after setting the cancel flag, so the cleared flag meant the runner never saw a cancel. The new AC-36 test depends on this change. |
+| `server/test/project-context-run.it.test.ts` (the `eq` import, the `GatedRepoDocs` class and the cancelled-run test) | Previous open item "AC-36: no test cancels a run". Plan S10 and AC-36. |
+| `client/.../SpecsReadRow/SpecsReadRow.test.tsx` (new AC-38 test) | Previous open item "AC-38: the expand control has no test". Plan S16 and AC-38. |
+| `specs/2026-10-02-project-context.md` (AC-36 and AC-38 rows of the proof table, lines 331-333) | Spec traceability table. It records the two new tests and points the cancelled and expand cells at "this PR". It belongs to the already-listed unmapped group `specs/…project-context.md` and `specs/README.md`. |
+| `specs/README.md:47` | Previous open item (the status line the previous report flagged). Resolved. |
+| `server/INSIGHTS.md` (+2 entries, Codebase Patterns and Session Notes) | Plan K10 (`engineering-insights` for server). It is documentation, not code. |
+
+The delta has one unmapped code hunk: `sse.ts`. The rest map to plan items or to previous open items.
+
+### Updated counts
+
+- **Overall: gaps.** Two of the previous four partials are now met: AC-36 and AC-38. S9 (PV-3, an accepted deviation) and S11 (nav group in WORKSPACE, not SKILLS LAB) remain partial. The unmapped list also remains.
+- **Counts:** 35 met · 2 partial · 0 not met · 7 unverifiable · 13 unmapped groups.
+  - Previously 33 met · 4 partial · 0 not met · 7 unverifiable · 12 unmapped groups.
+  - The unmapped total is the previous 12 plus the `sse.ts` hunk.
+- **Previous open items closed by this delta:** AC-36 (no cancel test), AC-38 (no expand test) and the `specs/README.md` status line.
+- **Previous open items still open:**
+  - S11 and ledger MS-1 (nav item in WORKSPACE, not SKILLS LAB).
+  - Accepted deviations PV-3, SR-2, CR-2 and residual SR-4.
+  - The Refresh button renders only when the doc list is non-empty (`ProjectContextView.tsx:42-60`).
+  - `buildProjectContextService` is called in two places, so there are two service instances with separate scan caches.
+  - No `reviewer-core/INSIGHTS.md` entry.
+  - `lint:boundaries`, the onion step-9 report, security review, `/code-review` and `pr-self-review` stay with their named owners.
+
+### Main-session note on the red-first claim
+
+Before the `sse.ts` fix, the new cancelled-run test ran against the original `RunBus.complete` and failed: `AssertionError: expected 'done' to be 'cancelled'` (`pnpm exec vitest run test/project-context-run.it.test.ts`, 1 failed | 10 passed). After bb675cd it passes. The AC-38 test was a backfill. With the expand toggle forced off (`style={false ? s.specPre : …}`), it failed (1 failed | 6 passed), and the component was restored afterwards. At HEAD, `pnpm lint:boundaries` reports `no dependency violations found (183 modules, 624 dependencies cruised)`.
