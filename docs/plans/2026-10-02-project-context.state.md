@@ -1,5 +1,5 @@
 # State: project-context
-Stage: 4 Close · next: AC-42 browser check on dev stack, traceability, insights, pr-self-review
+Stage: 4 Close · next: pr-self-review, then minor findings to Glib, PR on his word
 Spec: specs/2026-10-02-project-context.md (SPEC-2026-10-02-project-context) · Plan: docs/plans/2026-10-02-project-context.md · Mode: multi-agent
 Inputs: prompt none · designs design-1..4.png in the session scratchpad (S3 sources listed in the spec's Input provenance)
 Red-first: implementer-owned
@@ -29,6 +29,7 @@ Expected red: —
 | R3 server it (main session, Docker) | vitest run .it.test | R3 tree | 15 files, 90 passed |
 | R3 lint:boundaries | pnpm lint:boundaries | R3 tree | no dependency violations (183 modules) |
 | R3 SR-4 bench | tsx tok-bench2 (bounded tokenizer) | R3 tree | 1 MB single run 0 ms; worst case 255 KB of 256-char runs 3416 ms (residual, minor) |
+| AC-42 browser (dev stack :3200/:3201) | agent-browser: attach 2 docs, run Security Reviewer on PR #3, open trace | 6476dac | run 70b1dfb6 done, specs_read 2 paths, specs_tokens 3019, cost $0.0003; screenshots 01–07 in scratchpad/ac42 |
 
 ## Findings ledger
 | id | source | severity | kind | `path:line` | round opened | status (open / closed / accepted / deferred) | round closed |
@@ -48,6 +49,8 @@ Expected red: —
 | CR-2 | /code-review | medium | accepted per R55 (cache until Refresh/restart, Glib-confirmed); to user at close | `server/src/modules/project-context/service.ts` scanFor cache not invalidated on repo sync | R2 | open | |
 | CR-3 | /code-review | low | local fix (lane 2) | `fs-repo-docs.ts` walk rethrows any entry error → whole list 500 | R2 | closed | R3 |
 | CR-4 | /code-review | low | local fix (lane 2) | `service.ts` getAgentContext inherited not deduped vs own / other skills (run dedups) | R2 | closed | R3 |
+| MS-3 | main session (AC-42 browser) | minor | local fix (lane 5) | `client/src/components/context-doc-list/ContextDocList.tsx` row checkboxes have no accessible name (snapshot shows bare `checkbox`) | close | open | |
+| MS-4 | main session (AC-42 browser) | minor | local fix (lane 5) | per-doc token count in the Context tab shows a bare number (e.g. `1226`), no "tokens" unit / ≈ | close | open | |
 
 ## Log
 - 2026-10-02 — /implement started at dc93891 on feat/project-context; lane slices extracted from the plan
@@ -61,3 +64,4 @@ Expected red: —
 - 2026-10-02 — Fix round 2 (structural, alone): SR-3 realpath target re-checked (isDocTarget), SR-1 withByteCeiling decorator via container.boundedTokenizer (256 KB, ceil(bytes/4)); red→green. Gate green.
 - 2026-10-02 — R2 re-review: security pass (SR-1, SR-3 closed; SR-2 accepted; new SR-4), architecture pass, /code-review 4 issues. Main session measured SR-4 (quadratic tokenizer). Round 3 (last): SR-4, CR-1, CR-3, CR-4.
 - 2026-10-02 — Fix round 3: SR-4 (run-length guard TOKENIZER_MAX_RUN=256), CR-1, CR-3, CR-4 closed red→green. Residual: adversarial 255 KB doc of 256-char runs costs ~3.4 s once per scan (minor, to user). Round limit reached; no further security re-review run — main session benchmarked SR-4 directly.
+- 2026-10-02 — Close: AC-42 checked in the browser (pass). Spec Traceability filled (44 rows). INSIGHTS: server ×2 + session note, client ×1 via engineering-insights. Minor MS-3, MS-4 from the browser pass; CR-2 to Glib.

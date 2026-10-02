@@ -292,50 +292,50 @@ All JSON is snake_case. Shapes are behavioural; the plan decides where they live
 
 | AC | proof | verify | step | test | commit |
 |---|---|---|---|---|---|
-| AC-1 | red-first integration | fixture clone; exactly the four non-excluded docs, with sizes and tokens | — | — | — |
-| AC-2 | red-first unit | five paths → categories incl. `docs/specs/c.md` → specs | — | — | — |
-| AC-3 | red-first integration | symlink outside clone not listed | — | — | — |
-| AC-4 | red-first integration | traversal and non-listed path → 404 | — | — | — |
-| AC-5 | red-first integration | add file, rescan, file listed, no fetch or pull | — | — | — |
-| AC-5a | red-first unit | scan time shown after rescan | — | — | — |
-| AC-6 | red-first unit | tree with folders, "3 files", "≈ 600 tokens total" | — | — | — |
-| AC-7 | red-first unit | select doc, heading rendered | — | — | — |
-| AC-8 | red-first unit | no script, handler or `javascript:` href | — | — | — |
-| AC-9 | red-first integration | 2 agents + 1 skill → "Used by 2 agents · 1 skill" | — | — | — |
-| AC-10 | red-first unit | no edit, create or upload controls | — | — | — |
-| AC-11 | red-first unit | 7 rows, "1 of 7 attached" | — | — | — |
-| AC-12 | red-first integration | attach, reorder, reload keeps order | — | — | — |
-| AC-13 | red-first unit | filter "API" | — | — | — |
-| AC-14 | red-first unit | total ≈ 180, inherited ≈ 30 | — | — | — |
-| AC-15 | red-first unit | "inherited from" marker, not detachable | — | — | — |
-| AC-16 | red-first unit | "not in this repo", 0 tokens | — | — | — |
-| AC-17 | red-first unit | map-reduce note shown or hidden by strategy | — | — | — |
-| AC-18 | red-first integration | skill attach and reorder survive reload | — | — | — |
-| AC-19 | red-first unit | skill total ≈ 100 | — | — | — |
-| AC-20 | red-first unit | "Serializes as" mirrors run form | — | — | — |
-| AC-21 | red-first unit | [a,b]+[b,c]+[d,a] → [a,b,c,d] | — | — | — |
-| AC-22 | red-first integration | disabled skill's doc not injected | — | — | — |
-| AC-23 | red-first integration | doc content verbatim in mock prompt | — | — | — |
-| AC-24 | red-first integration | missing doc → done, log, `not_found` | — | — | — |
-| AC-25 | red-first integration | read failure → done, `unreadable` | — | — | — |
-| AC-26 | red-first integration | PR-modified doc → base text, `modified_by_pr` | — | — | — |
-| AC-27 | red-first unit | no docs → byte-identical prompt | — | — | — |
-| AC-28 | red-first unit | section order: framing, blocks, reminder | — | — | — |
-| AC-29 | red-first unit | framing has three statements | — | — | — |
-| AC-30 | red-first unit | reminder closes the section | — | — | — |
-| AC-31 | red-first unit | hostile path flattened, fixed label | — | — | — |
-| AC-32 | red-first unit | closing delimiter neutralised | — | — | — |
-| AC-33 | red-first integration | `specs_read` = injected paths in order | — | — | — |
-| AC-34 | red-first integration | snapshot text equals block text, origins | — | — | — |
-| AC-35 | red-first integration | `specs_tokens` equals section count | — | — | — |
-| AC-36 | red-first integration | failed run keeps snapshot | — | — | — |
-| AC-37 | red-first unit | status marks in "Specs read" | — | — | — |
-| AC-38 | red-first unit | click path → exact text | — | — | — |
-| AC-39 | red-first unit | old trace renders "—" | — | — | — |
-| AC-40 | red-first unit | label + "317 tokens" | — | — | — |
-| AC-41 | red-first integration | delete agent → used_by drops | — | — | — |
-| AC-42 | browser (main session) | dev stack, one real review: attach, run, open trace, read doc, screenshots. Not an e2e flow, because flows ban LLM calls and the hermetic seed has no clone. Injection end to end is covered by the AC-23/33/34 integration tests (mock LLM), and the trace UI by the AC-37/38 unit tests | — | — | — |
-| AC-43 | red-first unit | sidebar item links to the repo's Project Context page, active there | — | — | — |
+| AC-1 | red-first integration | fixture clone; exactly the four non-excluded docs, with sizes and tokens | 5, 8, 9 | `server/test/project-context.it.test.ts` "lists every non-excluded .md with size and tokens" | 678f4f9, f3295d5, d7d5253, 6476dac |
+| AC-2 | red-first unit | five paths → categories incl. `docs/specs/c.md` → specs | 6 | `server/test/project-context-helpers.test.ts` "categorizeDocPath applies specs > insights > docs > other" | 678f4f9 |
+| AC-3 | red-first integration | symlink outside clone not listed | 5 | `project-context.it.test.ts` "omits a .md symlink that resolves outside the clone" | 678f4f9, d7d5253 |
+| AC-4 | red-first integration | traversal and non-listed path → 404 | 8, 9 | `project-context.it.test.ts` "file route answers 404 for unlisted paths" | 678f4f9, d7d5253 |
+| AC-5 | red-first integration | add file, rescan, file listed, no fetch or pull | 8, 9 | `project-context.it.test.ts` "reindex rescans disk without git fetch or pull" | 678f4f9 |
+| AC-5a | red-first unit | scan time shown after rescan | 12 | `ProjectContextView.test.tsx` "shows the scan time after a rescan" | 9ab573e |
+| AC-6 | red-first unit | tree with folders, "3 files", "≈ 600 tokens total" | 12 | `ProjectContextView.test.tsx` "renders folder tree, file count and tokens total" | 9ab573e |
+| AC-7 | red-first unit | select doc, heading rendered | 12 | `ProjectContextView.test.tsx` "selecting a doc renders its markdown" | 9ab573e |
+| AC-8 | red-first unit | no script, handler or `javascript:` href | 12 | `ProjectContextView.test.tsx` "preview renders no script, handler or javascript: href" | 9ab573e |
+| AC-9 | red-first integration | 2 agents + 1 skill → "Used by 2 agents · 1 skill" | 7, 8, 9, 12 | `project-context.it.test.ts` "used_by counts agents and skills per path" | 9ab573e, 678f4f9 |
+| AC-10 | red-first unit | no edit, create or upload controls | 12 | `ProjectContextView.test.tsx` "offers no edit/new/folder/upload control" | 9ab573e |
+| AC-11 | red-first unit | 7 rows, "1 of 7 attached" | 13, 14 | `ContextTab.test.tsx` (agent) "lists seven docs, one checked, 1 of 7 attached" | 9ab573e |
+| AC-12 | red-first integration | attach, reorder, reload keeps order | 7, 8, 9, 14 | `project-context.it.test.ts` "agent attachments keep order across reload" | 9ab573e, 678f4f9 |
+| AC-13 | red-first unit | filter "API" | 13 | `context-doc-list/helpers.test.ts` "filterDocs is case-insensitive substring" | 9ab573e |
+| AC-14 | red-first unit | total ≈ 180, inherited ≈ 30 | 13, 14 | `helpers.test.ts` "contextTotals dedups and splits inherited" + agent `ContextTab.test.tsx` "≈ 180 total, ≈ 30 inherited" | 9ab573e, 6476dac |
+| AC-15 | red-first unit | "inherited from" marker, not detachable | 14 | agent `ContextTab.test.tsx` "inherited row is marked and not detachable" | 9ab573e |
+| AC-16 | red-first unit | "not in this repo", 0 tokens | 13, 14 | agent `ContextTab.test.tsx` "missing path shows not in this repo, 0 tokens" | 9ab573e |
+| AC-17 | red-first unit | map-reduce note shown or hidden by strategy | 13, 14 | agent `ContextTab.test.tsx` "per-file note for map-reduce, none for single-pass" | 9ab573e |
+| AC-18 | red-first integration | skill attach and reorder survive reload | 7, 8, 9, 15 | `project-context.it.test.ts` "skill attachments keep order across reload" | 9ab573e, 678f4f9 |
+| AC-19 | red-first unit | skill total ≈ 100 | 15 | skill `ContextTab.test.tsx` "≈ 100 tokens" | 9ab573e |
+| AC-20 | red-first unit | "Serializes as" mirrors run form | 4, 8, 15 | skill `ContextTab.test.tsx` "Serializes as starts with ## Project context" | 9ab573e, 678f4f9 |
+| AC-21 | red-first unit | [a,b]+[b,c]+[d,a] → [a,b,c,d] | 6 | `project-context-helpers.test.ts` "buildEffectiveDocList [a,b]+[b,c]+[d,a] → [a,b,c,d]" | 678f4f9 |
+| AC-22 | red-first integration | disabled skill's doc not injected | 7, 8, 10 | `server/test/project-context-run.it.test.ts` "disabled skill's docs are not injected" | 678f4f9, 5bfc60a |
+| AC-23 | red-first integration | doc content verbatim in mock prompt | 8, 10 | `project-context-run.it.test.ts` "doc text reaches the mock LLM prompt verbatim" | 678f4f9, 5bfc60a |
+| AC-24 | red-first integration | missing doc → done, log, `not_found` | 8, 10 | `project-context-run.it.test.ts` "missing doc → done, log line, not_found" | 678f4f9, 5bfc60a |
+| AC-25 | red-first integration | read failure → done, `unreadable` | 8, 10 | `project-context-run.it.test.ts` "read failure → done, unreadable" | 678f4f9, 5bfc60a |
+| AC-26 | red-first integration | PR-modified doc → base text, `modified_by_pr` | 8, 10 | `project-context-run.it.test.ts` "PR-modified doc injects base text, modified_by_pr" | 678f4f9, 5bfc60a, f3295d5 |
+| AC-27 | red-first unit | no docs → byte-identical prompt | 4 | `reviewer-core/test/prompt-project-context.test.ts` "empty specs → byte-identical prompt" | 9ab573e |
+| AC-28 | red-first unit | section order: framing, blocks, reminder | 4 | `prompt-project-context.test.ts` "section order: heading, framing, blocks, reminder" | 9ab573e |
+| AC-29 | red-first unit | framing has three statements | 4 | `prompt-project-context.test.ts` "framing has the three statements" | 9ab573e |
+| AC-30 | red-first unit | reminder closes the section | 4 | `prompt-project-context.test.ts` "reminder is the last text of the section" | 9ab573e |
+| AC-31 | red-first unit | hostile path flattened, fixed label | 4 | `prompt-project-context.test.ts` "hostile path flattened inside block, fixed label" | 9ab573e |
+| AC-32 | red-first unit | closing delimiter neutralised | 4 | `prompt-project-context.test.ts` "closing delimiter neutralised in any case" | 9ab573e |
+| AC-33 | red-first integration | `specs_read` = injected paths in order | 10 | `project-context-run.it.test.ts` "specs_read lists injected paths in order" | 5bfc60a, f3295d5 |
+| AC-34 | red-first integration | snapshot text equals block text, origins | 10 | `project-context-run.it.test.ts` "snapshot text equals block text, origins agent/skill" | 5bfc60a |
+| AC-35 | red-first integration | `specs_tokens` equals section count | 10 | `project-context-run.it.test.ts` "specs_tokens equals count of the section" | 5bfc60a, f3295d5 |
+| AC-36 | red-first integration | failed run keeps snapshot | 10 | `project-context-run.it.test.ts` "failed run keeps the snapshot" | 5bfc60a |
+| AC-37 | red-first unit | status marks in "Specs read" | 16 | `SpecsReadRow.test.tsx` "four paths, three distinct status marks" | 9ab573e |
+| AC-38 | red-first unit | click path → exact text | 16 | `SpecsReadRow.test.tsx` "clicking an injected path shows the exact text and tokens" | 9ab573e |
+| AC-39 | red-first unit | old trace renders "—" | 16 | `SpecsReadRow.test.tsx` "legacy trace shows paths and —" | 9ab573e |
+| AC-40 | red-first unit | label + "317 tokens" | 16 | `RunTraceDrawer.test.tsx` "project context block label and 317 tokens" | 9ab573e |
+| AC-41 | red-first integration | delete agent → used_by drops | 2, 7 | `project-context.it.test.ts` "deleting agent/skill drops used_by" | ebf36fa, 678f4f9 |
+| AC-42 | browser (main session) | dev stack, one real review: attach, run, open trace, read doc, screenshots. Not an e2e flow, because flows ban LLM calls and the hermetic seed has no clone. Injection end to end is covered by the AC-23/33/34 integration tests (mock LLM), and the trace UI by the AC-37/38 unit tests | — | main-session browser check on the dev stack, 2026-10-02 (run 70b1dfb6 on PR #3; screenshots in the PR) | 6476dac |
+| AC-43 | red-first unit | sidebar item links to the repo's Project Context page, active there | 11 | `client/src/components/app-shell/ProjectContextNav.test.tsx` "sidebar links to the repo's Project Context page and marks it active" | 9ab573e, f3295d5 |
 
 ## Changelog
 

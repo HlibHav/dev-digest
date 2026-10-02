@@ -12,6 +12,10 @@ fixed — add to the one that fits.
 
 ## What Doesn't Work
 
+- **2026-10-02** — Never pass repo or user text straight to `container.tokenizer.count()`. js-tiktoken's synchronous `encode()` is roughly quadratic on a long run without whitespace. Measured: 16 KB of `'a'` took 14.1 s and 32 KB took 62 s, all of it on the event loop, so one generated or minified `.md` freezes every route and SSE stream. A byte ceiling alone does not fix this, because a 256 KB single run is still hours. Count through `container.boundedTokenizer` (`withByteCeiling`). It estimates `ceil(bytes/4)` above 256 KB or when any run exceeds `TOKENIZER_MAX_RUN` (256), and calls the real encoder otherwise. Even then, the worst case under the ceiling (255 KB of 256-char runs) still costs about 3.4 s. Evidence: `server/src/adapters/tokenizer/index.ts:48`, `server/src/modules/project-context/wiring.ts:1`
+
+- **2026-10-02** — Checking a symlink only by its name lets it read any file in the clone. `notes.md -> .git/config` ends in `.md` and its realpath stays inside the clone, so name checks plus realpath containment both passed, and the file route served `.git/config`. After `realpath`, re-apply the `.md` suffix and the excluded-folder and dot-segment rules to the target's path relative to the root. `list` and `read` must use the same rule on every segment, the file name included. They had drifted once already: a hidden `.draft.md` was listed but 404ed on read. Evidence: `server/src/adapters/docs/fs-repo-docs.ts:43`
+
 - **2026-09-26** — `pr_files` has no status column, so "the PR touches this path" is not "the PR added this file". The first Intent Layer rebuilt any linked doc whose patch had `+` lines from that patch, which handed the model only the changed hunk of a *modified* plan. Only a file the PR adds carries its whole content in the patch; GitHub's per-file patch for it opens with the hunk header `@@ -0,0 `, and that is the test to use. Everything else is read from the base-branch clone. Evidence: `server/src/modules/reviews/intent-helpers.ts:286`, `server/src/adapters/github/octokit.ts:110`
 
 - **2026-09-20** — A review of a PR nobody has opened sees an **empty diff**, completes, and costs money: it reports 0 findings with `Reviewing 0 changed file(s)` in the run log. `loadDiff` tries `git diff base...head` in the clone first, but `fetchPullHead` has no production caller, so an unmerged PR's head sha is never in the clone and the call throws; the fallback reconstructs the diff from `pr_files.patch`, which only `GET /pulls/:id` fills (it refreshes from GitHub). Open the PR in the UI once — or call `GET /pulls/:id` — before measuring anything about a review. Evidence: `server/src/modules/reviews/diff-loader.ts:20`, `server/src/modules/pulls/routes.ts:227`, `server/src/adapters/git/simple-git.ts:72`
@@ -52,6 +56,8 @@ fixed — add to the one that fits.
 - **2026-09-26** — A JSDoc block that spells out a glob such as `**/*.md` closes the comment at the `*/` inside it; `tsc` then reports a cascade of syntax errors from the middle of the doc text (first hit: `classify.ts(17,53)`) with nothing pointing at the comment. Describe glob patterns in words inside `/** … */` comments (or use `//` lines), never a literal `*/`. Evidence: `server/src/modules/smart-diff/classify.ts:15`
 
 ## Session Notes
+
+- **2026-10-02** — Project Context (attach repo `.md` docs to agents and skills, inject them under a trusted framing, snapshot them in the trace): `project-context` module, `FsRepoDocs`, `container.boundedTokenizer`. Recorded in What Doesn't Work ×2 (server) and Codebase Patterns (client). Evidence: `server/src/modules/project-context/service.ts:1`
 
 - **2026-09-26** — Mentor follow-ups: `POST /pulls/:id/intent` re-derive (forced refresh + cache bypass, 502 on failure), `security` Bash-allowlist profile for the new security-reviewer agent → Codebase Patterns. Evidence: `server/src/modules/reviews/intent-service.ts:309`
 
