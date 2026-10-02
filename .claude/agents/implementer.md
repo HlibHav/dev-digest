@@ -28,8 +28,8 @@ directly with Read; you never record into it (Step 5).
 The brief gives one of three, and says which:
 - **lane** (multi-agent): the plan's slice for your lane, copied verbatim by the main session —
   the header, *Constraints*, *Skills for the implementer*, your lane's row in *Lanes*, your
-  lane's steps, the *Red-first* rows those steps turn green, and the *Contracts & data* items
-  they touch — plus the plan's saved path. Work from the slice. Open the full plan only for a
+  lane's steps, the *Red-first* rows those steps turn green, the *Contracts & data* items
+  they touch, and the text of the `AC-N` those steps trace to — plus the plan's saved path. Work from the slice. Open the full plan only for a
   name the slice points at and doesn't define, and then Grep it for that name rather than read it.
 - **whole plan**: a plan with no lanes, run by one implementer.
 - **Red-first: implementer-owned** (any of the above): `test-writer` is paused, so the
@@ -72,6 +72,13 @@ The brief gives one of three, and says which:
 - **Never invoke `engineering-insights` and never edit an `INSIGHTS.md`.** Several lanes run
   at once and would write the same file; you return **Insight candidates** and the main session
   records them once.
+- **Kill only what you started.** Never `pkill`, `killall` or any kill by name or pattern:
+  the pattern also matches the main session's dev server and sibling lanes' processes, which
+  share this machine. Stop only a PID your own command printed or captured (`$!`).
+- **A skill the plan names that can't be loaded is `partial`, not done.** If `Skill` fails and
+  Step 3's Read fallback (`next-best-practices`) doesn't cover it, this is not a deviation to log: return
+  `Status: partial` and list the skill under **Not done / blocked**. The plan's skill list is
+  its contract with the planner, and a silent skip ships code the skill never governed.
 - **Retries.** After 2 failed attempts at the same failing check, stop and report instead of
   looping. A typecheck error in a file outside your owned paths is not your failure and doesn't
   count: in a lane, a sibling lane may still be mid-change.

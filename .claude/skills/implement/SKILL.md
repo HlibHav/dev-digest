@@ -70,7 +70,10 @@ lanes are done.
    `Mode: lane <n>`, `Red-first: implementer-owned`, the plan's saved path, and the lane's slice
    copied verbatim — the header, *Constraints*, *Skills for the implementer*, the lane's *Lanes*
    row, its steps, the *Red-first* rows those steps turn green and the *Contracts & data* items
-   they touch. Not the whole plan: at ~18k tokens it was re-sent on every request of a lane.
+   they touch, plus the text of every `AC-N` those steps trace to, copied from the plan's
+   *Acceptance criteria* section, never just the ids: an implementer given `AC-14` and nothing
+   else builds from the step title and misses what the criterion actually says. Not the whole
+   plan: at ~18k tokens it was re-sent on every request of a lane.
    The lane's owned paths include the test files its *Red-first* rows name, even when the
    plan's *Lanes* row doesn't list them: plans shaped for `test-writer` left those files to it.
    Say so in the brief.
@@ -107,8 +110,10 @@ proven by plan-verifier's green run alone (an accepted gap, see the ADR).
 1. Bundle once per head:
    `.claude/scripts/review-bundle.sh $(git merge-base HEAD origin/main)...HEAD <scratchpad>/bundle-<sha>`.
 2. **plan-verifier first.** Brief: target range and head sha, bundle path, *Checks already run*,
-   the full plan, every Implementation Report, `Red-first: implementer-owned`, and the
-   integration-test sentence (only if true). `gaps` → fix loop before any other review: an
+   the full plan, every Implementation Report in full (the file text, never your summary of
+   it), `Red-first: implementer-owned`, and the integration-test sentence (only if true). A
+   condensed report drops the red-run rows, and plan-verifier then marks each affected
+   criterion `partial` (18 false `partial` verdicts on the Project Context run). `gaps` → fix loop before any other review: an
    architecture review of unfinished code is wasted.
 3. **Then in parallel**, one message: `architecture-reviewer` with target, head sha, bundle path
    and *Checks already run*; `security-reviewer` with the same, **only when** the diff touches a

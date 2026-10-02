@@ -21,6 +21,7 @@ Reusable AI skills that provide specialized knowledge and workflows. Canonical l
 | [engineering-insights](engineering-insights/SKILL.md) | Shared | Read a package's INSIGHTS.md before work; record non-obvious findings after |
 | [pr-self-review](pr-self-review/SKILL.md) | Shared | Routes the pre-PR diff to the skills that own each surface; one critical finding blocks `gh pr create` |
 | [implement](implement/SKILL.md) | Shared | `/implement <plan>` only: runs an approved plan through implementer lanes, the package gate, plan-verifier first, the reviewers and a triaged fix loop of up to three rounds; spec and plan are run by hand before it |
+| [workflow-retro](workflow-retro/SKILL.md) | Shared | `/workflow-retro [deep]` only: retro of a multi-agent run — tokens, launch order, brief vs report; records lessons in `docs/retro/ledger.md` and proposes a diff for any lesson seen twice |
 
 ## What Are Skills?
 
