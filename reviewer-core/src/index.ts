@@ -16,10 +16,13 @@ export {
   assemblePrompt,
   renderSkillsBlock,
   renderIntentBlock,
+  renderProjectContextBlock,
   wrapUntrusted,
   type PromptParts,
   type PromptSkill,
   type PromptIntent,
+  type PromptSpec,
+  type RenderedProjectContext,
   type AssembledPrompt,
 } from './prompt.js';
 
