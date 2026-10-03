@@ -1,9 +1,9 @@
 # State: onboarding-tour
-Stage: 1 Implement · next: level 2 (lane 4 onboarding service)
+Stage: 2 Review · next: plan-verifier
 Spec: specs/2026-10-02-onboarding-tour.md (SPEC-2026-10-02-onboarding-tour) · Plan: docs/plans/2026-10-02-onboarding-tour.md · Mode: multi-agent
 Inputs: prompt none · designs specs/designs/onboarding-tour/tour-top.png, specs/designs/onboarding-tour/tour-run-and-reading.png
 Red-first: test-writer (e84d133); red tests are read-only for implementers
-Levels: 0 → lane 0 → done · 1 → lanes 1, 2, 3, 5, 6 → done · 2 → lane 4 → pending
+Levels: 0 → lane 0 → done · 1 → lanes 1, 2, 3, 5, 6 → done · 2 → lane 4 → done
 Expected red: server/test/onboarding-helpers.test.ts — level 1 (lane 3); client OnboardingTourNav.test.tsx — level 1 (lane 5); client OnboardingTourView.test.tsx — level 1 (lane 6); onboarding-service.it / onboarding-review-isolation.it (load-time) — level 2 (lane 4); server typecheck after lane 0 (RepoIntelService vs extended RepoIntel) — level 1 (lane 1)
 
 ## Checks already run
@@ -21,6 +21,10 @@ Expected red: server/test/onboarding-helpers.test.ts — level 1 (lane 3); clien
 | level 1 gate: server unit | `pnpm exec vitest run --exclude '**/*.it.test.ts'` | level 1 | 37 files, 362 tests passed |
 | level 1 gate: client unit | `pnpm test` | level 1 | 53 files, 307 tests passed |
 | lane 1 integration (implementer, Docker) | `pnpm exec vitest run test/repo-intel-onboarding-reads.it.test.ts` | level 1 | 2 passed (red before code: getRankedFiles/getRoutes not functions) |
+| level 2 gate: server typecheck | `cd server && pnpm typecheck` | level 2 | 0 errors |
+| level 2 gate: server unit | `pnpm exec vitest run --exclude '**/*.it.test.ts'` | level 2 | 37 files, 362 tests passed |
+| onboarding integration (main session, Docker) | `pnpm exec vitest run test/onboarding.it.test.ts test/onboarding-service.it.test.ts test/onboarding-review-isolation.it.test.ts test/repo-intel-onboarding-reads.it.test.ts` | level 2 | 4 files, 27 tests passed, 0 skipped |
+| lane 4 red run (implementer, Docker) | same three onboarding it files | before lane 4 | onboarding.it 15 failed (404 / waitReady); service.it and isolation.it failed at load on wiring.js |
 
 ## Findings ledger
 | id | source | severity | kind | `path:line` | round opened | status | round closed |
@@ -29,6 +33,7 @@ Expected red: server/test/onboarding-helpers.test.ts — level 1 (lane 3); clien
 | PROC-2 | main session | minor | process | lanes 1, 2, 3, 6 | level 1 | open — plan-named skills not invoked (drizzle-orm-patterns, security, zod, next/react-best-practices, react-testing-library); reviewers check against them | |
 
 ## Log
+- 2026-10-03 — level 2 lane 4 done; gate green; main session read every new *.it.test.ts (controls present: isolation marker in stored tour + review call made)
 - 2026-10-03 — level 1 lanes 1, 2, 3, 5, 6 done; gate green
 - 2026-10-03 — lane 0 implementer done; level 0 gate: only expected red
 - 2026-10-02 — spec-creator: spec written, approved (6cd61e9), updated from planner findings (93a1c35)
