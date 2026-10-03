@@ -272,7 +272,11 @@ d('PR Brief routes (Testcontainers pg)', () => {
     } = {},
   ) {
     const llm = o.llm ?? mockLlm();
-    const github = o.github ?? new TestGitHub({ detail: { head_sha: 'aaa' } });
+    const github =
+      o.github ??
+      new TestGitHub({
+        detail: { head_sha: 'aaa', title: 'TITLE-SENTINEL Add rate limiting', files: [LIMITER, CONFIG] },
+      });
     const repoIntel = o.repoIntel ?? new FakeRepoIntel();
     const repoDocs = o.repoDocs ?? new MockRepoDocs();
     return buildApp({
