@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
 import { render, screen, cleanup, within, waitFor, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { NextIntlClientProvider } from "next-intl";
+import { NextIntlClientProvider, type AbstractIntlMessages } from "next-intl";
 import type { PrBriefResult, Risk } from "@devdigest/shared/contracts/brief";
 import briefMessages from "../../../../../../../../../../messages/en/brief.json";
 import prReviewMessages from "../../../../../../../../../../messages/en/prReview.json";
@@ -97,7 +97,7 @@ type CardProps = React.ComponentProps<typeof PrBriefCard>;
 
 function renderCard(
   props: Partial<CardProps> = {},
-  messages: Record<string, unknown> = { brief: briefMessages, prReview: prReviewMessages },
+  messages: AbstractIntlMessages = { brief: briefMessages, prReview: prReviewMessages },
 ) {
   const onOpenFile = vi.fn();
   const qc = new QueryClient({
@@ -233,7 +233,7 @@ describe("PrBriefCard generate (AC-39)", () => {
 
     expect(await screen.findByText("Adds a token-bucket limiter to the public API.")).toBeInTheDocument();
     expect(postCount()).toBe(1);
-    expect(postMock.mock.calls[0][0]).toBe(BRIEF_PATH);
+    expect(postMock.mock.calls[0]?.[0]).toBe(BRIEF_PATH);
     expect(screen.getByText("Risk areas")).toBeInTheDocument();
     expect(screen.getByText("Review focus")).toBeInTheDocument();
     expect(screen.getByText("Rate limiter can be bypassed")).toBeInTheDocument();
@@ -496,7 +496,7 @@ function plainEnglish(node: unknown, out: string[] = []): string[] {
 
 describe("PrBriefCard i18n (AC-48)", () => {
   it("bracketed-key bundle shows no hard-coded literal", async () => {
-    const bundle = bracketed(briefMessages) as Record<string, unknown>;
+    const bundle = bracketed(briefMessages) as AbstractIntlMessages;
     const literals = plainEnglish({
       card: briefMessages.card,
       sections: briefMessages.sections,
@@ -510,7 +510,7 @@ describe("PrBriefCard i18n (AC-48)", () => {
         stale: true,
         missing_inputs: ["intent"],
         truncated_inputs: ["specs"],
-        review_focus: [{ file: "src/ghost.ts", line: 9, reason: "A caller-only file." }, makeBrief().review_focus[0]],
+        review_focus: [{ file: "src/ghost.ts", line: 9, reason: "A caller-only file." }, { file: "src/a.ts", line: 12, reason: "The refill math changed." }],
       }),
     );
     renderCard({}, { brief: bundle, prReview: prReviewMessages });
@@ -526,23 +526,25 @@ describe("PrBriefCard i18n (AC-48)", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /src\/ghost\.ts:9/ }));
     expect(await screen.findByText("[card.notInDiff]")).toBeInTheDocument();
-    fireEvent.click(screen.getAllByRole("button", { name: "[risk.expand]" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "[risk.expand]" }).at(0) as HTMLElement);
     expect(screen.getByRole("button", { name: "[risk.collapse]" })).toBeInTheDocument();
 
-    const html = document.body.innerHTML;
+    // Bracketed key tokens (e.g. "[card.stale]") are the rendered keys; search for literals outside them.
+    const outsideKeys = () => document.body.innerHTML.replace(/\[[^\]]+\]/g, "");
+    const html = outsideKeys();
     for (const literal of literals) expect(html).not.toContain(literal);
 
     cleanup();
     storedBrief(makeBrief({ risks: { risks: [] } }));
     renderCard({}, { brief: bundle, prReview: prReviewMessages });
     expect(await screen.findByText("[noRisks]")).toBeInTheDocument();
-    for (const literal of literals) expect(document.body.innerHTML).not.toContain(literal);
+    for (const literal of literals) expect(outsideKeys()).not.toContain(literal);
 
     cleanup();
     storedBrief(null);
     renderCard({}, { brief: bundle, prReview: prReviewMessages });
     expect(await screen.findByRole("button", { name: "[card.generate]" })).toBeInTheDocument();
-    for (const literal of literals) expect(document.body.innerHTML).not.toContain(literal);
+    for (const literal of literals) expect(outsideKeys()).not.toContain(literal);
   });
 });
 
@@ -552,7 +554,8 @@ describe("PrBriefCard keyboard (AC-49)", () => {
     const { onOpenFile } = renderCard();
     await screen.findByText("Review focus");
 
-    expect(screen.getByRole("button", { name: /src\/a\.ts:12/ })).toBeInTheDocument();
+    const firstFocus = screen.getByRole("button", { name: /src\/a\.ts:12/ });
+    expect(firstFocus).toBeInTheDocument();
 
     // Tab order without userEvent: the tabbable elements in DOM order, up to the first focus item.
     // Every button must be a native <button> and none may have tabindex -1.

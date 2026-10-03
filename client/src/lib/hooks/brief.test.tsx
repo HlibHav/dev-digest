@@ -224,7 +224,7 @@ describe("useGenerateBrief", () => {
     });
 
     expect(postMock).toHaveBeenCalledTimes(1);
-    expect(postMock.mock.calls[0][0]).toBe(BRIEF_PATH);
+    expect(postMock.mock.calls[0]?.[0]).toBe(BRIEF_PATH);
     expect(returned).toEqual(generated);
     expect(qc.getQueryData(["pr-brief", PR_ID])).toEqual(generated);
   });
