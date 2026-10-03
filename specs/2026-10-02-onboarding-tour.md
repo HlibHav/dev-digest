@@ -372,47 +372,47 @@ All JSON is snake_case. These shapes describe behaviour; the plan decides where 
 
 | AC | proof | verify | step | test | commit |
 |---|---|---|---|---|---|
-| AC-1 | red-first unit | sidebar item links to the repo's tour page, active there | — | — | — |
-| AC-2 | red-first unit | not active on the add-repository screen | — | — | — |
-| AC-3 | red-first unit | five headings and five anchors in order | — | — | — |
-| AC-4 | red-first unit | anchor click scrolls to the section | — | — | — |
-| AC-5 | red-first unit | header collapses and expands | — | — | — |
-| AC-6 | red-first integration | no tour → state `none`, 0 LLM calls | — | — | — |
-| AC-7 | red-first integration | not cloned → refusal, 0 calls, notice, no Generate | — | — | — |
-| AC-8 | red-first unit | generating → progress, Regenerate disabled | — | — | — |
-| AC-9 | red-first integration | gated mock: immediate `generating`, then `ready` | — | — | — |
-| AC-10 | red-first integration | 1 call on success, 1 (not 2) on failure | — | — | — |
-| AC-11 | red-first integration | second request → `already_generating`, calls still 1 | — | — | — |
-| AC-12 | red-first integration | persisted; two reads, no new call | — | — | — |
-| AC-13 | red-first integration | one log line: calls, tokens, cost or "—", outcome | — | — | — |
-| AC-14 | red-first unit | subline calls · cost · model; "—" for null | — | — | — |
-| AC-15 | red-first unit + red-first integration | "index of N files", age; partial "N of M"; `unavailable` / `unsupported_languages` → age only, no "index of"; self-reported complete index with N < M → `partial` | — | — | — |
-| AC-16 | red-first integration | tour marker absent from review prompts | — | — | — |
-| AC-17 | red-first integration | throw or malformed → skeleton `llm_failed` | — | — | — |
-| AC-18 | red-first integration | never-resolving mock past 90 s → `timed_out`, cost null | — | — | — |
-| AC-19 | red-first integration | degraded index → 0 calls, `index_unavailable` | — | — | — |
-| AC-20 | red-first integration | partial index → 1 call, only indexed files | — | — | — |
-| AC-21 | red-first integration | `.py`-only clone → 1 call, notice in both sections | — | — | — |
-| AC-22 | red-first unit | skeleton content from fixed facts | — | — | — |
-| AC-23 | red-first integration | index read throws → skeleton, reason `error`, 0 calls, status line, error log, API serves | — | — | — |
-| AC-24 | red-first integration | restart mid-generation → never stuck `generating` | — | — | — |
-| AC-25 | red-first integration | failed regenerate over an LLM tour → earlier tour kept, failure recorded, banner, log line | — | — | — |
-| AC-26 | red-first unit | stale banner when commits differ | — | — | — |
-| AC-27 | red-first integration | LLM-invented command dropped, note kept | — | — | — |
-| AC-28 | red-first unit | derived commands in order, `lint` excluded; `npm run` and `bun run` forms | — | — | — |
-| AC-29 | red-first unit | note rendered apart; copy puts the command only on the clipboard, "Copied" | — | — | — |
-| AC-30 | red-first unit | no commands → notice | — | — | — |
-| AC-31 | red-first unit | rank order, path tie-break, tests excluded, ≤ 10 | — | — | — |
-| AC-32 | red-first unit | "Ordered by how many files depend on it" | — | — | — |
-| AC-33 | red-first integration | LLM cannot add, drop or reorder; fallback reason | — | — | — |
-| AC-34 | red-first unit | Open → GitHub blob at tour commit, new tab | — | — | — |
-| AC-35 | red-first unit | server stores tasks, or the checklist items without a missing step; the client renders stored items only | — | — | — |
-| AC-36 | red-first integration | ghost path dropped; all ghosts → checklist items stored | — | — | — |
-| AC-37 | red-first unit | sanitised overview, path as code | — | — | — |
-| AC-38 | red-first unit | valid diagram shown; invalid or 13 nodes dropped | — | — | — |
-| AC-39 | red-first unit | Share link copies the page address | — | — | — |
-| AC-41 | red-first unit | 120 routes, 10,000-character README, 35 folders → 50, 4,000, 20 | — | — | — |
-| AC-40 | browser (main session) | hono on the dev stack: five sections, log line with calls and cost, screenshots | — | — | — |
+| AC-1 | red-first unit | sidebar item links to the repo's tour page, active there | 10 | `OnboardingTourNav.test.tsx` "links to the repo's tour page in WORKSPACE and is active there" | a8f56c1 |
+| AC-2 | red-first unit | not active on the add-repository screen | 10 | `OnboardingTourNav.test.tsx` "add-repository screen marks nothing as Onboarding Tour" | a8f56c1 |
+| AC-3 | red-first unit | five headings and five anchors in order | 12 | `OnboardingTourView.test.tsx` "five headings and five anchors in order" | a8f56c1 |
+| AC-4 | red-first unit | anchor click scrolls to the section | 12 | `OnboardingTourView.test.tsx` "anchor click scrolls First tasks into view" | a8f56c1 |
+| AC-5 | red-first unit | header collapses and expands | 12 | `OnboardingTourView.test.tsx` "header collapses and expands Critical paths" | a8f56c1 |
+| AC-6 | red-first integration | no tour → state `none`, 0 LLM calls | 7, 8, 9, 12 | `server/test/onboarding.it.test.ts` "cloned repo without tour → state none, 0 calls"; `OnboardingTourView.test.tsx` "empty state shows Generate onboarding tour" | ab9de07, a8f56c1 |
+| AC-7 | red-first integration | not cloned → refusal, 0 calls, notice, no Generate | 8, 9, 12 | `onboarding.it.test.ts` "not cloned → 409 not_cloned, 0 calls"; `OnboardingTourView.test.tsx` "not cloned notice, no Generate" | ab9de07, a8f56c1 |
+| AC-8 | red-first unit | generating → progress, Regenerate disabled | 12 | `OnboardingTourView.test.tsx` "generating → status and disabled Regenerate"; "generating with no tour yet disables Generate" | a8f56c1 |
+| AC-9 | red-first integration | gated mock: immediate `generating`, then `ready` | 3, 8, 9 | `onboarding.it.test.ts` "gated mock: 202 generating, then ready" | ab9de07, 39a41c7 |
+| AC-10 | red-first integration | 1 call on success, 1 (not 2) on failure | 8 | `onboarding.it.test.ts` "1 call on success, 1 on throw" | ab9de07 |
+| AC-11 | red-first integration | second request → `already_generating`, calls still 1 | 8, 9 | `onboarding.it.test.ts` "second POST → 409 already_generating, calls still 1" | ab9de07 |
+| AC-12 | red-first integration | persisted; two reads, no new call | 7, 8 | `onboarding.it.test.ts` "persisted; two reads equal, calls still 1" | ab9de07 |
+| AC-13 | red-first integration | one log line: calls, tokens, cost or "—", outcome | 6, 8 | `onboarding-service.it.test.ts` "one log line with llm_calls=1, tokens 1200/300, $0.0021, complete"; "null price → —" | ab9de07, a8f56c1 |
+| AC-14 | red-first unit | subline calls · cost · model; "—" for null | 11, 12 | `OnboardingTourView.test.tsx` "subline 1 LLM call · $0.0021 · openrouter/…; — for null; 0 LLM calls" | a8f56c1 |
+| AC-15 | red-first unit + red-first integration | "index of N files", age; partial "N of M"; `unavailable` / `unsupported_languages` → age only, no "index of"; self-reported complete index with N < M → `partial` | 5, 6, 8, 11, 12 | `OnboardingTourView.test.tsx` "index of 812 files, generated 2h ago; partial 5,000 of 12,450"; "AC-15 subline index text only for full or partial" (backfill); `onboarding.it.test.ts` "self-reported full index with 5 of 7 supported files → partial 5 of 7" | a8f56c1, ab9de07, ee9af1e |
+| AC-16 | red-first integration | tour marker absent from review prompts | 8 | `onboarding-review-isolation.it.test.ts` "tour marker never reaches a review prompt" | ab9de07 |
+| AC-17 | red-first integration | throw or malformed → skeleton `llm_failed` | 6, 8, 12 | `onboarding-service.it.test.ts` "throw and malformed → skeleton llm_failed, calls 1"; `OnboardingTourView.test.tsx` "llm_failed status line" | ab9de07, a8f56c1 |
+| AC-18 | red-first integration | never-resolving mock past 90 s → `timed_out`, cost null | 8, 12 | `onboarding-service.it.test.ts` "never-resolving and retried-60 s mocks → timed_out, cost null, one log line, ready"; `OnboardingTourView.test.tsx` "timed_out status line" | ab9de07, a8f56c1 |
+| AC-19 | red-first integration | degraded index → 0 calls, `index_unavailable` | 6, 8, 12 | `onboarding.it.test.ts` "degraded index → 0 calls, index_unavailable"; `OnboardingTourView.test.tsx` "index_unavailable status line" | ab9de07, a8f56c1 |
+| AC-20 | red-first integration | partial index → 1 call, only indexed files | 6, 8 | `onboarding.it.test.ts` "partial index 3 of 5 → 1 call, partial, only indexed files" | ab9de07 |
+| AC-21 | red-first integration | `.py`-only clone → 1 call, notice in both sections | 5, 6, 8, 12 | `onboarding.it.test.ts` "py-only clone → 1 call, unsupported_languages, notices"; `OnboardingTourView.test.tsx` "section notice rendered" | ab9de07, a8f56c1 |
+| AC-22 | red-first unit | skeleton content from fixed facts | 6, 12 | `onboarding-helpers.test.ts` "buildSkeleton from fixed facts"; `OnboardingTourView.test.tsx` "skeleton architecture shows stack and folder rows with counts" | a8f56c1, 5c40012 |
+| AC-23 | red-first integration | index read throws → skeleton, reason `error`, 0 calls, status line, error log, API serves | 6, 8, 12 | `onboarding-service.it.test.ts` "index read throws → ready skeleton, reason error, 0 calls, error log, health 200"; `OnboardingTourView.test.tsx` "error status line" | ab9de07, a8f56c1 |
+| AC-24 | red-first integration | restart mid-generation → never stuck `generating` | 8 | `onboarding-service.it.test.ts` "recreated service never reads generating" | ab9de07 |
+| AC-25 | red-first integration | failed regenerate over an LLM tour → earlier tour kept, failure recorded, banner, log line | 8, 12 | `onboarding-service.it.test.ts` "failed regenerate keeps LLM tour, records last_failure, logs llm_failed"; `OnboardingTourView.test.tsx` "Last regeneration failed banner" | ab9de07, a8f56c1 |
+| AC-26 | red-first unit | stale banner when commits differ | 11, 12 | `OnboardingTourView.test.tsx` "stale banner when commits differ, none when equal"; `helpers.test.ts` "isStale false when either sha is empty" | a8f56c1 |
+| AC-27 | red-first integration | LLM-invented command dropped, note kept | 6, 8 | `onboarding.it.test.ts` "invented command dropped, note kept on pnpm install"; `onboarding-helpers.test.ts` "mergeTour drops an invented command…" | ab9de07, a8f56c1 |
+| AC-28 | red-first unit | derived commands in order, `lint` excluded; `npm run` and `bun run` forms | 6 | `onboarding-helpers.test.ts` "deriveCommands order, no lint; npm run and bun run forms" | a8f56c1 |
+| AC-29 | red-first unit | note rendered apart; copy puts the command only on the clipboard, "Copied" | 12 | `OnboardingTourView.test.tsx` "note rendered apart; copy puts cp .env.example .env only, Copied" | a8f56c1 |
+| AC-30 | red-first unit | no commands → notice | 12 | `OnboardingTourView.test.tsx` "empty command list → notice" | a8f56c1 |
+| AC-31 | red-first unit | rank order, path tie-break, tests excluded, ≤ 10 | 4, 6 | `onboarding-helpers.test.ts` "orderReadingPath rank, tie by path, tests out" | a8f56c1 |
+| AC-32 | red-first unit | "Ordered by how many files depend on it" | 12 | `OnboardingTourView.test.tsx` "reading path states its ordering" | a8f56c1 |
+| AC-33 | red-first integration | LLM cannot add, drop or reorder; fallback reason | 6, 8 | `onboarding.it.test.ts` "LLM cannot add or reorder critical files; fallback reason"; `onboarding-helpers.test.ts` "mergeTour keeps index order and fills missing reasons…" | ab9de07, a8f56c1 |
+| AC-34 | red-first unit | Open → GitHub blob at tour commit, new tab | 11, 12 | `OnboardingTourView.test.tsx` "Open → github blob at abc123, new tab"; `helpers.test.ts` "githubBlobUrl encodes each segment" | a8f56c1 |
+| AC-35 | red-first unit | server stores tasks, or the checklist items without a missing step; the client renders stored items only | 6, 12 | `onboarding-helpers.test.ts` "mergeTour stores two valid tasks", "skeleton without a test command stores three checklist items"; `OnboardingTourView.test.tsx` "renders stored first-task items, no checklist of its own" | a8f56c1 |
+| AC-36 | red-first integration | ghost path dropped; all ghosts → checklist items stored | 5, 6, 8 | `onboarding.it.test.ts` "ghost task dropped; all ghosts → checklist items stored"; fs-clone-scanner test "exists rejects traversal, absolute and escaping symlink" | ab9de07, a8f56c1 |
+| AC-37 | red-first unit | sanitised overview, path as code | 12 | `OnboardingTourView.test.tsx` "overview sanitised, path as code"; "overview renders no image and no external link, link text stays visible" | a8f56c1, 183697a |
+| AC-38 | red-first unit | valid diagram shown; invalid or 13 nodes dropped | 11, 12 | `OnboardingTourView.test.tsx` "5-node diagram shown", "syntax error dropped, prose kept", "13 nodes dropped, prose kept"; `helpers.test.ts` "labeled edges do not count as nodes (both label forms)" | a8f56c1, 5c40012 |
+| AC-39 | red-first unit | Share link copies the page address | 12 | `OnboardingTourView.test.tsx` "Share link copies page URL, Link copied" | a8f56c1 |
+| AC-41 | red-first unit | 120 routes, 10,000-character README, 35 folders → 50, 4,000, 20 | 6 | `onboarding-helpers.test.ts` "buildModelInput caps 50 routes, 4,000 chars, 20 folders" | a8f56c1 |
+| AC-40 | browser (main session) | hono on the dev stack: five sections, log line with calls and cost, screenshots | all | main-session browser demo on honojs/hono at 183697a; screenshots and the log line `llm_calls=1 tokens 2441/718 $0.0021 outcome=complete duration_ms=4521` in `docs/plans/2026-10-02-onboarding-tour.assets/` | 0a8861b |
 
 ## Changelog
 
@@ -423,3 +423,4 @@ All JSON is snake_case. These shapes describe behaviour; the plan decides where 
 | 2026-10-02 | Status: approved | set by Glib after NC-1/NC-2 were closed |
 | 2026-10-03 | Planner findings resolved:<br>• AC-23: `error` added to `skeleton_reason`, with a status line;<br>• AC-22, AC-35, AC-36: the server owns the checklist and stores it as first-task items, and the client only renders;<br>• AC-28: script command format per package manager, with `bun run` to avoid bun's built-in `test`/`build`;<br>• AC-15: N < M counts as partial;<br>• Contracts: HTTP statuses 202/409/404/422;<br>• Goals: tokens in the log only;<br>• AC-29: the note is rendered apart and is not copied.<br>Status kept approved. | update mode: the implementation-planner's findings, routed by Glib; clarifications inside decisions already taken (honest status, Q3 a, Q6 a, Q7 a, N4) |
 | 2026-10-03 | AC-15: the subline's index text applies only to the `full` (N files) and `partial` (N of M) index statuses. `unavailable` and `unsupported_languages` show the age only; verify extended. Status stays approved | update mode: plan-verifier finding; Glib kept the built behaviour ("Лише «generated 2h ago»") |
+| 2026-10-03 | Traceability: step, test and commit filled for all 41 ACs from the plan-verifier matrix, plus the backfill and fix tests (ee9af1e, 5c40012, 183697a) and the AC-40 hono browser demo (0a8861b). No AC text or Status changed | update mode, traceability only: the feature is built and verified |
