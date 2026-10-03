@@ -21,6 +21,8 @@ export function RoleGroup({
   findingsCount,
   findings,
   commenting,
+  focusFile = null,
+  focusLine = null,
 }: {
   role: SmartDiffRole;
   label: string;
@@ -30,9 +32,21 @@ export function RoleGroup({
   findingsCount: number;
   findings?: DiffFindingApi;
   commenting?: DiffCommentApi;
+  /** Path of the file to open (the group opens when it holds it). */
+  focusFile?: string | null;
+  focusLine?: number | null;
 }) {
   const t = useTranslations("prReview");
-  const [open, setOpen] = React.useState(!COLLAPSED_BY_DEFAULT.has(role));
+  const holdsFocus = focusFile != null && files.some((f) => f.path === focusFile);
+  const [open, setOpen] = React.useState(!COLLAPSED_BY_DEFAULT.has(role) || holdsFocus);
+  // Adjust state during render: a changed focus reopens a group the user (or
+  // the default) left collapsed.
+  const focusKey = holdsFocus ? `${focusFile}:${focusLine}` : null;
+  const [seenFocusKey, setSeenFocusKey] = React.useState(focusKey);
+  if (focusKey !== seenFocusKey) {
+    setSeenFocusKey(focusKey);
+    if (focusKey != null) setOpen(true);
+  }
 
   return (
     <div style={s.group}>
@@ -52,7 +66,14 @@ export function RoleGroup({
       {open && (
         <div style={s.body}>
           {files.map((file) => (
-            <FileCard key={file.path} file={file} commenting={commenting} findings={findings} />
+            <FileCard
+              key={file.path}
+              file={file}
+              commenting={commenting}
+              findings={findings}
+              focusFile={focusFile}
+              focusLine={focusLine}
+            />
           ))}
         </div>
       )}

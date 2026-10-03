@@ -20,11 +20,17 @@ export interface DiffViewerGroup {
   files: PrFile[];
 }
 
+export interface DiffViewerFocus {
+  file: string;
+  line: number | null;
+}
+
 export function DiffViewer({
   files,
   commenting,
   groups,
   findings,
+  focus,
 }: {
   files: PrFile[];
   commenting?: DiffCommentApi;
@@ -32,8 +38,12 @@ export function DiffViewer({
    *  re-sorts. Omit to render the flat, ungrouped ("Original order") list. */
   groups?: DiffViewerGroup[];
   findings?: DiffFindingApi;
+  /** A file (and line) to open, scroll to and highlight, e.g. from the page address. */
+  focus?: DiffViewerFocus | null;
 }) {
   const t = useTranslations("shell");
+  const focusFile = focus?.file ?? null;
+  const focusLine = focus?.line ?? null;
   if (!files || files.length === 0) {
     return <div style={s.empty}>{t("diffViewer.noChangedFiles")}</div>;
   }
@@ -51,6 +61,8 @@ export function DiffViewer({
             findingsCount={filesWithFindings(g.files.map((f) => f.path), findings?.findings ?? [])}
             findings={findings}
             commenting={commenting}
+            focusFile={focusFile}
+            focusLine={focusLine}
           />
         ))}
       </div>
@@ -60,7 +72,14 @@ export function DiffViewer({
   return (
     <div style={s.list}>
       {files.map((f, i) => (
-        <FileCard key={i} file={f} commenting={commenting} findings={findings} />
+        <FileCard
+          key={i}
+          file={f}
+          commenting={commenting}
+          findings={findings}
+          focusFile={focusFile}
+          focusLine={focusLine}
+        />
       ))}
     </div>
   );
