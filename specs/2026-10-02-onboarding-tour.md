@@ -1,6 +1,6 @@
 # Spec: Onboarding Tour — a five-part guided tour of an unfamiliar repository
 Spec ID: SPEC-2026-10-02-onboarding-tour
-Status: approved
+Status: implemented
 Tier: Full SDD — scorecard 5/6
 Supersedes: none (replaces the unused onboarding scaffolding: its section set and its empty-state copy describe a different five sections)
 Packages: server, client
@@ -424,3 +424,4 @@ All JSON is snake_case. These shapes describe behaviour; the plan decides where 
 | 2026-10-03 | Planner findings resolved:<br>• AC-23: `error` added to `skeleton_reason`, with a status line;<br>• AC-22, AC-35, AC-36: the server owns the checklist and stores it as first-task items, and the client only renders;<br>• AC-28: script command format per package manager, with `bun run` to avoid bun's built-in `test`/`build`;<br>• AC-15: N < M counts as partial;<br>• Contracts: HTTP statuses 202/409/404/422;<br>• Goals: tokens in the log only;<br>• AC-29: the note is rendered apart and is not copied.<br>Status kept approved. | update mode: the implementation-planner's findings, routed by Glib; clarifications inside decisions already taken (honest status, Q3 a, Q6 a, Q7 a, N4) |
 | 2026-10-03 | AC-15: the subline's index text applies only to the `full` (N files) and `partial` (N of M) index statuses. `unavailable` and `unsupported_languages` show the age only; verify extended. Status stays approved | update mode: plan-verifier finding; Glib kept the built behaviour ("Лише «generated 2h ago»") |
 | 2026-10-03 | Traceability: step, test and commit filled for all 41 ACs from the plan-verifier matrix, plus the backfill and fix tests (ee9af1e, 5c40012, 183697a) and the AC-40 hono browser demo (0a8861b). No AC text or Status changed | update mode, traceability only: the feature is built and verified |
+| 2026-10-03 | Status: implemented | set on Glib's word after verification (41/41 ACs met, docs/plans/2026-10-02-onboarding-tour.verify.md) |
