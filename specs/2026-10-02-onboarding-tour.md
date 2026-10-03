@@ -46,7 +46,7 @@ Goals:
 - One structured LLM call per generation turns the facts into prose, reasons and first tasks. The file lists, their order and the commands stay deterministic.
 - A deterministic skeleton with an honest status when the index is unavailable, the call fails or the call times out.
 - Generation on demand only (Generate, then Regenerate). The latest tour is persisted per repository.
-- The LLM call count, tokens and cost of every generation are logged and shown on the page.
+- The LLM call count, tokens and cost of every generation are logged. The page shows the call count, the cost and the model (AC-14); tokens appear in the log only.
 
 Non-goals:
 - Injecting the tour into review prompts, or into any agent's context.
@@ -95,7 +95,15 @@ Non-goals:
 - **AC-12** WHEN a generation ends, the system shall persist the result as the repository's tour (except in the case AC-25 governs), and opening the page later shall show it without a new LLM call — proof: red-first integration — verify: generate, then read the tour twice; expect the same tour both times and the mock call count still 1.
 - **AC-13** WHEN a generation ends, the system shall write one log line that names the repository, the provider and model, the number of LLM calls, the input and output tokens, the cost in USD (or "—" when no price is known), the outcome and the duration — proof: red-first integration — verify: generate with a mock that reports 1,200/300 tokens and $0.0021; expect exactly one generation log line containing `llm_calls=1`, `tokens 1200/300`, `$0.0021` and the outcome `complete`. With a mock that reports no price, expect `—`.
 - **AC-14** WHEN a tour is shown, the subline shall show "<n> LLM call(s) · <cost> · <provider/model>", with "—" for the cost when none was recorded — proof: red-first unit — verify: render a tour with 1 call and cost 0.0021; expect "1 LLM call · $0.0021 · openrouter/…". Render one with a null cost; expect "—". Render a skeleton with 0 calls; expect "0 LLM calls".
-- **AC-15** WHEN a tour is shown, the subline shall show "Generated from index of <N> files" and the tour's age ("generated <relative time>"), and WHILE the index is partial it shall show "Indexed <N> of <M> files · partial index" instead — proof: red-first unit — verify: render a full-index tour with N = 812 generated 2 hours ago; expect "Generated from index of 812 files" and "generated 2h ago". Render a partial tour with 5,000 of 12,450; expect "Indexed 5,000 of 12,450 files · partial index".
+- **AC-15** WHEN a tour is shown, the subline shall show "Generated from index of <N> files" and the tour's age ("generated <relative time>"), and WHILE the index is partial it shall show "Indexed <N> of <M> files · partial index" instead.
+  - N is the number of files indexed.
+  - M is the number of files in the clone with a supported extension, outside the excluded folders.
+  - The tour's index status is `partial` when the index reports itself partial, OR when N < M. The second case covers an index that stopped at its file cap or skipped oversized files but still reports itself complete.
+
+  — proof: red-first unit — verify:
+  - render a full-index tour with N = M = 812, generated 2 hours ago; expect "Generated from index of 812 files" and "generated 2h ago";
+  - render a partial tour with 5,000 of 12,450; expect "Indexed 5,000 of 12,450 files · partial index";
+  - and red-first integration: an index that reports itself complete with 5 files indexed in a clone of 7 supported files; generate; expect index status `partial`, 5 of 7.
 - **AC-16** The system shall not include any part of a tour in any review prompt — proof: red-first integration — verify: store a tour whose overview contains a unique marker string; run a review of a PR in the same repo with a mock LLM; expect the marker absent from every prompt the mock received.
 
 ### Honest status and fallback
@@ -109,10 +117,17 @@ Non-goals:
   - an Architecture overview listing the detected stack and the top-level folders with their file counts, with no prose and no diagram;
   - Critical paths and Guided reading path from the index, each with its deterministic reason. When no ranking exists, each of the two sections shows the section notice "Reading order needs the code index", or the AC-21 notice for unsupported languages;
   - the commands of AC-28;
-  - First tasks as the fixed orientation checklist of AC-35.
+  - First tasks as the orientation checklist of AC-35, written into the stored tour by the server.
 
   — proof: red-first unit — verify: build a skeleton from fixed facts (stack TypeScript + pnpm, folders `src` 40 and `test` 12, three ranked files); expect those stack and folder rows, three reading rows with "imported by N files" reasons, and the checklist.
-- **AC-23** IF the generation fails before or outside the LLM call (for example, reading the index or the clone throws), THEN the system shall end the generation with the skeleton built from whatever facts were collected, log the error, and keep serving every other request — proof: red-first integration — verify: make the index read throw through a test double; generate; expect state `ready` with a skeleton, an error log line, and a following health request answered normally.
+- **AC-23** IF the generation fails before or outside the LLM call (for example, reading the index or the clone throws), THEN the system shall:
+  - end the generation (unless AC-25 applies) with the skeleton built from whatever facts were collected;
+  - record `skeleton_reason` `error`;
+  - show the page status line "Some facts couldn't be read — showing what was collected from code";
+  - log the error with outcome `error`;
+  - keep serving every other request.
+
+  — proof: red-first integration — verify: make the index read throw through a test double; generate. Expect state `ready` with a skeleton, reason `error`, `llm.calls` = 0, the status line rendered, an error log line with outcome `error`, and a following health request answered normally.
 - **AC-24** IF the server restarts while a generation is in progress, THEN the page shall not stay in the generating state: it shall show the previous tour, or the empty state when there was none — proof: red-first integration — verify: mark a generation in progress, recreate the service as after a restart, read the tour; expect state `ready` (previous tour) or `none`, never `generating`.
 - **AC-25** IF a regeneration ends in the skeleton while the repository already has a tour written by the LLM, THEN the system shall keep the earlier LLM-written tour as the repository's tour, record the failed attempt (its reason, time, LLM calls and cost), and show the banner "Last regeneration failed (<reason>) at <time>" above it. The generation log line of AC-13 is still written — proof: red-first integration — verify: store an LLM tour, regenerate with a throwing mock; expect the earlier tour unchanged, a recorded last failure with reason `llm_failed` and 1 LLM call, the banner rendered with that reason and time, and one log line with outcome `llm_failed`.
 - **AC-26** WHILE the index has moved to a newer commit than the one the tour was built from, the page shall show the banner "This tour was built from an older version of the code" with a Regenerate action — proof: red-first unit — verify: render a tour built at commit `aaa` with the index at `bbb`; expect the banner. With both at `aaa`, expect none.
@@ -124,10 +139,14 @@ Non-goals:
   1. the install command of the package manager its lockfile identifies (`pnpm install` for a pnpm lockfile, `yarn install` for yarn, `bun install` for bun, `npm install` for npm or for a root manifest without a lockfile);
   2. `cp .env.example .env` when `.env.example` exists at the root;
   3. `docker compose up -d` when a compose file exists at the root;
-  4. the root manifest's scripts named `dev`, `start`, `build` and `test`, in that order, run through the detected package manager.
+  4. the root manifest's scripts named `dev`, `start`, `build` and `test`, in that order, run through the detected package manager:
+     - `npm run <script>` for npm;
+     - `pnpm <script>` for pnpm;
+     - `yarn <script>` for yarn;
+     - `bun run <script>` for bun. `bun test` and `bun build` would run bun's own built-in tools instead of the scripts.
 
-  — proof: red-first unit — verify: facts with a pnpm lockfile, `.env.example`, `docker-compose.yml` and scripts `test`, `dev`, `lint`; expect `pnpm install`, `cp .env.example .env`, `docker compose up -d`, `pnpm dev`, `pnpm test` in that order, and no `lint`.
-- **AC-29** WHEN the user activates a command's copy button, the system shall copy exactly that command's text and confirm the copy — proof: red-first unit — verify: click copy on row 1 (`pnpm install`); expect the clipboard text `pnpm install` and a "Copied" confirmation.
+  — proof: red-first unit — verify: facts with a pnpm lockfile, `.env.example`, `docker-compose.yml` and scripts `test`, `dev`, `lint`; expect `pnpm install`, `cp .env.example .env`, `docker compose up -d`, `pnpm dev`, `pnpm test` in that order, and no `lint`. The same facts with an npm lockfile give `npm run dev` and `npm run test`; with a bun lockfile they give `bun run dev` and `bun run test`.
+- **AC-29** WHEN a command has a note, the row shall show the note as separate muted text after the command, not as part of it. WHEN the user activates a command's copy button, the system shall copy exactly the command text, without the note, and confirm the copy — proof: red-first unit — verify: a row with command `cp .env.example .env` and note "add OPENAI + STRIPE keys"; expect the note rendered apart from the command. Click copy; expect the clipboard text `cp .env.example .env` and a "Copied" confirmation.
 - **AC-30** IF no command can be derived, THEN the section shall show "No run commands found in this repository's manifests" — proof: red-first unit — verify: render a tour with an empty command list; expect the notice.
 
 ### Critical paths and Guided reading path
@@ -139,14 +158,21 @@ Non-goals:
 
 ### First tasks
 
-- **AC-35** WHEN the LLM returns first tasks, the section shall show at most 5 tasks, each a short title with a real file path and a one-line reason, laid out like the Critical paths rows. IF the LLM returns no usable task, THEN it shall show the fixed orientation checklist:
+- **AC-35** WHEN a tour is built and the LLM returned usable first tasks, the system shall store at most 5 tasks, each a short title with a real file path and a one-line reason. IF there is no usable task (the skeleton, an LLM answer with no tasks, or every task dropped by AC-36), THEN the server shall store the orientation checklist as the first-task items. Each item is a title with no path and a deterministic reason source:
   1. "Run the project with the commands above";
   2. "Run the test suite";
   3. "Read file 1 of the reading path";
   4. "Make a small change and see it run".
 
-  The checklist leaves out any step whose prerequisite is missing (no commands, no test script, no reading path) — proof: red-first unit — verify: render two returned tasks; expect two rows with path and reason. Render with zero tasks and no test script; expect the checklist without "Run the test suite".
-- **AC-36** IF a task, a critical path or a reading-path entry from the LLM names a file that does not exist at the tour's commit, THEN the system shall drop that entry, and IF all tasks are dropped, THEN the checklist of AC-35 shall be shown — proof: red-first integration — verify: a mock LLM that returns tasks for `src/real.ts` and `src/ghost.ts`; expect only the `src/real.ts` task. With only ghost paths, expect the checklist.
+  The server leaves out each step whose prerequisite is missing:
+  - no derived commands → no step 1;
+  - no derived command for the `test` script → no step 2;
+  - an empty reading path → no step 3.
+
+  The client renders the stored items only, laid out like the Critical paths rows, and builds no checklist of its own.
+
+  — proof: red-first unit — verify: build a tour from an LLM answer with two valid tasks; expect two items with path and reason. Build a skeleton whose derived commands have no `test` command; expect three checklist items without "Run the test suite", each with no path and reason source `deterministic`.
+- **AC-36** IF a task, a critical path or a reading-path entry from the LLM names a file that does not exist at the tour's commit, THEN the system shall drop that entry, and IF all tasks are dropped, THEN the stored first-task items shall be the checklist of AC-35 — proof: red-first integration — verify: a mock LLM that returns tasks for `src/real.ts` and `src/ghost.ts`; expect only the `src/real.ts` task stored. With only ghost paths, expect the checklist items stored.
 
 ### Architecture overview
 
@@ -275,12 +301,19 @@ All JSON is snake_case. These shapes describe behaviour; the plan decides where 
   - `state` — `none | generating | ready`;
   - `index_commit_sha` — string or null, the index's current commit, for AC-26;
   - `tour` — null, or the object below.
-- **Start a generation:** `POST /repos/:id/onboarding/generate` → `{ state: "generating" }`. A refusal uses the existing error envelope with code `not_cloned` or `already_generating` (409).
+- **Start a generation:** `POST /repos/:id/onboarding/generate`.
+  - Success: 202 with `{ state: "generating" }`.
+  - A refusal uses the existing error envelope:
+    - `not_cloned` → 409;
+    - `already_generating` → 409;
+    - unknown repository → 404;
+    - a malformed repository id → 422.
+  - The read route answers the same 404 and 422.
 - **Tour object:**
   - `generated_at` — ISO string;
   - `commit_sha` — the commit the tour was built from;
   - `source` — `llm | skeleton`;
-  - `skeleton_reason` — `llm_failed | timed_out | index_unavailable`, or null;
+  - `skeleton_reason` — `llm_failed | timed_out | index_unavailable | error`, or null;
   - `index`: `{ status: full | partial | unavailable | unsupported_languages, files_indexed: int, files_total: int }`;
   - `llm`: `{ calls: 0 | 1, provider (nullish), model (nullish), tokens_in (nullish), tokens_out (nullish), cost_usd (nullish), duration_ms (nullish) }`;
   - `last_failure` — nullish `{ reason: llm_failed | timed_out | index_unavailable | error, at, llm }`, set when a regeneration failed and the earlier LLM tour was kept (AC-25);
@@ -349,7 +382,7 @@ All JSON is snake_case. These shapes describe behaviour; the plan decides where 
 | AC-12 | red-first integration | persisted; two reads, no new call | — | — | — |
 | AC-13 | red-first integration | one log line: calls, tokens, cost or "—", outcome | — | — | — |
 | AC-14 | red-first unit | subline calls · cost · model; "—" for null | — | — | — |
-| AC-15 | red-first unit | "index of N files", age; partial "N of M" | — | — | — |
+| AC-15 | red-first unit + red-first integration | "index of N files", age; partial "N of M"; self-reported complete index with N < M → `partial` | — | — | — |
 | AC-16 | red-first integration | tour marker absent from review prompts | — | — | — |
 | AC-17 | red-first integration | throw or malformed → skeleton `llm_failed` | — | — | — |
 | AC-18 | red-first integration | never-resolving mock past 90 s → `timed_out`, cost null | — | — | — |
@@ -357,20 +390,20 @@ All JSON is snake_case. These shapes describe behaviour; the plan decides where 
 | AC-20 | red-first integration | partial index → 1 call, only indexed files | — | — | — |
 | AC-21 | red-first integration | `.py`-only clone → 1 call, notice in both sections | — | — | — |
 | AC-22 | red-first unit | skeleton content from fixed facts | — | — | — |
-| AC-23 | red-first integration | index read throws → skeleton, error log, API serves | — | — | — |
+| AC-23 | red-first integration | index read throws → skeleton, reason `error`, 0 calls, status line, error log, API serves | — | — | — |
 | AC-24 | red-first integration | restart mid-generation → never stuck `generating` | — | — | — |
 | AC-25 | red-first integration | failed regenerate over an LLM tour → earlier tour kept, failure recorded, banner, log line | — | — | — |
 | AC-26 | red-first unit | stale banner when commits differ | — | — | — |
 | AC-27 | red-first integration | LLM-invented command dropped, note kept | — | — | — |
-| AC-28 | red-first unit | derived commands in order, `lint` excluded | — | — | — |
-| AC-29 | red-first unit | copy puts exact text on clipboard, "Copied" | — | — | — |
+| AC-28 | red-first unit | derived commands in order, `lint` excluded; `npm run` and `bun run` forms | — | — | — |
+| AC-29 | red-first unit | note rendered apart; copy puts the command only on the clipboard, "Copied" | — | — | — |
 | AC-30 | red-first unit | no commands → notice | — | — | — |
 | AC-31 | red-first unit | rank order, path tie-break, tests excluded, ≤ 10 | — | — | — |
 | AC-32 | red-first unit | "Ordered by how many files depend on it" | — | — | — |
 | AC-33 | red-first integration | LLM cannot add, drop or reorder; fallback reason | — | — | — |
 | AC-34 | red-first unit | Open → GitHub blob at tour commit, new tab | — | — | — |
-| AC-35 | red-first unit | tasks rows; checklist without a missing step | — | — | — |
-| AC-36 | red-first integration | ghost path dropped; all ghosts → checklist | — | — | — |
+| AC-35 | red-first unit | server stores tasks, or the checklist items without a missing step; the client renders stored items only | — | — | — |
+| AC-36 | red-first integration | ghost path dropped; all ghosts → checklist items stored | — | — | — |
 | AC-37 | red-first unit | sanitised overview, path as code | — | — | — |
 | AC-38 | red-first unit | valid diagram shown; invalid or 13 nodes dropped | — | — | — |
 | AC-39 | red-first unit | Share link copies the page address | — | — | — |
@@ -384,3 +417,4 @@ All JSON is snake_case. These shapes describe behaviour; the plan decides where 
 | 2026-10-02 | Spec created (draft), Full SDD 5/6 | answers mode: user answers Q1 a, Q4 a, Q8 b; Q2, Q3, Q5, Q6, Q7 and N1–N10 accepted as recommended; UX proposals not accepted |
 | 2026-10-02 | Closed NC-1 (AC-25: keep the earlier LLM tour, record the failure, show the banner; adds `last_failure` to the contract) and NC-2 (Cost NFR caps, new AC-41) | answers mode: Glib chose NC-1 a and accepted the NC-2 recommendation; spec-creator's readings kept, not vetoed |
 | 2026-10-02 | Status: approved | set by Glib after NC-1/NC-2 were closed |
+| 2026-10-03 | Planner findings resolved:<br>• AC-23: `error` added to `skeleton_reason`, with a status line;<br>• AC-22, AC-35, AC-36: the server owns the checklist and stores it as first-task items, and the client only renders;<br>• AC-28: script command format per package manager, with `bun run` to avoid bun's built-in `test`/`build`;<br>• AC-15: N < M counts as partial;<br>• Contracts: HTTP statuses 202/409/404/422;<br>• Goals: tokens in the log only;<br>• AC-29: the note is rendered apart and is not copied.<br>Status kept approved. | update mode: the implementation-planner's findings, routed by Glib; clarifications inside decisions already taken (honest status, Q3 a, Q6 a, Q7 a, N4) |
