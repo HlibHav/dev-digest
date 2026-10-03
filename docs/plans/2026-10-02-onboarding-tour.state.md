@@ -1,5 +1,5 @@
 # State: onboarding-tour
-Stage: 4 Close · next: traceability, insights, pr-self-review, PR on Glib's word
+Stage: 4 Close · next: pr-self-review, then push + PR on Glib's word
 Spec: specs/2026-10-02-onboarding-tour.md (SPEC-2026-10-02-onboarding-tour) · Plan: docs/plans/2026-10-02-onboarding-tour.md · Mode: multi-agent
 Inputs: prompt none · designs specs/designs/onboarding-tour/tour-top.png, specs/designs/onboarding-tour/tour-run-and-reading.png
 Red-first: test-writer (e84d133); red tests are read-only for implementers
@@ -38,16 +38,17 @@ Expected red: server/test/onboarding-helpers.test.ts — level 1 (lane 3); clien
 ## Findings ledger
 | id | source | severity | kind | `path:line` | round opened | status | round closed |
 |---|---|---|---|---|---|---|---|
-| PROC-1 | main session | minor | process | server/test/onboarding-helpers.test.ts | level 1 | open — lane 3 appended 8 tests after the code (never red); plan-verifier to confirm each can fail | |
+| PROC-1 | main session | minor | process | server/test/onboarding-helpers.test.ts | level 1 | accepted — plan-verifier: all 8 can fail; two guard-level mutations (allow-list checks in mergeTour, extra slices in buildModelInput) are uncaught but redundant with the structure | review |
 | PV-1 | plan-verifier | major | spec is wrong | client/.../TourHeader/TourHeader.tsx:47 | review | closed — Glib chose the built behaviour; spec AC-15 updated (66982e4), backfill test added | review |
 | AR — | architecture-reviewer | — | — | — | review | pass, 0 findings | — |
 | CR-1 | /code-review | major | local fix | client/.../TourSection/TourSection.tsx:26 | review | closed — architecture card renders stack chips and folder rows; test "skeleton architecture shows stack and folder rows with counts" red → green | fix 1 |
 | CR-2 | /code-review | minor | local fix | client/.../OnboardingTourView/helpers.ts:47 | review | closed — labeled edges stripped before counting; tests red ("expected 12 to be 10", "expected 14 to be 13") → green | fix 1 |
 | SR-1 | security-reviewer | minor | — | client/src/vendor/ui/primitives/Markdown.tsx:10-37 | review | closed — Glib: fix; overview renders images as alt text and links as text via local react-markdown renderers; test red (img present) → green | fix 2 |
 | SR-2 | security-reviewer | minor | — | server/src/adapters/clone-scan/fs-clone-scanner.ts:84,59,44 | review | closed — Glib: fix; 64 KB capped reads, walk cap 200,000 (kept above the 5,000 index cap so AC-15's N < M rule still detects capped indexes); 3 tests red → green | fix 2 |
-| PROC-2 | main session | minor | process | lanes 1, 2, 3, 6 | level 1 | open — plan-named skills not invoked (drizzle-orm-patterns, security, zod, next/react-best-practices, react-testing-library); reviewers check against them | |
+| PROC-2 | main session | minor | process | lanes 1, 2, 3, 6 | level 1 | accepted — plan-verifier: no AC, contract or step depends on a skill being invoked; each protected outcome has a test or quoted line | review |
 
 ## Log
+- 2026-10-03 — plan-verifier delta at c20c73b: 0 not met, AC-40 partial → closed with two more screenshots; architecture delta pass; 41/41 met
 - 2026-10-03 — e2e 9/9; AC-40 hono demo done (1 call, $0.0021, 4.5 s)
 - 2026-10-03 — Glib: fix SR-1 and SR-2; fix round 2 done, gate green; walk cap raised from 5,000 to 200,000 by the main session (AC-15 regression risk)
 - 2026-10-03 — security-reviewer: pass, SR-1/SR-2 minor; /code-review: CR-1, CR-2 → fix round 1 (lane 6), both closed; main session read the delta

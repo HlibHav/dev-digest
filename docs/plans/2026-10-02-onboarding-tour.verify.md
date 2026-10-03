@@ -151,3 +151,79 @@ Implementation-side extras that are inside a step's files but beyond the plan's 
 ## Insight candidates
 - Server `.it.test` files skip silently when the `docker info` probe in `server/test/helpers/pg.ts` (5 s timeout) runs under load. My first full run reported 128 skipped with Docker up. An idle re-run ran all 128. A green exit with every file skipped is not evidence.
 - A "drops entries outside the list" test passes whether or not an explicit allow-list check exists, when the output is built by mapping over the deterministic list. The test only pins the structure.
+
+## Delta pass at c20c73b
+Range: ab9de07...c20c73b (head c20c73b). Working tree clean before and after (`git status --porcelain` empty).
+
+### 1. Updated matrix rows
+| AC | step | proving test | proving-code commit | verdict |
+|---|---|---|---|---|
+| AC-15 | 5,6,8,11,12 | V "index of 812 files, generated 2h ago; partial 5,000 of 12,450"; V "AC-15 subline index text only for full or partial" (2 cases: `unavailable` and `unsupported_languages`, expecting "generated 2h ago" and no "index of", "Generated from index of" or "partial index"); OT "self-reported full index with 5 of 7 supported files → partial 5 of 7" | a8f56c1, ab9de07, ee9af1e | met |
+| AC-22 | 6,12 | H "buildSkeleton from fixed facts"; V "skeleton architecture shows stack and folder rows with counts" | a8f56c1, 5c40012 | met |
+| AC-37 | 12 | V "overview sanitised, path as code"; V "overview renders no image and no external link, link text stays visible" | a8f56c1, 183697a | met |
+| AC-38 | 11,12 | V "5-node diagram shown", "syntax error dropped, prose kept", "13 nodes dropped, prose kept"; `helpers.test.ts` "labeled edges do not count as nodes (both label forms)" and "13 distinct nodes with labels still rejected" | a8f56c1, 5c40012 | met |
+| AC-40 | all | Demo evidence on disk, judged below | 0a8861b | partial |
+
+- **AC-15:**
+  - The spec text now matches the built behaviour: spec diff, commit 66982e4 (index text only for `full`/`partial`, age only for `unavailable`/`unsupported_languages`).
+  - `TourHeader.tsx` is unchanged and already did that.
+  - The two backfill cases pass. They sit in the 32 view tests that ran green.
+  - The main session's mutant (dropping the `status === "full"` guard fails both cases) is recorded in the state file. I did not re-run it.
+  - The `5 of 7` integration case passed in the integration run below.
+- **AC-22:**
+  - The CR-1 fix passes `items` through `TourSection.tsx:26` into `OverviewBody`. Stack chips render for title-only items. Path items render as a mono path plus the count text.
+  - The new test asserts "TypeScript", "src/" and "40 files".
+- **AC-37:**
+  - `OverviewBody` no longer uses the vendored `Markdown`. It uses its own `ReactMarkdown` with `remarkGfm`, plus `a` rendering as `<span>` and `img` rendering as `<span>{alt}</span>`.
+  - The old test still passes, and the new one covers inline, bare-autolink and reference-style images and links.
+- **AC-38:** The CR-2 fix strips labeled edges (`A -- calls --> B`) before counting nodes. The test expects 10 where it previously got 12, and still rejects 13 distinct nodes.
+- **AC-40:** `partial`.
+  - **On disk, as required:**
+    - `hono-api-log.txt`: `onboarding generation repo=honojs/hono model=openrouter/openai/gpt-4.1-mini llm_calls=1 tokens 2441/718 $0.0021 outcome=complete duration_ms=4521`. That is one generation line with the call count and the cost.
+    - `hono-2-tour.png`: the "On this page" rail lists all five titles. The Architecture overview section is rendered with prose, file paths as code, and a diagram. The subline reads "1 LLM call · $0.0021 · openrouter/openai/gpt-4.1-mini / Generated from index of 423 files · generated just now".
+    - `hono-3-run-and-reading.png`: How to run locally (pnpm install, build, test) and the Guided reading path, with its ordering line.
+  - **Not on disk:** no screenshot shows the rendered Critical paths or First tasks sections, and I did not open `hono-1-empty-state.png`.
+  - Two of the five sections therefore rest only on the state-file claim "five sections rendered". The log line and the other three sections are met.
+
+### 2. Regression run at head c20c73b
+| command | exit | result line |
+|---|---|---|
+| `pnpm --dir server exec vitest run .it.test`, first run | 0 | `18 passed, 1 skipped (19) / 121 passed, 7 skipped`. `agents-versions.it` skipped ("Docker not available"), the same docker-probe timeout flake as before; all onboarding files ran. Not counted as a pass. |
+| `pnpm --dir server exec vitest run .it.test`, second run | 0 | `Test Files 19 passed (19) / Tests 128 passed (128)`, 0 skipped. This includes onboarding.it 15, onboarding-service.it 9, onboarding-review-isolation.it 1 and repo-intel-onboarding-reads.it 2. |
+| server unit (wrapper) | 0 | `37 files / 365 tests passed`. Previously 362, plus the 3 new scanner tests. |
+| client unit (wrapper) | 0 | `53 files / 313 tests passed`. Previously 307, plus the 6 new tests. |
+| `pnpm --dir server typecheck` and `pnpm --dir client typecheck` | 0 | no errors |
+
+No test or assertion was edited or removed since ab9de07: `--numstat` shows 0 deletions on `OnboardingTourView.test.tsx`, `helpers.test.ts` and `fs-clone-scanner.test.ts`. No previously `met` row regressed. The earlier AC-15 `partial` is now `met`.
+
+### 3. Delta hunks mapped
+| file | maps to |
+|---|---|
+| `specs/2026-10-02-onboarding-tour.md` (AC-15 text, Traceability filled, 2 changelog rows) | PV-1 / AC-15 (66982e4, c20c73b) |
+| `OnboardingTourView.test.tsx` +59, `helpers.test.ts` +20 | ee9af1e (AC-15), CR-1, CR-2, SR-1 tests |
+| `TourSection.tsx` (1 line), `OverviewBody.tsx`, `OverviewBody/styles.ts` | CR-1 (AC-22) and SR-1 (AC-37), step 12 |
+| `OnboardingTourView/helpers.ts` (+1 line) | CR-2 (AC-38), step 11 |
+| `fs-clone-scanner.ts`, `fs-clone-scanner.test.ts` | SR-2, step 5. The scanner serves AC-15, AC-21 and AC-36. |
+| `docs/plans/...assets/` (3 PNGs and the log) | AC-40 (0a8861b) |
+| `docs/plans/...state.md`, `docs/plans/...verify.md` | orchestration records, not implementation |
+| `client/INSIGHTS.md`, `server/INSIGHTS.md`, `e2e/INSIGHTS.md` | K12 (engineering-insights, main session) |
+
+Unmapped to a plan item or finding: none in code or tests. The plan has no step for the INSIGHTS files or the assets folder. These are documentation and evidence artifacts, as are the planning artifacts already listed in the main report.
+
+Two things the plan does not name, noted as facts:
+- `FsCloneScanner` gained an optional `maxWalkEntries` constructor argument (test-only), plus the 64 KB read cap and the 200,000 walk cap, as adapter-local constants. The `CloneScanOptions` port is unchanged.
+- The SR-1 fix imports `react-markdown` and `remark-gfm` directly into the tour; both are already dependencies.
+
+### 4. Rows that are NOT met (final list)
+1. **AC-40: partial.** Log line, cost, and the Architecture, How to run and Reading path sections are shown on disk. Critical paths and First tasks are not shown in any saved screenshot.
+2. **K2–K8 (reviewer checks):** the architecture-reviewer and security-reviewer have since reported (state file, reports-delta.md). The state file records lint:boundaries clean and route-adapter-calls 8 passed at ab9de07, and the AC-16 grep at 0 hits. I did not re-run those checks myself, so they stay unverifiable-by-assignment in my matrix.
+3. **K9, K11, K12 (main session):** the state file has no result lines for `/code-review` (beyond CR-1 and CR-2, now closed), `pr-self-review` or `engineering-insights`; the INSIGHTS entries are in the delta. Unverifiable by me; main session owns them.
+4. **PROC-1** is confirmed in the main report: no appended helper test is vacuous. Two guard-level mutations (the allow-list checks and the extra slices in `buildModelInput`) are not caught. **PROC-2** has no plan item depending on it. Neither is a plan-item failure.
+
+Net: 0 not met, 1 partial (AC-40). Everything else I verified is met.
+
+### Main-session follow-up on AC-40 (after the delta pass)
+The delta pass marked AC-40 `partial` only because no saved screenshot showed Critical paths and First tasks. Both were captured from the same generated tour (same run, dev stack still up at c20c73b): `docs/plans/2026-10-02-onboarding-tour.assets/hono-4-critical-paths.png` (5 paths with reasons and Open) and `hono-5-first-tasks.png` (5 tasks, each with a real path, reason and Open). With the log line and screenshots 2–3, all five sections and the call count and cost are on disk. AC-40: **met**.
+Architecture delta (ab9de07...c20c73b): pass, 0 findings; `lint:boundaries` clean, route-adapter-calls 8/8. Security delta (5c40012...183697a): SR-1 and SR-2 closed, no regressions.
+
+**Final: 41/41 ACs met · 0 not met · 0 partial.** Known, accepted by Glib for the PR body: the reading-path label "Ordered by how many files depend on it" describes in-degree while the order is PageRank × (1 + hotness); folders with no supported files show "0 files".
