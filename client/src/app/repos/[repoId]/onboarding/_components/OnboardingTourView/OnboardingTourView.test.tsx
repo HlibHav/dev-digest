@@ -618,3 +618,23 @@ describe("OnboardingTourView architecture items", () => {
     expect(screen.getByText(/40 files/)).toBeInTheDocument();
   });
 });
+
+describe("OnboardingTourView overview external content", () => {
+  it("overview renders no image and no external link, link text stays visible", () => {
+    setView({
+      tour: tour({
+        sections: sections({
+          architecture: {
+            body:
+              "![beacon](https://evil.example/t.png)\n\n[click](https://phish.example)\n\nSee https://auto.example/x and ![ref][r]\n\n[r]: https://evil.example/r.png",
+          },
+        }),
+      }),
+    });
+    const { container } = renderView();
+    expect(container.querySelector("img")).toBeNull();
+    const hrefs = Array.from(container.querySelectorAll("a")).map((a) => a.getAttribute("href") ?? "");
+    expect(hrefs.some((h) => /evil\.example|phish\.example|auto\.example/.test(h))).toBe(false);
+    expect(screen.getByText(/click/)).toBeInTheDocument();
+  });
+});

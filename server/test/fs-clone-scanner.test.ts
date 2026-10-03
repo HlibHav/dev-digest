@@ -102,4 +102,38 @@ describe('FsCloneScanner', () => {
     expect(await scanner.exists(root, join(root, 'src/a.ts'))).toBe(false);
     expect(await scanner.exists(root, 'src/escape.ts')).toBe(false);
   });
+
+  it('README is read only up to the byte cap, then the readmeMaxChars slice applies', async () => {
+    await put('README.md', 'a'.repeat(2 * 1024 * 1024));
+
+    const big = await scanner.scan(root, { ...OPTS, readmeMaxChars: 10_000_000 });
+    expect(big.readme).not.toBeNull();
+    expect(big.readme!.length).toBeLessThanOrEqual(64 * 1024);
+    expect(big.readme!.length).toBeGreaterThan(0);
+
+    const small = await scanner.scan(root, { ...OPTS, readmeMaxChars: 16_000 });
+    expect(small.readme).toBe('a'.repeat(16_000));
+  });
+
+  it('a package.json over the byte cap yields no scripts and does not throw', async () => {
+    const pad = 'x'.repeat(2 * 1024 * 1024);
+    await put('package.json', JSON.stringify({ scripts: { test: 'vitest' }, pad }));
+
+    const scan = await scanner.scan(root, OPTS);
+    expect(scan.packageScripts).toBeNull();
+    expect(scan.rootFiles).toEqual(['package.json']);
+  });
+
+  it('the walk stops after the maximum number of entries visited', async () => {
+    await mkdir(join(root, 'src'), { recursive: true });
+    await Promise.all(
+      Array.from({ length: 120 }, (_, i) => writeFile(join(root, 'src', `f${i}.ts`), 'x')),
+    );
+
+    const scan = await new FsCloneScanner(100).scan(root, OPTS);
+    expect(scan.sourceFiles).toBeLessThanOrEqual(100);
+    expect(scan.sourceFiles).toBeGreaterThan(0);
+    const src = scan.topLevel.find((e) => e.name === 'src');
+    expect(src?.files).toBe(scan.sourceFiles);
+  });
 });

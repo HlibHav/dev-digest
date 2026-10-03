@@ -1,6 +1,16 @@
 import type { CSSProperties } from "react";
 
 export const s = {
+  md: { fontSize: "inherit", lineHeight: 1.55 } satisfies CSSProperties,
+  p: { margin: "0 0 10px" } satisfies CSSProperties,
+  strong: { fontWeight: 650, color: "var(--text-primary)" } satisfies CSSProperties,
+  code: {
+    fontSize: "0.92em",
+    padding: "1px 6px",
+    borderRadius: 4,
+    background: "var(--bg-hover)",
+    color: "var(--accent-text)",
+  } satisfies CSSProperties,
   root: { fontSize: 14.5, color: "var(--text-secondary)" } satisfies CSSProperties,
   chips: { display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 } satisfies CSSProperties,
   chip: {

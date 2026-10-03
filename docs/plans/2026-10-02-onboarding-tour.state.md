@@ -30,6 +30,8 @@ Expected red: server/test/onboarding-helpers.test.ts — level 1 (lane 3); clien
 | AC-16 isolation grep (main session) | `grep -rn "modules/onboarding\|t\.onboarding" server/src reviewer-core/src` outside the module | 66982e4 | 0 hits |
 | AC-15 backfill mutant (main session) | drop the `status === "full"` guard in TourHeader.tsx, run the view test, revert | 66982e4 | 2 failed (both new AC-15 cases); reverted |
 | fix round 1 gate: client | `pnpm typecheck` · `pnpm test` | fix 1 | 0 errors; 53 files, 312 tests passed |
+| fix round 2 gate: server | `pnpm typecheck` · unit · onboarding it (Docker) · `lint:boundaries` | fix 2 | 0 errors; 37 files / 365 tests; 3 files / 25 tests; no violations |
+| fix round 2 gate: client | `pnpm typecheck` · `pnpm test` | fix 2 | 0 errors; 53 files / 313 tests |
 
 ## Findings ledger
 | id | source | severity | kind | `path:line` | round opened | status | round closed |
@@ -39,11 +41,12 @@ Expected red: server/test/onboarding-helpers.test.ts — level 1 (lane 3); clien
 | AR — | architecture-reviewer | — | — | — | review | pass, 0 findings | — |
 | CR-1 | /code-review | major | local fix | client/.../TourSection/TourSection.tsx:26 | review | closed — architecture card renders stack chips and folder rows; test "skeleton architecture shows stack and folder rows with counts" red → green | fix 1 |
 | CR-2 | /code-review | minor | local fix | client/.../OnboardingTourView/helpers.ts:47 | review | closed — labeled edges stripped before counting; tests red ("expected 12 to be 10", "expected 14 to be 13") → green | fix 1 |
-| SR-1 | security-reviewer | minor | — | client/src/vendor/ui/primitives/Markdown.tsx:10-37 | review | open — model-written overview can render a remote image / link; to Glib | |
-| SR-2 | security-reviewer | minor | — | server/src/adapters/clone-scan/fs-clone-scanner.ts:84,59,44 | review | open — README/package.json read fully before slicing; no walk cap; to Glib | |
+| SR-1 | security-reviewer | minor | — | client/src/vendor/ui/primitives/Markdown.tsx:10-37 | review | closed — Glib: fix; overview renders images as alt text and links as text via local react-markdown renderers; test red (img present) → green | fix 2 |
+| SR-2 | security-reviewer | minor | — | server/src/adapters/clone-scan/fs-clone-scanner.ts:84,59,44 | review | closed — Glib: fix; 64 KB capped reads, walk cap 200,000 (kept above the 5,000 index cap so AC-15's N < M rule still detects capped indexes); 3 tests red → green | fix 2 |
 | PROC-2 | main session | minor | process | lanes 1, 2, 3, 6 | level 1 | open — plan-named skills not invoked (drizzle-orm-patterns, security, zod, next/react-best-practices, react-testing-library); reviewers check against them | |
 
 ## Log
+- 2026-10-03 — Glib: fix SR-1 and SR-2; fix round 2 done, gate green; walk cap raised from 5,000 to 200,000 by the main session (AC-15 regression risk)
 - 2026-10-03 — security-reviewer: pass, SR-1/SR-2 minor; /code-review: CR-1, CR-2 → fix round 1 (lane 6), both closed; main session read the delta
 - 2026-10-03 — plan-verifier: 58 met, 1 partial (AC-15 → PV-1), report docs/plans/2026-10-02-onboarding-tour.verify.md; architecture-reviewer: pass, 0 findings
 - 2026-10-03 — level 2 lane 4 done; gate green; main session read every new *.it.test.ts (controls present: isolation marker in stored tour + review call made)
