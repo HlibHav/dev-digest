@@ -42,16 +42,30 @@ export function FileCard({
   file,
   commenting,
   findings,
+  focusFile = null,
+  focusLine = null,
 }: {
   file: PrFile;
   commenting?: DiffCommentApi;
   findings?: DiffFindingApi;
+  /** Path of the file to open; the card opens when it is this file. */
+  focusFile?: string | null;
+  /** New-file line to highlight and scroll into view (only on the focus file). */
+  focusLine?: number | null;
 }) {
   const t = useTranslations("shell");
   const tf = useTranslations("prReview");
+  const isFocusFile = focusFile != null && focusFile === file.path;
   const [open, setOpen] = React.useState(
-    (file.additions ?? 0) + (file.deletions ?? 0) <= AUTO_EXPAND_MAX_LINES
+    (file.additions ?? 0) + (file.deletions ?? 0) <= AUTO_EXPAND_MAX_LINES || isFocusFile
   );
+  // Adjust state during render: a changed focus reopens a card left collapsed.
+  const focusKey = isFocusFile ? `${focusFile}:${focusLine}` : null;
+  const [seenFocusKey, setSeenFocusKey] = React.useState(focusKey);
+  if (focusKey !== seenFocusKey) {
+    setSeenFocusKey(focusKey);
+    if (focusKey != null) setOpen(true);
+  }
   const lines = React.useMemo(() => parsePatch(file.patch), [file.patch]);
 
   // Group this file's comments into threads, then split into ones we can anchor
@@ -123,6 +137,7 @@ export function FileCard({
                 commenting={commenting}
                 findings={findingsForLine(ln, matchedFindings)}
                 findingApi={findings}
+                highlighted={isFocusFile && focusLine != null && ln.newNo === focusLine}
               />
             ))
           )}

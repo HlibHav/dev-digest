@@ -34,7 +34,15 @@ export default function PRDetailPage() {
   // uuid — resolve number → uuid via the (cached) pulls list before fetching.
   const { data: pulls, isLoading: pullsLoading } = usePulls(repoId);
   const prId = pulls?.find((p) => p.number === Number(number))?.id ?? null;
-  const { data: pr, isLoading: detailLoading, isError, error, refetch } = usePullDetail(prId);
+  const {
+    data: pr,
+    isLoading: detailLoading,
+    isError,
+    error,
+    refetch,
+    dataUpdatedAt,
+    errorUpdatedAt,
+  } = usePullDetail(prId);
 
   const isLoading = pullsLoading || (prId != null && detailLoading);
   const { data: reviews, refetch: refetchReviews } = usePrReviews(prId);
@@ -59,13 +67,27 @@ export default function PRDetailPage() {
 
   const tab = search.get("tab") ?? "overview";
   const traceRunId = search.get("trace");
-  const setParam = (key: string, val: string | null) => {
+  // Several params change in one router.replace, so a click-through never
+  // leaves the address half-updated.
+  const setParams = (updates: Record<string, string | null>) => {
     const sp = new URLSearchParams(search.toString());
-    if (val == null) sp.delete(key);
-    else sp.set(key, val);
+    for (const [key, val] of Object.entries(updates)) {
+      if (val == null) sp.delete(key);
+      else sp.set(key, val);
+    }
     router.replace(`/repos/${repoId}/pulls/${number}${sp.toString() ? `?${sp.toString()}` : ""}`);
   };
+  const setParam = (key: string, val: string | null) => setParams({ [key]: val });
   const setTab = (t: string) => setParam("tab", t);
+  const onOpenFile = ({ file, line }: { file: string; line: number | null }) =>
+    setParams({ tab: "diff", file, line: line == null ? null : String(line) });
+
+  // The address only selects a file already in the PR's diff; a non-integer
+  // line means "open the file, scroll nowhere".
+  const focusFile = search.get("file");
+  const focusLineParam = search.get("line");
+  const focusLine = focusLineParam != null && /^\d+$/.test(focusLineParam) ? Number(focusLineParam) : null;
+  const focus = focusFile ? { file: focusFile, line: focusLine } : null;
 
   // Reviews come newest-first; each is its own run (grouped into accordions).
   const runs = reviews ?? [];
@@ -75,6 +97,18 @@ export default function PRDetailPage() {
   );
   const lethalTrifecta = allFindings.filter((f) => f.kind === "lethal_trifecta");
   const findingsCount = allFindings.length;
+  const newest = runs[0];
+  // A review with no verdict has nothing for the banner to show: treat it as none.
+  const latestReview = newest?.verdict
+    ? {
+        verdict: newest.verdict,
+        summary: newest.summary,
+        score: newest.score,
+        findingsCount: newest.findings.length,
+        blockers: newest.findings.filter((f) => f.severity === "CRITICAL" && !f.dismissed_at).length,
+        agentName: newest.agent_name ?? null,
+      }
+    : null;
 
   const repoName = activeRepo?.full_name ?? repoId;
   // The real "owner/repo" (null until the repo is loaded) — used to build
@@ -141,6 +175,13 @@ export default function PRDetailPage() {
             headSha={pr.head_sha}
             repoId={repoId}
             repoFullName={repoFullName}
+            detail={{
+              status: isError ? "error" : detailLoading ? "pending" : "success",
+              updatedAt: dataUpdatedAt || errorUpdatedAt,
+            }}
+            files={pr.files}
+            latestReview={latestReview}
+            onOpenFile={onOpenFile}
           />
         )}
 
@@ -178,6 +219,7 @@ export default function PRDetailPage() {
             canComment={pr.status === "open"}
             repoFullName={repoFullName}
             headSha={pr.head_sha}
+            focus={focus}
           />
         )}
       </div>
