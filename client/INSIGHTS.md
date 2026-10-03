@@ -12,6 +12,8 @@ fixed — add to the one that fits.
 
 ## Codebase Patterns
 
+- **2026-10-03** — `RoleGroup` and `FileCard` read `open` from a `useState` initialiser, so a later `focus` prop does not reopen them. The click-through from the PR Brief reopens them by keying a reset on `seenFocusKey` (set during render, no effect). The key must include the line, otherwise a second click on another line of the same file never re-scrolls. Evidence: `client/src/components/diff-viewer/FileCard/FileCard.tsx:64`, `client/src/components/diff-viewer/RoleGroup/RoleGroup.tsx:45`
+
 - **2026-10-02** — A new agent-editor tab needs two edits, not one: `AgentEditor/constants.ts` and the page's own `VALID_TABS`. The page filters `?tab=` and falls back to `config` for anything unknown. The Context tab was built, tested and green, yet unreachable in the app, because its unit tests render `AgentEditor` with `tab` passed in directly. Add a `page.test.tsx` case for `?tab=<new>`. Evidence: `client/src/app/agents/[id]/page.tsx:17`, `client/src/app/agents/[id]/page.test.tsx:1`
 
 - **2026-09-26** — "A run finished, refetch reviews" is tab-local: `onRunDone` → `refetchReviews()` fires from `RunStatus`, which only mounts inside `FindingsTab`. Any other tab that must refresh when a run ends (the Files changed tab's finding counters) has to watch the polled `usePrActiveRuns` list itself and invalidate `["reviews", prId]` on the running → idle edge; nothing else in `page.tsx` does it for you. Evidence: `client/src/app/repos/[repoId]/pulls/[number]/_components/DiffTab/DiffTab.tsx:46`, `client/src/app/repos/[repoId]/pulls/[number]/page.tsx:156`
@@ -19,6 +21,10 @@ fixed — add to the one that fits.
 - **2026-09-20** — This package has effectively no RSC boundary, so don't use it as the reference for a Next.js server/client split. 55 of 118 `.tsx` under `src` carry `"use client"`, `find src/app -name route.ts` returns 0, and there is no server-side fetching: every read goes through client-side react-query against the separate Fastify API. Only `src/app/layout.tsx`, `src/i18n/request.ts` and two pass-through pages are true Server Components; a route entry becomes a Client Component the moment it needs a hook. When a task needs an RSC-boundary example, go to the Next.js docs, not to this code. Evidence: `client/src/app/repos/[repoId]/pulls/page.tsx:3`, `client/src/app/agents/page.tsx:1`
 
 ## Tool & Library Notes
+
+- **2026-10-03** — Three test-environment traps that cost the PR Brief lanes time. `@testing-library/user-event` is not installed, so use `fireEvent` and a native `focus()` for tab-order checks. jsdom has no `Element.prototype.scrollIntoView`, so spy on it by assigning the prototype and restoring it afterwards. Inside the `srt` sandbox `pnpm typecheck` fails with `TS5033` (EPERM writing `tsconfig.tsbuildinfo`); run `tsc --noEmit --incremental false` there. Evidence: `client/src/app/repos/[repoId]/pulls/[number]/_components/DiffTab/DiffTab.test.tsx:212`
+
+- **2026-10-03** — React Query: do not read `refetch` off the hook result during render to re-read after a parent refresh (it narrows tracking), and do not trust `isPending` to block a double click, since it lags the click by a render. Re-read with `qc.refetchQueries({ queryKey, exact: true })` from an effect keyed on a ref'd value, and guard the mutation with a `useRef` flag. Evidence: `client/src/lib/hooks/brief.ts:39`, `client/src/app/repos/[repoId]/pulls/[number]/_components/OverviewTab/_components/PrBriefCard/PrBriefCard.tsx:53`
 
 - **2026-09-26** — Adding a `useTranslations("<ns>")` call to a shared `diff-viewer` component (`FileCard`, `CodeLine`) makes every existing test that renders `DiffViewer` need that namespace in its `NextIntlClientProvider`; next-intl logs `MISSING_MESSAGE` to stderr instead of throwing, so the suite stays green while the strings render as keys. Before adding one, grep test files for `<DiffViewer`/`<FileCard` and add the namespace there (`src/test/smoke.test.tsx` was the only one). Evidence: `client/src/test/smoke.test.tsx:8`, `client/src/components/diff-viewer/FileCard/FileCard.tsx:51`
 
@@ -32,6 +38,8 @@ fixed — add to the one that fits.
   - **2026-09-28** — Refined: the test was the bug, not the icons. `test-writer` fixed the assertion to `queryByLabelText("Blast radius graph")` for "no graph" and to `getByRole("button", { name: /foo/ })` for "still on tree", so a bare `svg` query is gone from the suite. Icons (`SectionLabel`'s, and `Globe`/`Clock` on the endpoint/cron chips) are back — nothing about the design needs to drop them; only scope a "no graph" assertion to the graph's own `aria-label`, never to `document.querySelector('svg')` globally. Evidence: `client/src/app/repos/[repoId]/pulls/[number]/_components/OverviewTab/_components/BlastRadiusCard/BlastRadiusCard.test.tsx:131-137`, `BlastRadiusCard.tsx:45,68`, `_components/BlastTree/BlastTree.tsx:75,85`
 
 ## Session Notes
+
+- **2026-10-03** — PR Brief review phase (fix round 1: failed GET shows retry, `setTab` clears `file`/`line`) → Codebase Patterns, Tool & Library Notes ×2. Evidence: `client/src/app/repos/[repoId]/pulls/[number]/page.tsx:82`
 
 - **2026-09-26** — Smart Diff: Files changed grouped by role, findings inline under the diff line, order switch → Codebase Patterns, Tool & Library Notes. Evidence: `client/src/app/repos/[repoId]/pulls/[number]/_components/DiffTab/DiffTab.tsx:32`
 
