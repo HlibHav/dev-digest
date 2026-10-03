@@ -73,18 +73,17 @@ A cheaper shape: run the main session from inside the task worktree from the sta
 | L-23 | Subagent writes are scoped to the session start dir; a session orchestrating a sibling worktree can't let spec-creator/test-writer write there | `.claude/agents/README.md` (start the session inside the task worktree, or launch lane sessions there with `claude --bg`) | 1 | open |
 | L-24 | Red-first integration fixtures that seed DB rows must seed the GitHub double with the same data when the code under test refreshes from GitHub | `.claude/agents/test-writer.md` | 1 | open |
 | L-25 | spec-creator missed known traps that INSIGHTS already recorded (head_sha refresh) and the model-schema vs stored-schema split for `maxRetries: 0` calls | `.claude/agents/spec-creator.md` (grep INSIGHTS for every input the feature refreshes; one schema per side of an LLM call) | 1 | open |
-| L-26 | Implementers apply plan-named skills "from the plan" instead of loading them via Skill (both lanes; project-context run (b) too) | `.claude/agents/implementer.md` | 2 | proposed — diff below |
+| L-26 | Implementers apply plan-named skills "from the plan" instead of loading them via Skill, although implementer.md step 3.2 already requires it (both lanes; project-context run (b) too) | `.claude/skills/implement/SKILL.md` (orchestrator rejects a report whose skills-loaded list misses a plan-named skill) | 2 | proposed — diff below |
 | L-27 | Orchestrator briefs must follow the `/implement` SKILL's current state (test-writer paused) instead of an older habit | `.claude/skills/implement/SKILL.md` (quote the red-first owner in the lane brief template) | 1 | open |
 | L-28 | Client lane: `pnpm typecheck` fails in the srt sandbox (tsbuildinfo EPERM); subagents must start at the worktree root for `run-tests.sh` | `client/INSIGHTS.md` / `.claude/agents/README.md` | 1 | open |
 
-Proposed diff for L-26 (`.claude/agents/implementer.md`, not applied; per the user's setup it goes through `/skill-creator`-style review in the chain-lessons PR):
+Proposed change for L-26. The rule already exists (`.claude/agents/implementer.md` step 3.2: "Invoke **every** skill the step names through `Skill`"), and both lanes still skipped it. Tightening the wording again will not help, so the check moves to the orchestrator. Not applied; it goes through `/skill-creator` in the chain-lessons PR:
 
 ```diff
-@@ ## Skills
--Load the skills each step names.
-+Load every skill a step names with the Skill tool before writing code for that step, and list
-+them in the report. Applying a skill "from the plan text" does not count: in the project-context
-+and pr-brief runs both lanes skipped the load and the reviewers had to cover the gap.
+@@ .claude/skills/implement/SKILL.md — after each implementer report
++- Compare the report's "Skills loaded" list with the step's plan-named skills. A missing skill
++  with no Deviations line makes the step `partial`; send it back in fix mode before the gate
++  (pr-brief 2026-10-03: both lanes applied skills "from the plan" without loading them).
 ```
 
 Ledger: these 6 rows are new here; L-26 repeats an existing project-context lesson (now proposed). Merge them into `docs/retro/ledger.md` on `chore/sdd-chain-lessons` (#31).
