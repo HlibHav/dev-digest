@@ -72,7 +72,7 @@ export class PullsRepository {
   /** Backfill body/diff-stats from the GitHub detail fetch (same fields `GET /pulls/:id` wrote before). */
   async updateDetail(
     prId: string,
-    values: { body: string | null; additions: number; deletions: number; filesCount: number },
+    values: { body: string | null; additions: number; deletions: number; filesCount: number; headSha: string },
   ): Promise<void> {
     await this.db
       .update(t.pullRequests)
@@ -81,6 +81,7 @@ export class PullsRepository {
         additions: values.additions,
         deletions: values.deletions,
         filesCount: values.filesCount,
+        headSha: values.headSha,
       })
       .where(eq(t.pullRequests.id, prId));
   }
