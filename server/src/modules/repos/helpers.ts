@@ -3,6 +3,8 @@ import * as t from '../../db/schema.js';
 import { AppError } from '../../platform/errors.js';
 import {
   GITHUB_URL_REGEX,
+  GITHUB_SEGMENT_REGEX,
+  DOTS_ONLY_SEGMENT_REGEX,
   GIT_TOKEN_USERNAME,
   GITHUB_HTTPS_HOST,
 } from './constants.js';
@@ -19,7 +21,16 @@ export function parseRepoUrl(url: string): { owner: string; name: string } {
   if (!match?.[1] || !match[2]) {
     throw new AppError('invalid_repo_url', `Could not parse owner/repo from '${url}'`, 400);
   }
-  return { owner: match[1], name: match[2] };
+  const [, owner, name] = match;
+  // Both segments reach the filesystem as clone-path components, so reject
+  // anything GitHub itself would not accept — and `..` in particular, which
+  // walks out of the clone dir into a tree `clone()` would delete.
+  for (const segment of [owner, name]) {
+    if (!GITHUB_SEGMENT_REGEX.test(segment) || DOTS_ONLY_SEGMENT_REGEX.test(segment)) {
+      throw new AppError('invalid_repo_url', `Illegal owner/repo segment '${segment}'`, 400);
+    }
+  }
+  return { owner, name };
 }
 
 /**

@@ -51,6 +51,50 @@ d('GET /agents/:id/versions', () => {
     system_prompt: 'Review the diff.',
   };
 
+  it('refuses to link a skill that belongs to another workspace', async () => {
+    const app = await makeApp();
+    const db = pg.handle.db;
+    const created = await app.inject({ method: 'POST', url: '/agents', payload: createBody });
+    const agentId = created.json().id as string;
+
+    const [other] = await db.insert(t.workspaces).values({ name: 'Other Tenant' }).returning();
+    const [foreignSkill] = await db
+      .insert(t.skills)
+      .values({
+        workspaceId: other!.id,
+        name: 'Tenant-only rubric',
+        description: 'private',
+        type: 'rubric',
+        source: 'manual',
+        body: 'tenant-only skill body',
+      })
+      .returning();
+
+    // A skill's body is assembled into the agent's prompt, so checking only the
+    // agent left a cross-tenant read one request away. Both entry points:
+    // skill_ids (replace the set) and skill_id (append one).
+    const replace = await app.inject({
+      method: 'POST',
+      url: `/agents/${agentId}/skills`,
+      payload: { skill_ids: [foreignSkill!.id] },
+    });
+    expect(replace.statusCode).toBe(422);
+    const append = await app.inject({
+      method: 'POST',
+      url: `/agents/${agentId}/skills`,
+      payload: { skill_id: foreignSkill!.id },
+    });
+    expect(append.statusCode).toBe(422);
+
+    const links = await db
+      .select()
+      .from(t.agentSkills)
+      .where(eq(t.agentSkills.agentId, agentId));
+    expect(links).toEqual([]);
+
+    await app.close();
+  });
+
   it('a new agent has exactly one version (v1) capturing its config', async () => {
     const app = await makeApp();
     const created = await app.inject({ method: 'POST', url: '/agents', payload: createBody });
