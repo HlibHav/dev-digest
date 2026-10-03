@@ -22,6 +22,8 @@ fixed — add to the one that fits.
 
 ## Tool & Library Notes
 
+- **2026-10-03** — Several feature models share the same registry default. Intent, Conventions and now Risk Brief all default to `openai/gpt-4.1-mini` (`platform.ts:59,66,84`), so in a Settings test `screen.getByText("openai/gpt-4.1-mini")` throws on multiple matches. Find the feature's label first, take its row, and query inside it with `within(row)`. Evidence: `client/src/app/settings/[section]/_components/SettingsView/_components/SettingsModels/SettingsModels.test.tsx:24-27`
+
 - **2026-10-03** — Three test-environment traps that cost the PR Brief lanes time. `@testing-library/user-event` is not installed, so use `fireEvent` and a native `focus()` for tab-order checks. jsdom has no `Element.prototype.scrollIntoView`, so spy on it by assigning the prototype and restoring it afterwards. Inside the `srt` sandbox `pnpm typecheck` fails with `TS5033` (EPERM writing `tsconfig.tsbuildinfo`); run `tsc --noEmit --incremental false` there. Evidence: `client/src/app/repos/[repoId]/pulls/[number]/_components/DiffTab/DiffTab.test.tsx:212`
 
 - **2026-10-03** — React Query: do not read `refetch` off the hook result during render to re-read after a parent refresh (it narrows tracking), and do not trust `isPending` to block a double click, since it lags the click by a render. Re-read with `qc.refetchQueries({ queryKey, exact: true })` from an effect keyed on a ref'd value, and guard the mutation with a `useRef` flag. Evidence: `client/src/lib/hooks/brief.ts:39`, `client/src/app/repos/[repoId]/pulls/[number]/_components/OverviewTab/_components/PrBriefCard/PrBriefCard.tsx:53`
@@ -38,6 +40,8 @@ fixed — add to the one that fits.
   - **2026-09-28** — Refined: the test was the bug, not the icons. `test-writer` fixed the assertion to `queryByLabelText("Blast radius graph")` for "no graph" and to `getByRole("button", { name: /foo/ })` for "still on tree", so a bare `svg` query is gone from the suite. Icons (`SectionLabel`'s, and `Globe`/`Clock` on the endpoint/cron chips) are back — nothing about the design needs to drop them; only scope a "no graph" assertion to the graph's own `aria-label`, never to `document.querySelector('svg')` globally. Evidence: `client/src/app/repos/[repoId]/pulls/[number]/_components/OverviewTab/_components/BlastRadiusCard/BlastRadiusCard.test.tsx:131-137`, `BlastRadiusCard.tsx:45,68`, `_components/BlastTree/BlastTree.tsx:75,85`
 
 ## Session Notes
+
+- **2026-10-03** — PR Brief lane 0 (Risk Brief default in Settings) → Tool & Library Notes. Evidence: `client/src/lib/feature-models.ts:30`
 
 - **2026-10-03** — PR Brief review phase (fix round 1: failed GET shows retry, `setTab` clears `file`/`line`) → Codebase Patterns, Tool & Library Notes ×2. Evidence: `client/src/app/repos/[repoId]/pulls/[number]/page.tsx:82`
 

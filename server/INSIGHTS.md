@@ -47,6 +47,8 @@ fixed — add to the one that fits.
 
 ## Tool & Library Notes
 
+- **2026-10-03** — In zod v3, `.superRefine()` returns a `ZodEffects`, and `ZodEffects` has no `.extend`. Once a shared contract object carries cross-field checks, it can no longer be extended into a response shape. In `brief.ts` the plain object `PrBriefBase` stays exported. `PrBrief` and `PrBriefResult` (`PrBriefBase.extend({ stale })`) each attach the same `.superRefine(briefCrossChecks)` on their own. Keep this split whenever a contract needs both refinements and a derived variant. Evidence: `server/src/vendor/shared/contracts/brief.ts:193`, `server/src/vendor/shared/contracts/brief.ts:230`
+
 - **2026-09-22** — dependency-cruiser 17.4.3 rejects a rule whose regex nests quantifiers, e.g. `node_modules/(\.pnpm/[^/]+/node_modules/)?drizzle-orm/`, with `has an unsafe regular expression. Bailing out.`, and rejects `enhancedResolveOptions.extensionAlias` with `must NOT have additional properties`. Neither is needed: a plain `node_modules/(pkg)/` matches pnpm-resolved paths, and TS `.js` imports resolve to `.ts` with only `tsConfig` set. Its exit code is the violation count (3 planted edges → 3, one → 1), so treat any non-zero as a failure. Evidence: `server/.dependency-cruiser.cjs:25`, `server/package.json:11`
 
 - **2026-09-20** — A test whose code resolves its provider from the **shared registry** (`resolveFeatureModel`) must register its `MockLLMProvider` under **every** provider id, not the one the feature defaults to today. Pinning the mock to `openai` and later moving the registry default to `openrouter` routed the scan past the mock into a real, paid OpenRouter call; the test then asserted against whatever the live model returned and failed on the count, with nothing in the output saying a network call had happened. Tests that create their own agent row with an explicit `provider` are not exposed. Evidence: `server/test/conventions.it.test.ts:89`, `server/src/modules/settings/feature-models.ts:51`
@@ -63,6 +65,8 @@ fixed — add to the one that fits.
 - **2026-09-26** — A JSDoc block that spells out a glob such as `**/*.md` closes the comment at the `*/` inside it; `tsc` then reports a cascade of syntax errors from the middle of the doc text (first hit: `classify.ts(17,53)`) with nothing pointing at the comment. Describe glob patterns in words inside `/** … */` comments (or use `//` lines), never a literal `*/`. Evidence: `server/src/modules/smart-diff/classify.ts:15`
 
 ## Session Notes
+
+- **2026-10-03** — PR Brief lane 0 (shared contract, `risk_brief` default) → Tool & Library Notes. Evidence: `server/src/vendor/shared/contracts/brief.ts:227`
 
 - **2026-10-03** — PR Brief review phase (plan-verifier, security, `/code-review`, fix round 1) → What Doesn't Work ×2, Codebase Patterns (comment). Evidence: `server/src/modules/brief/prompt.ts:86`
 
