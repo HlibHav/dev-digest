@@ -593,3 +593,28 @@ describe("OnboardingTourView", () => {
     });
   });
 });
+
+describe("OnboardingTourView architecture items", () => {
+  it("skeleton architecture shows stack and folder rows with counts", () => {
+    setView({
+      tour: tour({
+        source: "skeleton",
+        skeleton_reason: "llm_failed",
+        sections: sections({
+          architecture: {
+            body: "",
+            diagram: null,
+            items: [
+              { title: "TypeScript", reason_source: "deterministic" },
+              { path: "src/", reason: "40 files", reason_source: "deterministic" },
+            ],
+          },
+        }),
+      }),
+    });
+    renderView();
+    expect(screen.getByText("TypeScript")).toBeInTheDocument();
+    expect(screen.getByText("src/")).toBeInTheDocument();
+    expect(screen.getByText(/40 files/)).toBeInTheDocument();
+  });
+});

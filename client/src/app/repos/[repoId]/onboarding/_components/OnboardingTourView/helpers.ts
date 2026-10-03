@@ -44,6 +44,7 @@ export function countDiagramNodes(src: string): number {
       .replace(/"[^"]*"/g, "")
       .replace(/\[[^\]]*\]|\([^)]*\)|\{[^}]*\}/g, "")
       .replace(/\|[^|]*\|/g, "")
+      .replace(/\s(--|==)\s[^\n]*?\s(-->|==>)/g, ",")
       .replace(/[-=.]+>|[-=.]{2,}|--[^-=>]*-->/g, ",");
     for (const part of line.split(/[,&;]/)) {
       const id = part.trim().split(/\s+/)[0];

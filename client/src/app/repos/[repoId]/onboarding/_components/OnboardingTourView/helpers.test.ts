@@ -50,3 +50,23 @@ describe("onboarding helpers", () => {
     expect(formatCost(undefined)).toBe("—");
   });
 });
+
+describe("diagram labeled edges", () => {
+  it("labeled edges do not count as nodes (both label forms)", () => {
+    const src = [
+      "flowchart TD",
+      "  N1[a] -- calls --> N2[b]",
+      "  N2 -->|reads| N3[c]",
+      "  N3 -- writes --> N4[d]",
+      "  N4-->N5[e]-->N6[f]-->N7[g]-->N8[h]-->N9[i]-->N10[j]",
+    ].join("\n");
+    expect(countDiagramNodes(src)).toBe(10);
+    expect(diagramAllowed(src)).toBe(true);
+  });
+
+  it("13 distinct nodes with labels still rejected", () => {
+    const src = `flowchart TD\n  ${Array.from({ length: 13 }, (_, i) => `N${i}`).join(" -- x --> ")}`;
+    expect(countDiagramNodes(src)).toBe(13);
+    expect(diagramAllowed(src)).toBe(false);
+  });
+});

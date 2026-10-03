@@ -23,7 +23,7 @@ function SectionBody({
   const items = section.items ?? [];
   switch (section.kind) {
     case "architecture":
-      return <OverviewBody body={section.body} diagram={section.diagram} />;
+      return <OverviewBody body={section.body} diagram={section.diagram} items={items} />;
     case "critical_paths":
     case "first_tasks":
       return <FileRows items={items} repoFullName={repoFullName} commitSha={commitSha} />;
