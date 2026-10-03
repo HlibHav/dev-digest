@@ -578,4 +578,18 @@ describe("OnboardingTourView", () => {
     expect(await screen.findByText("Link copied")).toBeInTheDocument();
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
   });
+
+  describe("AC-15 subline index text only for full or partial", () => {
+    it.each([
+      ["unavailable", { status: "unavailable", files_indexed: 0, files_total: 0 }],
+      ["unsupported_languages", { status: "unsupported_languages", files_indexed: 0, files_total: 0 }],
+    ])("%s index shows generated 2h ago and no index text", (_status, index) => {
+      setView({ tour: tour({ index }) });
+      renderView();
+      expect(pageText()).toContain("generated 2h ago");
+      expect(pageText()).not.toContain("index of");
+      expect(pageText()).not.toContain("Generated from index of");
+      expect(pageText()).not.toContain("partial index");
+    });
+  });
 });

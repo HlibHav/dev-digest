@@ -1,5 +1,5 @@
 # State: onboarding-tour
-Stage: 2 Review · next: plan-verifier
+Stage: 2 Review · next: security-reviewer and code-review results
 Spec: specs/2026-10-02-onboarding-tour.md (SPEC-2026-10-02-onboarding-tour) · Plan: docs/plans/2026-10-02-onboarding-tour.md · Mode: multi-agent
 Inputs: prompt none · designs specs/designs/onboarding-tour/tour-top.png, specs/designs/onboarding-tour/tour-run-and-reading.png
 Red-first: test-writer (e84d133); red tests are read-only for implementers
@@ -25,14 +25,20 @@ Expected red: server/test/onboarding-helpers.test.ts — level 1 (lane 3); clien
 | level 2 gate: server unit | `pnpm exec vitest run --exclude '**/*.it.test.ts'` | level 2 | 37 files, 362 tests passed |
 | onboarding integration (main session, Docker) | `pnpm exec vitest run test/onboarding.it.test.ts test/onboarding-service.it.test.ts test/onboarding-review-isolation.it.test.ts test/repo-intel-onboarding-reads.it.test.ts` | level 2 | 4 files, 27 tests passed, 0 skipped |
 | lane 4 red run (implementer, Docker) | same three onboarding it files | before lane 4 | onboarding.it 15 failed (404 / waitReady); service.it and isolation.it failed at load on wiring.js |
+| plan-verifier (Docker) | `pnpm --dir server exec vitest run .it.test` | ab9de07 | 19 files, 128 tests passed, 0 skipped |
+| architecture-reviewer | `pnpm lint:boundaries` · `vitest run test/route-adapter-calls.test.ts` | ab9de07 | no violations (191 modules); 8 passed |
+| AC-16 isolation grep (main session) | `grep -rn "modules/onboarding\|t\.onboarding" server/src reviewer-core/src` outside the module | 66982e4 | 0 hits |
+| AC-15 backfill mutant (main session) | drop the `status === "full"` guard in TourHeader.tsx, run the view test, revert | 66982e4 | 2 failed (both new AC-15 cases); reverted |
 
 ## Findings ledger
 | id | source | severity | kind | `path:line` | round opened | status | round closed |
 |---|---|---|---|---|---|---|---|
 | PROC-1 | main session | minor | process | server/test/onboarding-helpers.test.ts | level 1 | open — lane 3 appended 8 tests after the code (never red); plan-verifier to confirm each can fail | |
+| PV-1 | plan-verifier | major | spec is wrong | client/.../TourHeader/TourHeader.tsx:47 | review | closed — Glib chose the built behaviour; spec AC-15 updated (66982e4), backfill test added | review |
 | PROC-2 | main session | minor | process | lanes 1, 2, 3, 6 | level 1 | open — plan-named skills not invoked (drizzle-orm-patterns, security, zod, next/react-best-practices, react-testing-library); reviewers check against them | |
 
 ## Log
+- 2026-10-03 — plan-verifier: 58 met, 1 partial (AC-15 → PV-1), report docs/plans/2026-10-02-onboarding-tour.verify.md; architecture-reviewer: pass, 0 findings
 - 2026-10-03 — level 2 lane 4 done; gate green; main session read every new *.it.test.ts (controls present: isolation marker in stored tour + review call made)
 - 2026-10-03 — level 1 lanes 1, 2, 3, 5, 6 done; gate green
 - 2026-10-03 — lane 0 implementer done; level 0 gate: only expected red
