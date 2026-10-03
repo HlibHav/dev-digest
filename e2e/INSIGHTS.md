@@ -21,6 +21,7 @@ fixed — add to the one that fits.
 - **2026-09-20** — `find text … click` right after `wait --url` **races the fetch**: `wait --url` returns when the route changes, not when the data lands, so the click fails intermittently with `Command failed: agent-browser find text …`. Flows 04 and 05 failed this way on one run and passed on the next with no code change between them; flow 02 does the same journey and never flakes because it has a `wait --text` on the row first. Put a `wait --text` on the exact element before every `find … click` that depends on fetched data. Evidence: `e2e/specs/04-pr-findings.flow.json:6`, `e2e/specs/02-repo-pulls-detail.flow.json:6`
 
 - **2026-09-16** — `scripts/e2e.sh` boots Postgres, API and web, then dies at the very end with `sh: tsx: command not found` (exit 127) when `e2e/node_modules` is missing: it auto-installs deps for `server`, `client` and `reviewer-core` but never for `e2e`, and a missing `agent-browser` only prints a warning. Before running it: `cd e2e && npm ci`, plus once `npm i -g agent-browser && agent-browser install`. Evidence: `scripts/e2e.sh:113`, `scripts/e2e.sh:51`, `scripts/e2e.sh:163`
+  - **2026-10-03** — Refined: run as `npm run e2e:hermetic`, the same failure exits **0**. The process printed `sh: tsx: command not found`, tore the stack down and returned 0 with no flow run. The exit code proves nothing here. Look for the runner's `N/N flows passed` line, which was `9/9 flows passed` after `npm ci`. Evidence: `scripts/e2e.sh:163`, `e2e/package.json:9`
 
 ## Session Notes
 
