@@ -3,6 +3,12 @@ import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
 import { render, screen, cleanup, fireEvent, waitFor, act } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type {
+  OnboardingSectionKind,
+  OnboardingTour,
+  OnboardingTourSection,
+  OnboardingView,
+} from "@devdigest/shared";
 import messages from "../../../../../../../messages/en/onboarding.json";
 
 /**
@@ -20,48 +26,10 @@ import messages from "../../../../../../../messages/en/onboarding.json";
  * <button aria-label="Copy {command}">; Generating is role="status".
  */
 
-type Item = {
-  path?: string | null;
-  title?: string | null;
-  reason?: string | null;
-  command?: string | null;
-  note?: string | null;
-  reason_source: "llm" | "deterministic";
-};
-type Section = {
-  kind: string;
-  title: string;
-  body: string;
-  diagram: string | null;
-  links: { label: string; path: string }[];
-  items: Item[] | null;
-  notice: string | null;
-};
-type Tour = {
-  generated_at: string;
-  commit_sha: string;
-  source: "llm" | "skeleton";
-  skeleton_reason: "llm_failed" | "timed_out" | "index_unavailable" | "error" | null;
-  index: { status: string; files_indexed: number; files_total: number };
-  llm: {
-    calls: number;
-    provider?: string | null;
-    model?: string | null;
-    tokens_in?: number | null;
-    tokens_out?: number | null;
-    cost_usd?: number | null;
-    duration_ms?: number | null;
-  };
-  last_failure?: { reason: string; at: string; llm: { calls: number } } | null;
-  sections: Section[];
-};
-type View = {
-  cloned: boolean;
-  state: "none" | "generating" | "ready";
-  repo_full_name: string;
-  index_commit_sha: string | null;
-  tour: Tour | null;
-};
+// Fixture types come from the contract, so a fixture cannot drift from the schema.
+type Section = OnboardingTourSection;
+type Tour = OnboardingTour;
+type View = OnboardingView;
 
 const state = vi.hoisted(() => ({
   view: null as unknown,
@@ -105,9 +73,15 @@ const TITLES = [
   "Guided reading path",
   "First tasks",
 ];
-const KINDS = ["architecture", "critical_paths", "run_locally", "reading_path", "first_tasks"];
+const KINDS: OnboardingSectionKind[] = [
+  "architecture",
+  "critical_paths",
+  "run_locally",
+  "reading_path",
+  "first_tasks",
+];
 
-function section(kind: string, over: Partial<Section> = {}): Section {
+function section(kind: OnboardingSectionKind, over: Partial<Section> = {}): Section {
   const i = KINDS.indexOf(kind);
   return {
     kind,
@@ -538,9 +512,12 @@ describe("OnboardingTourView", () => {
         }),
       });
     }
-    async function flush() {
+    // Wait until the diagram was actually evaluated (mermaid.parse called), then let its
+    // resolved promise settle inside act, so an absence check afterwards is not vacuous.
+    async function waitForParse() {
+      await waitFor(() => expect(state.mermaidParse).toHaveBeenCalled());
       await act(async () => {
-        await new Promise((r) => setTimeout(r, 20));
+        await state.mermaidParse.mock.results[0]!.value;
       });
     }
 
@@ -555,16 +532,19 @@ describe("OnboardingTourView", () => {
       state.mermaidParse = vi.fn().mockResolvedValue(false);
       withDiagram("flowchart TD\n  A[");
       renderView();
-      await flush();
+      await waitForParse();
       expect(state.mermaidParse).toHaveBeenCalled();
       expect(screen.queryByLabelText("diagram")).not.toBeInTheDocument();
       expect(screen.getByText("Prose stays.")).toBeInTheDocument();
     });
 
-    it("13 nodes dropped, prose kept", async () => {
+    it("13 nodes dropped, prose kept", () => {
+      // The node cap gates the diagram synchronously, before mermaid is ever asked to parse it.
+      // The prose is rendered in the same pass, so the absence check below runs after evaluation.
       withDiagram(THIRTEEN);
       renderView();
-      await flush();
+      expect(screen.getByText("Prose stays.")).toBeInTheDocument();
+      expect(state.mermaidParse).not.toHaveBeenCalled();
       expect(screen.queryByLabelText("diagram")).not.toBeInTheDocument();
       expect(screen.getByText("Prose stays.")).toBeInTheDocument();
     });
@@ -581,8 +561,8 @@ describe("OnboardingTourView", () => {
 
   describe("AC-15 subline index text only for full or partial", () => {
     it.each([
-      ["unavailable", { status: "unavailable", files_indexed: 0, files_total: 0 }],
-      ["unsupported_languages", { status: "unsupported_languages", files_indexed: 0, files_total: 0 }],
+      ["unavailable", { status: "unavailable" as const, files_indexed: 0, files_total: 0 }],
+      ["unsupported_languages", { status: "unsupported_languages" as const, files_indexed: 0, files_total: 0 }],
     ])("%s index shows generated 2h ago and no index text", (_status, index) => {
       setView({ tour: tour({ index }) });
       renderView();

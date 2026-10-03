@@ -1,5 +1,5 @@
 # State: onboarding-tour
-Stage: 4 Close · next: pr-self-review, then push + PR on Glib's word
+Stage: 4 Close · next: push + PR on Glib's word
 Spec: specs/2026-10-02-onboarding-tour.md (SPEC-2026-10-02-onboarding-tour) · Plan: docs/plans/2026-10-02-onboarding-tour.md · Mode: multi-agent
 Inputs: prompt none · designs specs/designs/onboarding-tour/tour-top.png, specs/designs/onboarding-tour/tour-run-and-reading.png
 Red-first: test-writer (e84d133); red tests are read-only for implementers
@@ -48,6 +48,7 @@ Expected red: server/test/onboarding-helpers.test.ts — level 1 (lane 3); clien
 | PROC-2 | main session | minor | process | lanes 1, 2, 3, 6 | level 1 | accepted — plan-verifier: no AC, contract or step depends on a skill being invoked; each protected outcome has a test or quoted line | review |
 
 ## Log
+- 2026-10-03 — pr-self-review (pre-PR, base 73d4922): ready, 7 minor client findings; Glib: fix before PR → fix round 3: 6 fixed (age text via i18n ICU select, STATUS_KEY to constants, share() timer cleared, spacing, contract types in the view test, waitFor instead of a 20 ms flush); 1 accepted (nav test asserts fontWeight because the vendored Sidebar exposes no aria-current); client tc 0, 53 files / 313 tests
 - 2026-10-03 — plan-verifier delta at c20c73b: 0 not met, AC-40 partial → closed with two more screenshots; architecture delta pass; 41/41 met
 - 2026-10-03 — e2e 9/9; AC-40 hono demo done (1 call, $0.0021, 4.5 s)
 - 2026-10-03 — Glib: fix SR-1 and SR-2; fix round 2 done, gate green; walk cap raised from 5,000 to 200,000 by the main session (AC-15 regression risk)

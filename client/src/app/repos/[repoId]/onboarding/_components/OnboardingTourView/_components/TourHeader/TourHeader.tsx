@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@devdigest/ui";
 import type { OnboardingTour } from "@devdigest/shared";
 import { COPIED_RESET_MS } from "../../constants";
-import { formatAge, formatCost } from "../../helpers";
+import { ageParts, formatCost } from "../../helpers";
 import { s } from "./styles";
 
 export function TourHeader({
@@ -32,6 +32,7 @@ export function TourHeader({
     const url = `${window.location.origin}/repos/${repoId}/onboarding`;
     void navigator.clipboard.writeText(url).then(() => {
       setCopied(true);
+      if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(() => setCopied(false), COPIED_RESET_MS);
     });
   };
@@ -43,14 +44,14 @@ export function TourHeader({
     .filter((p): p is string => p != null)
     .join(" · ");
 
-  const ageText = formatAge(tour.generated_at, new Date());
+  const age = ageParts(tour.generated_at, new Date());
   const indexPart =
     index.status === "partial"
       ? t("subline.indexPartial", { indexed: index.files_indexed, total: index.files_total })
       : index.status === "full"
         ? t("subline.indexFull", { n: index.files_indexed })
         : null;
-  const indexLine = [indexPart, t("subline.generated", { age: ageText })]
+  const indexLine = [indexPart, t("subline.generated", { unit: age.unit, n: age.n })]
     .filter((p): p is string => p != null)
     .join(" · ");
 

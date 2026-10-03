@@ -8,14 +8,23 @@ export function formatCost(c: number | null | undefined): string {
   return c == null ? "—" : `$${c.toFixed(4)}`;
 }
 
-export function formatAge(iso: string, now: Date): string {
+export type AgeUnit = "now" | "minutes" | "hours" | "days";
+
+/** Age of `iso` relative to `now` as a unit and a count; the view renders it through i18n. */
+export function ageParts(iso: string, now: Date): { unit: AgeUnit; n: number } {
   const diffMs = now.getTime() - new Date(iso).getTime();
   const min = Math.floor(diffMs / 60_000);
-  if (!(min >= 1)) return "just now";
-  if (min < 60) return `${min}m ago`;
+  if (!(min >= 1)) return { unit: "now", n: 0 };
+  if (min < 60) return { unit: "minutes", n: min };
   const hours = Math.floor(min / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
+  if (hours < 24) return { unit: "hours", n: hours };
+  return { unit: "days", n: Math.floor(hours / 24) };
+}
+
+export function formatAge(iso: string, now: Date): string {
+  const { unit, n } = ageParts(iso, now);
+  if (unit === "now") return "just now";
+  return `${n}${unit === "minutes" ? "m" : unit === "hours" ? "h" : "d"} ago`;
 }
 
 export function isStale(

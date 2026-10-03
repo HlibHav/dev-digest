@@ -4,14 +4,8 @@ import React from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@devdigest/ui";
 import type { OnboardingTour } from "@devdigest/shared";
+import { STATUS_KEY } from "../../constants";
 import { s } from "./styles";
-
-const STATUS_KEY = {
-  llm_failed: "status.llmFailed",
-  timed_out: "status.timedOut",
-  index_unavailable: "status.indexUnavailable",
-  error: "status.error",
-} as const;
 
 export function StatusBanner({
   tour,

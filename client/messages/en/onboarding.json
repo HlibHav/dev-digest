@@ -14,7 +14,7 @@
     "calls": "{count, plural, one {# LLM call} other {# LLM calls}}",
     "indexFull": "Generated from index of {n, number} files",
     "indexPartial": "Indexed {indexed, number} of {total, number} files · partial index",
-    "generated": "generated {age}"
+    "generated": "generated {unit, select, now {just now} minutes {{n}m ago} hours {{n}h ago} other {{n}d ago}}"
   },
   "generate": {
     "title": "Generate onboarding tour",
