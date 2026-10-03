@@ -81,6 +81,12 @@ export function lineRowFor(kind: Line["kind"]): CSSProperties {
   return { display: "flex", alignItems: "stretch", fontSize: 13, lineHeight: "20px", background };
 }
 
+/** Outline for the line a link pointed at. */
+export const lineHighlight: CSSProperties = {
+  outline: "2px solid var(--accent)",
+  outlineOffset: -2,
+};
+
 /** Gutter sign colour per line kind. */
 export function lineSignFor(kind: Line["kind"]): CSSProperties {
   return {

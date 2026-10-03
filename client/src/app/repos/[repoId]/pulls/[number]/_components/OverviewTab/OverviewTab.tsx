@@ -1,7 +1,10 @@
 "use client";
 
-import React from "react";
+import React, { useMemo, type ComponentProps } from "react";
 import { SectionLabel } from "@devdigest/ui";
+import type { PrFile } from "@/lib/types";
+import { PrBriefCard } from "./_components/PrBriefCard";
+import type { OpenTarget } from "./_components/PrBriefCard/helpers";
 import { IntentCard } from "./_components/IntentCard";
 import { BlastRadiusCard } from "./_components/BlastRadiusCard";
 import { pickLinkSha } from "./_components/BlastRadiusCard/helpers";
@@ -16,9 +19,25 @@ interface OverviewTabProps {
   headSha?: string | null;
   repoId: string;
   repoFullName: string | null;
+  /** The PR detail request: the brief is read only once it has settled, and re-read when it refreshes. */
+  detail: { status: "pending" | "success" | "error"; updatedAt: number };
+  /** The PR's files; a brief row whose file is not among them cannot open Files changed. */
+  files: PrFile[];
+  latestReview: ComponentProps<typeof PrBriefCard>["latestReview"];
+  onOpenFile: (target: OpenTarget) => void;
 }
 
-export function OverviewTab({ prId, prBody, headSha, repoId, repoFullName }: OverviewTabProps) {
+export function OverviewTab({
+  prId,
+  prBody,
+  headSha,
+  repoId,
+  repoFullName,
+  detail,
+  files,
+  latestReview,
+  onOpenFile,
+}: OverviewTabProps) {
   const { data: intent, isLoading } = usePrIntent(prId);
   const rederive = useRederiveIntent(prId);
 
@@ -29,8 +48,19 @@ export function OverviewTab({ prId, prBody, headSha, repoId, repoFullName }: Ove
   const linkSha = pickLinkSha(indexState.data?.lastIndexedSha, headSha);
   const link = repoFullName && linkSha ? { repoFullName, sha: linkSha } : null;
 
+  const prPaths = useMemo(() => new Set(files.map((f) => f.path)), [files]);
+
   return (
     <div style={s.grid}>
+      <div style={s.fullRow}>
+        <PrBriefCard
+          prId={prId}
+          gate={{ settled: detail.status !== "pending", refreshedAt: detail.updatedAt }}
+          prPaths={prPaths}
+          latestReview={latestReview}
+          onOpenFile={onOpenFile}
+        />
+      </div>
       <IntentCard
         intent={intent}
         isLoading={isLoading}

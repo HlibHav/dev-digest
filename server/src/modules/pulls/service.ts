@@ -41,6 +41,7 @@ export class PullsService {
         additions: detail.additions,
         deletions: detail.deletions,
         filesCount: detail.files_count,
+        headSha: detail.head_sha,
       });
 
       return { ...detail, id: pull.id };
