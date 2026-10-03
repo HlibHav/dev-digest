@@ -1,5 +1,5 @@
 # State: onboarding-tour
-Stage: 4 Close · next: e2e, minor findings to Glib, AC-40 demo, insights
+Stage: 4 Close · next: traceability, insights, pr-self-review, PR on Glib's word
 Spec: specs/2026-10-02-onboarding-tour.md (SPEC-2026-10-02-onboarding-tour) · Plan: docs/plans/2026-10-02-onboarding-tour.md · Mode: multi-agent
 Inputs: prompt none · designs specs/designs/onboarding-tour/tour-top.png, specs/designs/onboarding-tour/tour-run-and-reading.png
 Red-first: test-writer (e84d133); red tests are read-only for implementers
@@ -32,6 +32,8 @@ Expected red: server/test/onboarding-helpers.test.ts — level 1 (lane 3); clien
 | fix round 1 gate: client | `pnpm typecheck` · `pnpm test` | fix 1 | 0 errors; 53 files, 312 tests passed |
 | fix round 2 gate: server | `pnpm typecheck` · unit · onboarding it (Docker) · `lint:boundaries` | fix 2 | 0 errors; 37 files / 365 tests; 3 files / 25 tests; no violations |
 | fix round 2 gate: client | `pnpm typecheck` · `pnpm test` | fix 2 | 0 errors; 53 files / 313 tests |
+| e2e hermetic | `E2E_PG_PORT=5633 E2E_API_PORT=3301 E2E_WEB_PORT=3300 npm run e2e:hermetic` | 183697a | 9/9 flows passed (first two runs invalid: e2e deps missing, then output truncated) |
+| AC-40 demo (main session, browser) | honojs/hono indexed (423 files, full), Generate in the UI, model openrouter/openai/gpt-4.1-mini | 183697a | log: `llm_calls=1 tokens 2441/718 $0.0021 outcome=complete duration_ms=4521`; five sections rendered; Open → github blob at f23b146; screenshots in docs/plans/2026-10-02-onboarding-tour.assets/ |
 
 ## Findings ledger
 | id | source | severity | kind | `path:line` | round opened | status | round closed |
@@ -46,6 +48,7 @@ Expected red: server/test/onboarding-helpers.test.ts — level 1 (lane 3); clien
 | PROC-2 | main session | minor | process | lanes 1, 2, 3, 6 | level 1 | open — plan-named skills not invoked (drizzle-orm-patterns, security, zod, next/react-best-practices, react-testing-library); reviewers check against them | |
 
 ## Log
+- 2026-10-03 — e2e 9/9; AC-40 hono demo done (1 call, $0.0021, 4.5 s)
 - 2026-10-03 — Glib: fix SR-1 and SR-2; fix round 2 done, gate green; walk cap raised from 5,000 to 200,000 by the main session (AC-15 regression risk)
 - 2026-10-03 — security-reviewer: pass, SR-1/SR-2 minor; /code-review: CR-1, CR-2 → fix round 1 (lane 6), both closed; main session read the delta
 - 2026-10-03 — plan-verifier: 58 met, 1 partial (AC-15 → PV-1), report docs/plans/2026-10-02-onboarding-tour.verify.md; architecture-reviewer: pass, 0 findings
