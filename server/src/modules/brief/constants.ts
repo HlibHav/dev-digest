@@ -25,3 +25,10 @@ export const BRIEF_MAX_ISSUES = 1;
 
 /** Character cap handed to the sanitiser for the PR body, the issue body and each spec. */
 export const BRIEF_MAX_TEXT_CHARS = 20_000;
+
+/**
+ * Character cap for one attached spec doc. Far above the budget on purpose: the
+ * 8 000-token fit (AC-14) is what shortens specs, so capping them lower here would
+ * hide the truncation from `truncated_inputs`.
+ */
+export const BRIEF_MAX_SPEC_CHARS = 200_000;

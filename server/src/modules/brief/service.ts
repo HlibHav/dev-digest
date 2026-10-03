@@ -13,7 +13,7 @@ import { PrBrief as PrBriefSchema } from '@devdigest/shared';
 import { ExternalServiceError, NotFoundError } from '../../platform/errors.js';
 import { loadPromptTemplate, renderPrompt } from '../../platform/prompts.js';
 import { TimeoutError, withTimeout } from '../../platform/resilience.js';
-import { BRIEF_MAX_ISSUES, BRIEF_MAX_TEXT_CHARS, BRIEF_SCHEMA_NAME } from './constants.js';
+import { BRIEF_MAX_ISSUES, BRIEF_MAX_SPEC_CHARS, BRIEF_MAX_TEXT_CHARS, BRIEF_SCHEMA_NAME } from './constants.js';
 import { buildValidationContext, computeMissingInputs, normalizeAnswer, parseNewSideRanges } from './helpers.js';
 import { fitToBudget, type BriefFileFact, type BriefInputs } from './prompt.js';
 import { PrBriefModelAnswer } from './schemas.js';
@@ -192,7 +192,7 @@ export class BriefService {
       for (const doc of docs) {
         if (seen.has(doc.path)) continue;
         seen.add(doc.path);
-        specs.push({ path: doc.path, text: ports.sanitize(doc.text, BRIEF_MAX_TEXT_CHARS) });
+        specs.push({ path: doc.path, text: ports.sanitize(doc.text, BRIEF_MAX_SPEC_CHARS) });
       }
     }
 
