@@ -37,9 +37,16 @@ export function PrBriefCard({ prId, gate, prPaths, latestReview, onOpenFile }: P
   const t = useTranslations("brief");
   const query = usePrBrief(prId, gate);
   const generate = useGenerateBrief(prId);
-  const [missed, setMissed] = useState<ReadonlySet<string>>(new Set());
+  // The "not in diff" marks belong to one brief: they are stamped with its `generated_at`
+  // and ignored once a refreshed or regenerated brief carries another one.
+  const [missedState, setMissedState] = useState<{ stamp: string | null; keys: ReadonlySet<string> }>({
+    stamp: null,
+    keys: new Set(),
+  });
 
   const brief = query.data;
+  const stamp = brief?.generated_at ?? null;
+  const missed: ReadonlySet<string> = missedState.stamp === stamp ? missedState.keys : new Set();
   const busy = query.isPending || generate.isPending;
 
   // react-query publishes `isPending` on a timer, so two clicks in one tick would both see it false.
@@ -55,17 +62,12 @@ export function PrBriefCard({ prId, gate, prPaths, latestReview, onOpenFile }: P
   };
 
   const open = (key: string, target: OpenTarget | null) => {
-    if (!target) {
-      setMissed((prev) => new Set(prev).add(key));
-      return;
-    }
-    setMissed((prev) => {
-      if (!prev.has(key)) return prev;
-      const next = new Set(prev);
-      next.delete(key);
-      return next;
-    });
-    onOpenFile(target);
+    const base = missedState.stamp === stamp ? missedState.keys : new Set<string>();
+    const keys = new Set(base);
+    if (target) keys.delete(key);
+    else keys.add(key);
+    setMissedState({ stamp, keys });
+    if (target) onOpenFile(target);
   };
 
   const refresh = brief ? (
@@ -74,7 +76,8 @@ export function PrBriefCard({ prId, gate, prPaths, latestReview, onOpenFile }: P
     </Button>
   ) : undefined;
 
-  const failure = generate.error;
+  // A failed read has no brief to show, so it gets the same message and a way to generate.
+  const failure = generate.error ?? query.error;
   const failureText = failure
     ? failure instanceof ApiError && failure.code === "config_error"
       ? t("errors.config")

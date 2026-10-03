@@ -100,6 +100,9 @@ export type NormalizedAnswer = {
   droppedFocus: number;
 };
 
+/** The model's `kind` is a short label; the contract sets no cap, so code does. */
+const MAX_KIND_CHARS = 64;
+
 /**
  * Turns the model's permissive answer into the stored shape, in code: drop what
  * names no known file, snap lines, cap to 5 risks and 6 focus items (from the
@@ -121,7 +124,7 @@ export function normalizeAnswer(answer: PrBriefModelAnswer, ctx: ValidationConte
         return { file: l.file, start_line: range.start, end_line: range.end };
       });
     validRisks.push({
-      kind: r.kind,
+      kind: r.kind.slice(0, MAX_KIND_CHARS),
       title: r.title,
       explanation: r.explanation,
       severity: r.severity,

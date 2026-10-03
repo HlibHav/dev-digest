@@ -78,7 +78,8 @@ export default function PRDetailPage() {
     router.replace(`/repos/${repoId}/pulls/${number}${sp.toString() ? `?${sp.toString()}` : ""}`);
   };
   const setParam = (key: string, val: string | null) => setParams({ [key]: val });
-  const setTab = (t: string) => setParam("tab", t);
+  // A tab switch drops the click-through address, so the Diff tab doesn't re-open an old file.
+  const setTab = (t: string) => setParams({ tab: t, file: null, line: null });
   const onOpenFile = ({ file, line }: { file: string; line: number | null }) =>
     setParams({ tab: "diff", file, line: line == null ? null : String(line) });
 

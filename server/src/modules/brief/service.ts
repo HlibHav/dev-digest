@@ -15,7 +15,7 @@ import { loadPromptTemplate, renderPrompt } from '../../platform/prompts.js';
 import { TimeoutError, withTimeout } from '../../platform/resilience.js';
 import { BRIEF_MAX_ISSUES, BRIEF_MAX_SPEC_CHARS, BRIEF_MAX_TEXT_CHARS, BRIEF_SCHEMA_NAME } from './constants.js';
 import { buildValidationContext, computeMissingInputs, normalizeAnswer, parseNewSideRanges } from './helpers.js';
-import { fitToBudget, type BriefFileFact, type BriefInputs } from './prompt.js';
+import { fitToBudget, sanitizeBriefFacts, type BriefFileFact, type BriefInputs } from './prompt.js';
 import { PrBriefModelAnswer } from './schemas.js';
 
 // Read the template once at import, so a generation never waits on the disk inside its deadline.
@@ -203,7 +203,7 @@ export class BriefService {
     const facts: BriefFileFact[] = files.map((f) => ({ ...f, role: ports.classifyFile(f.path) }));
     const description = body.trim() === '' ? null : ports.sanitize(body, BRIEF_MAX_TEXT_CHARS);
     const inputs: BriefInputs = {
-      title: ports.sanitize(detail.title, TITLE_SANITIZE_CHARS),
+      title: detail.title,
       description,
       intent,
       blast,
@@ -211,9 +211,11 @@ export class BriefService {
       specs,
       files: facts,
     };
+    // Only the prompt sees the sanitised facts; the stored brief keeps the real intent, blast and paths.
+    const promptInputs = sanitizeBriefFacts(inputs, (text, max) => ports.sanitize(text, max));
 
     const system = await renderPrompt('brief.system.md', {});
-    const fit = fitToBudget(inputs, system, (text) => ports.count(text));
+    const fit = fitToBudget(promptInputs, system, (text) => ports.count(text));
     log.inputTokens = fit.tokens;
     log.truncatedInputs = fit.truncated;
 
@@ -234,7 +236,9 @@ export class BriefService {
         maxRetries: 0,
       });
     } catch (err) {
-      throw new ExternalServiceError(`Couldn't generate the PR brief: ${(err as Error).message}`);
+      // The provider's own text may carry a key fragment: it goes to the server log only.
+      log.notes.push(`provider error: ${(err as Error).message}`);
+      throw new ExternalServiceError("Couldn't generate the PR brief: the model call failed");
     }
     log.attempts = result.attempts;
     log.tokensIn = result.tokensIn;
