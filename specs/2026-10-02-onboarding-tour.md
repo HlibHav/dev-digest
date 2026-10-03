@@ -95,7 +95,10 @@ Non-goals:
 - **AC-12** WHEN a generation ends, the system shall persist the result as the repository's tour (except in the case AC-25 governs), and opening the page later shall show it without a new LLM call — proof: red-first integration — verify: generate, then read the tour twice; expect the same tour both times and the mock call count still 1.
 - **AC-13** WHEN a generation ends, the system shall write one log line that names the repository, the provider and model, the number of LLM calls, the input and output tokens, the cost in USD (or "—" when no price is known), the outcome and the duration — proof: red-first integration — verify: generate with a mock that reports 1,200/300 tokens and $0.0021; expect exactly one generation log line containing `llm_calls=1`, `tokens 1200/300`, `$0.0021` and the outcome `complete`. With a mock that reports no price, expect `—`.
 - **AC-14** WHEN a tour is shown, the subline shall show "<n> LLM call(s) · <cost> · <provider/model>", with "—" for the cost when none was recorded — proof: red-first unit — verify: render a tour with 1 call and cost 0.0021; expect "1 LLM call · $0.0021 · openrouter/…". Render one with a null cost; expect "—". Render a skeleton with 0 calls; expect "0 LLM calls".
-- **AC-15** WHEN a tour is shown, the subline shall show "Generated from index of <N> files" and the tour's age ("generated <relative time>"), and WHILE the index is partial it shall show "Indexed <N> of <M> files · partial index" instead.
+- **AC-15** WHEN a tour is shown, the subline shall show the tour's age ("generated <relative time>").
+  - WHILE the tour's index status is `full`, the subline shall also show "Generated from index of <N> files".
+  - WHILE the index status is `partial`, it shall show "Indexed <N> of <M> files · partial index" instead.
+  - WHILE the index status is `unavailable` or `unsupported_languages`, it shall show the age only, with no index text. The status line or section notices explain why.
   - N is the number of files indexed.
   - M is the number of files in the clone with a supported extension, outside the excluded folders.
   - The tour's index status is `partial` when the index reports itself partial, OR when N < M. The second case covers an index that stopped at its file cap or skipped oversized files but still reports itself complete.
@@ -103,6 +106,7 @@ Non-goals:
   — proof: red-first unit — verify:
   - render a full-index tour with N = M = 812, generated 2 hours ago; expect "Generated from index of 812 files" and "generated 2h ago";
   - render a partial tour with 5,000 of 12,450; expect "Indexed 5,000 of 12,450 files · partial index";
+  - render an `unavailable` tour and an `unsupported_languages` tour, each generated 2 hours ago; expect "generated 2h ago" and no "index of";
   - and red-first integration: an index that reports itself complete with 5 files indexed in a clone of 7 supported files; generate; expect index status `partial`, 5 of 7.
 - **AC-16** The system shall not include any part of a tour in any review prompt — proof: red-first integration — verify: store a tour whose overview contains a unique marker string; run a review of a PR in the same repo with a mock LLM; expect the marker absent from every prompt the mock received.
 
@@ -382,7 +386,7 @@ All JSON is snake_case. These shapes describe behaviour; the plan decides where 
 | AC-12 | red-first integration | persisted; two reads, no new call | — | — | — |
 | AC-13 | red-first integration | one log line: calls, tokens, cost or "—", outcome | — | — | — |
 | AC-14 | red-first unit | subline calls · cost · model; "—" for null | — | — | — |
-| AC-15 | red-first unit + red-first integration | "index of N files", age; partial "N of M"; self-reported complete index with N < M → `partial` | — | — | — |
+| AC-15 | red-first unit + red-first integration | "index of N files", age; partial "N of M"; `unavailable` / `unsupported_languages` → age only, no "index of"; self-reported complete index with N < M → `partial` | — | — | — |
 | AC-16 | red-first integration | tour marker absent from review prompts | — | — | — |
 | AC-17 | red-first integration | throw or malformed → skeleton `llm_failed` | — | — | — |
 | AC-18 | red-first integration | never-resolving mock past 90 s → `timed_out`, cost null | — | — | — |
@@ -418,3 +422,4 @@ All JSON is snake_case. These shapes describe behaviour; the plan decides where 
 | 2026-10-02 | Closed NC-1 (AC-25: keep the earlier LLM tour, record the failure, show the banner; adds `last_failure` to the contract) and NC-2 (Cost NFR caps, new AC-41) | answers mode: Glib chose NC-1 a and accepted the NC-2 recommendation; spec-creator's readings kept, not vetoed |
 | 2026-10-02 | Status: approved | set by Glib after NC-1/NC-2 were closed |
 | 2026-10-03 | Planner findings resolved:<br>• AC-23: `error` added to `skeleton_reason`, with a status line;<br>• AC-22, AC-35, AC-36: the server owns the checklist and stores it as first-task items, and the client only renders;<br>• AC-28: script command format per package manager, with `bun run` to avoid bun's built-in `test`/`build`;<br>• AC-15: N < M counts as partial;<br>• Contracts: HTTP statuses 202/409/404/422;<br>• Goals: tokens in the log only;<br>• AC-29: the note is rendered apart and is not copied.<br>Status kept approved. | update mode: the implementation-planner's findings, routed by Glib; clarifications inside decisions already taken (honest status, Q3 a, Q6 a, Q7 a, N4) |
+| 2026-10-03 | AC-15: the subline's index text applies only to the `full` (N files) and `partial` (N of M) index statuses. `unavailable` and `unsupported_languages` show the age only; verify extended. Status stays approved | update mode: plan-verifier finding; Glib kept the built behaviour ("Лише «generated 2h ago»") |
