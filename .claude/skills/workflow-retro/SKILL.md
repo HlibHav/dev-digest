@@ -1,6 +1,6 @@
 ---
 name: workflow-retro
-description: Manual-only retrospective of a multi-agent run (subagents, /implement, a Workflow script, an orchestrated fan-out). Measures tokens, agent count, launch order and parallelism. Reads each agent's brief against its report for difficulties, easy wins, duplicated information and misses, then records lessons in the project's docs/retro/ledger.md and proposes concrete fixes, with a ready diff for any lesson seen twice. Run it with /workflow-retro, optionally `deep` to parse the transcripts.
+description: Manual-only retrospective of a multi-agent run (subagents, /implement, a Workflow script, an orchestrated fan-out). Measures tokens, agent count, launch order and parallelism. Reads each agent's brief against its report for difficulties, easy wins, duplicated information and misses, then records lessons in the project's docs/retros/ledger.md and proposes concrete fixes, with a ready diff for any lesson seen twice. Run it with /workflow-retro, optionally `deep` to parse the transcripts.
 disable-model-invocation: true
 argument-hint: "[deep] [--since <ISO time>] [run name]"
 ---
@@ -85,7 +85,7 @@ agents, a smaller model, one brief instead of three), say which.
 
 ## Step 5 — Ledger
 
-The ledger lives at `<repo root>/docs/retro/ledger.md` (`git rev-parse --show-toplevel`; outside
+The ledger lives at `<repo root>/docs/retros/ledger.md` (`git rev-parse --show-toplevel`; outside
 a repo, the working directory). Create it from the template below if it's missing. Read it
 whole first, then for each lesson from steps 3–4:
 
@@ -151,7 +151,7 @@ that way once approved. Then set the ledger row to `encoded` with the commit.
 ## Proposals
 <one-liners for new lessons; full diffs for repeated ones; run-shape changes>
 
-Ledger: docs/retro/ledger.md — <n> new, <n> repeated (now proposed)
+Ledger: docs/retros/ledger.md — <n> new, <n> repeated (now proposed)
 ```
 
 Write the report in the user's language; code, diffs and the ledger stay in English. Don't

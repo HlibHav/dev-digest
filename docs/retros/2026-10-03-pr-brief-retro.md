@@ -66,7 +66,7 @@ The brief that caused rework was the orchestrator's own. It told lanes to run te
 
 A cheaper shape: run the main session from inside the task worktree from the start. That removes the hand-off session and the inline spec dump.
 
-## Lessons (merge into `docs/retro/ledger.md` on #31)
+## Lessons (merge into `docs/retros/ledger.md` on #31)
 
 | id | lesson | target | seen | status |
 |---|---|---|---|---|
@@ -86,4 +86,4 @@ Proposed change for L-26. The rule already exists (`.claude/agents/implementer.m
 +  (pr-brief 2026-10-03: both lanes applied skills "from the plan" without loading them).
 ```
 
-Ledger: these 6 rows are new here; L-26 repeats an existing project-context lesson (now proposed). Merge them into `docs/retro/ledger.md` on `chore/sdd-chain-lessons` (#31).
+Ledger: these 6 rows are new here; L-26 repeats an existing project-context lesson (now proposed). Merge them into `docs/retros/ledger.md` on `chore/sdd-chain-lessons` (#31).
