@@ -12,10 +12,12 @@ import { useActiveRepo } from "@/lib/repo-context";
 import { useContextFiles } from "@/lib/hooks/core";
 import { useAgentContext, useSetAgentContext } from "@/lib/hooks/project-context";
 import {
+  CONTEXT_TOKEN_BUDGET,
   ContextDocList,
   DocPreviewModal,
   buildAgentRows,
   contextTotals,
+  exceedsTokenBudget,
   isPerFileStrategy,
   moveDoc,
   toggleDoc,
@@ -129,6 +131,9 @@ export function ContextTab({ agent }: { agent: Agent }) {
         <span style={s.spacer} />
         <span style={s.hint}>{t("context.untrustedNote")}</span>
       </div>
+      {exceedsTokenBudget(totals.total) && (
+        <p style={s.overBudget}>{t("context.overBudget", { budget: CONTEXT_TOKEN_BUDGET })}</p>
+      )}
       {isPerFileStrategy(agent.strategy) && <p style={s.hint}>{t("context.perFileNote")}</p>}
 
       {previewPath && (

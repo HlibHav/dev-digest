@@ -26,5 +26,6 @@ export const s = {
     color: "var(--text-primary)",
   } satisfies CSSProperties,
   hint: { fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 } satisfies CSSProperties,
+  overBudget: { fontSize: 12, color: "var(--warn)", lineHeight: 1.5 } satisfies CSSProperties,
   list: { display: "flex", flexDirection: "column", gap: 6 } satisfies CSSProperties,
 } as const;

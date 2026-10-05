@@ -1,4 +1,5 @@
 import type { AgentContext, ContextDocCategory, ReviewStrategy, SpecFile } from "@devdigest/shared";
+import { CONTEXT_TOKEN_BUDGET } from "./constants";
 
 /** One line in the context list, already resolved against the repo's docs. */
 export type ContextRow = {
@@ -107,4 +108,9 @@ export function contextTotals(ctx: AgentContext): { total: number; inherited: nu
     inherited += i.tokens;
   }
   return { total, inherited };
+}
+
+/** True when a token total is over the display-only budget; equal to it is fine. */
+export function exceedsTokenBudget(total: number, budget: number = CONTEXT_TOKEN_BUDGET): boolean {
+  return total > budget;
 }

@@ -1,6 +1,7 @@
 /* ContextTab — attach repo docs to this skill. Any agent carrying the skill
-   inherits them. Shows the token total and the exact `## Project context`
-   block a run would send ("Serializes as"). */
+   inherits them. Shows the token total, a display-only budget warning, and a
+   "Serializes as" preview of the attached paths grouped by doc type. The preview
+   is not the prompt text; the run keeps the skill's order. */
 "use client";
 
 import React from "react";
@@ -11,13 +12,16 @@ import { useActiveRepo } from "@/lib/repo-context";
 import { useContextFiles } from "@/lib/hooks/core";
 import { useSkillContext, useSetSkillContext } from "@/lib/hooks/project-context";
 import {
+  CONTEXT_TOKEN_BUDGET,
   ContextDocList,
   DocPreviewModal,
   buildAgentRows,
+  exceedsTokenBudget,
   moveDoc,
   toggleDoc,
   type ContextDocListLabels,
 } from "@/components/context-doc-list";
+import { groupSerializedPaths } from "./helpers";
 import { s } from "./styles";
 
 export function ContextTab({ skill }: { skill: Skill }) {
@@ -29,6 +33,7 @@ export function ContextTab({ skill }: { skill: Skill }) {
   const setCtx = useSetSkillContext();
   const [filter, setFilter] = React.useState("");
   const [previewPath, setPreviewPath] = React.useState<string | null>(null);
+  const serializesAsId = React.useId();
 
   const labels: ContextDocListLabels = {
     preview: t("context.preview"),
@@ -84,6 +89,7 @@ export function ContextTab({ skill }: { skill: Skill }) {
 
   const rows = buildAgentRows(filesQuery.data.files, { attached: ctx.attached, inherited: [] });
   const tokens = ctx.attached.reduce((sum, a) => sum + (a.present ? a.tokens : 0), 0);
+  const groups = groupSerializedPaths(ctx.attached, filesQuery.data.files);
   const commit = (paths: string[]) => setCtx.mutate({ skillId: skill.id, paths });
 
   return (
@@ -107,6 +113,9 @@ export function ContextTab({ skill }: { skill: Skill }) {
       </div>
 
       <p style={s.hint}>{t("context.hint")}</p>
+      {exceedsTokenBudget(tokens) && (
+        <p style={s.overBudget}>{t("context.overBudget", { budget: CONTEXT_TOKEN_BUDGET })}</p>
+      )}
 
       <ContextDocList
         rows={rows}
@@ -117,12 +126,23 @@ export function ContextTab({ skill }: { skill: Skill }) {
         onPreview={setPreviewPath}
       />
 
-      {ctx.serialized && (
+      {groups.length > 0 && (
         <>
-          <div style={s.label}>{t("context.serializesAs")}</div>
-          <pre className="mono" style={s.pre}>
-            {ctx.serialized}
-          </pre>
+          <div id={serializesAsId} style={s.label}>
+            {t("context.serializesAs")}
+          </div>
+          <section aria-labelledby={serializesAsId} className="mono" style={s.serialized}>
+            {groups.map(({ group, paths }) => (
+              <React.Fragment key={group}>
+                <h3 style={s.groupHeading}>{t(`context.serializeGroups.${group}`)}</h3>
+                <ul style={s.groupList}>
+                  {paths.map((path) => (
+                    <li key={path}>{path}</li>
+                  ))}
+                </ul>
+              </React.Fragment>
+            ))}
+          </section>
         </>
       )}
 

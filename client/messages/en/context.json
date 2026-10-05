@@ -38,5 +38,17 @@
     "body": "Pick a repository to see its docs."
   },
   "treeLabel": "Docs",
+  "toolbar": {
+    "label": "Doc actions",
+    "newDoc": "New doc (coming soon)",
+    "newFolder": "New folder (coming soon)",
+    "download": "Download (coming soon)"
+  },
+  "tabs": {
+    "label": "Doc view",
+    "preview": "Preview",
+    "edit": "Edit",
+    "editComingSoon": "Edit (coming soon)"
+  },
   "root": "Project Context"
 }
