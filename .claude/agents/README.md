@@ -136,9 +136,9 @@ be true; a red-first test is that same statement, executable and failing before 
    get a one-sentence intent; the others get a spec whose `AC-N` criteria are EARS statements
    with proof tags. The user approves it.
 3. **implementation-planner** works from the approved spec (Status `approved`, no open
-   `[NEEDS CLARIFICATION]`) and the execution mode the user chose. It restates every requirement
-   as a checkable `R1`, `R2`… linked to the spec, copies the `AC-N` lines and their tags
-   verbatim, sends any fix back to spec-creator instead of rewriting them, and lists the
+   `[NEEDS CLARIFICATION]`) and the execution mode the user chose. It takes the approved spec as
+   settled (verifying the requirements is spec-creator's job), copies the `AC-N` lines and their
+   tags verbatim, sends any fix back to spec-creator instead of rewriting them, and lists the
    red-first criteria under `## Red-first`. Each step is a test-first cycle: which red tests it
    turns green, which unit tests the implementer writes first, what it consumes and produces,
    and the command that proves it.
