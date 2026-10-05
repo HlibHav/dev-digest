@@ -1,5 +1,5 @@
 import { simpleGit, type SimpleGit } from 'simple-git';
-import { join, sep } from 'node:path';
+import { join, resolve, sep } from 'node:path';
 import { mkdir, readFile, access, rm, realpath, stat } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import type {
@@ -38,7 +38,17 @@ export class SimpleGitClient implements GitClient {
   }
 
   clonePathFor(repo: RepoRef): string {
-    return join(this.cloneDir, repo.owner, repo.name);
+    const dest = join(this.cloneDir, repo.owner, repo.name);
+    // Defence in depth behind parseRepoUrl's segment check: clone() deletes a
+    // destination that exists without a `.git`, so an escaping path here is a
+    // recursive delete of whatever sits there. Validate on the resolved form and
+    // still RETURN the joined one — `repos.clone_path` persists this string.
+    const root = resolve(this.cloneDir);
+    const abs = resolve(dest);
+    if (abs !== root && !abs.startsWith(root + sep)) {
+      throw new Error(`Refusing a clone path outside the clone dir: ${dest}`);
+    }
+    return dest;
   }
 
   private git(repo: RepoRef): SimpleGit {

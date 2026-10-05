@@ -43,6 +43,9 @@ class FakeRepoIntel implements RepoIntel {
     private indexState: IndexState,
   ) {}
 
+  async requireRepoInWorkspace(): Promise<void> {
+    throw new Error('not used in this fixture');
+  }
   async indexRepo(): Promise<IndexResult> {
     throw new Error('not used in this fixture');
   }
