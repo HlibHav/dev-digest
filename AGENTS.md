@@ -109,6 +109,11 @@ No linter or formatter is configured in any package: typecheck + tests are the g
   `reviewer-core/AGENTS.md`, `e2e/AGENTS.md` (auto-load is unreliable, VS Code #24987).
   Each package keeps a `CLAUDE.md` symlink beside it, so a tool that looks for either name
   finds the same file.
+- Building a feature spec-first (spec → plan → red-first tests → implementers → reviewers) →
+  `docs/sdd-cascade.md` for how much spec it needs, then `.claude/agents/README.md` for the
+  order, the briefs, lane slices, the package gate and the fix loop. The main session
+  orchestrates. `spec-creator` and `implementation-planner` are run by hand; once a plan is
+  saved, `/implement <plan-path>` runs the rest.
 - Agent prompt templates, model choice → `docs/agent-prompts/`
 - Whether a skill actually changes a review → `docs/skills-control-experiment.md`
 - Adding or changing backend code (`server/src/**`, `reviewer-core/src/**`) → the
