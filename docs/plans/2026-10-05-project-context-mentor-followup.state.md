@@ -28,7 +28,7 @@ Branch: chore/sdd-chain-lessons (PR #31 is the follow-up PR, Glib 2026-10-05)
 ## Findings ledger
 | id | source | severity | kind | `path:line` | round opened | status | round closed |
 |---|---|---|---|---|---|---|---|
-| AR-1 | main session (follow-up of architecture-reviewer "not checked") | minor | accept/defer | `client/src/app/repos/[repoId]/context/_components/ProjectContextView/ProjectContextView.tsx:15` only direct lucide-react import outside src/vendor | 2 | open (to Glib) | — |
+| AR-1 | main session (follow-up of architecture-reviewer "not checked") | minor | accept/defer | `client/src/app/repos/[repoId]/context/_components/ProjectContextView/ProjectContextView.tsx:15` only direct lucide-react import outside src/vendor | 2 | deferred (Glib: list in PR body) | — |
 | PV-1 | plan-verifier | partial | local fix | skill `ContextTab.tsx` warning placement (plan S3: "next to the header total") | 2 | closed | 598f666 |
 
 ## Log

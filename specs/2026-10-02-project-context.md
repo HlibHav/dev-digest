@@ -1,6 +1,6 @@
 # Spec: Project Context — attach repo docs to agents and skills, inject them, show them in the trace
 Spec ID: SPEC-2026-10-02-project-context
-Status: approved
+Status: implemented
 Tier: Full SDD — scorecard 6/6
 Supersedes: in part, decision Q7 (user answer, 2026-10-02: "read-only page") and the 2026-10-02 wording of AC-10 and AC-20, by the 2026-10-05 mentor follow-up amendment. Decision Q8 (display-only token counts, no cap) and ADR 2026-10-02-project-context-token-estimate-ceiling are NOT superseded.
 Packages: server, reviewer-core, client
