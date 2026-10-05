@@ -9,7 +9,7 @@ import type { FindingRecord } from "@/lib/types";
 import { commentTargetFor, type CommentThread, type DiffCommentApi, cs } from "../comments";
 import { type Line } from "../helpers";
 import { highestSeverity, severityLabel, type DiffFindingApi } from "../findings";
-import { s, lineRowFor, lineSignFor } from "../styles";
+import { s, lineRowFor, lineSignFor, lineHighlight } from "../styles";
 import { CommentThreadView } from "../CommentThreadView";
 import { InlineComposer } from "../InlineComposer";
 
@@ -20,6 +20,7 @@ export function CodeLine({
   commenting,
   findings,
   findingApi,
+  highlighted = false,
 }: {
   ln: Line;
   path: string;
@@ -29,10 +30,16 @@ export function CodeLine({
   findings?: FindingRecord[];
   /** `showFindings` + `renderFinding` — the rest of `DiffFindingApi`. */
   findingApi?: DiffFindingApi;
+  /** The line a link pointed at: marked, and scrolled into view when it first becomes highlighted. */
+  highlighted?: boolean;
 }) {
   const t = useTranslations("prReview");
   const [hover, setHover] = React.useState(false);
   const [composing, setComposing] = React.useState(false);
+  const rowRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    if (highlighted) rowRef.current?.scrollIntoView({ block: "center" });
+  }, [highlighted]);
   const top = findings && findings.length > 0 ? highestSeverity(findings) : undefined;
 
   if (ln.kind === "hunk") {
@@ -49,7 +56,9 @@ export function CodeLine({
 
   return (
     <div
-      style={cs.rowWrap}
+      ref={rowRef}
+      data-highlighted={highlighted ? "true" : undefined}
+      style={highlighted ? { ...cs.rowWrap, ...lineHighlight } : cs.rowWrap}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
     >

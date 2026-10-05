@@ -44,4 +44,6 @@ brainstorm (optional) → spec-creator → spec (WHAT/WHY) → implementation-pl
 
 ## Contents
 
-(none yet)
+- `2026-10-02-project-context.md` — Project Context: discover repo `.md` docs, attach them to agents and skills, inject them into review prompts, per-doc snapshot in the run trace (server, reviewer-core, client). Status: implemented.
+- `2026-10-02-onboarding-tour.md` — Onboarding Tour: a five-section guided tour of a cloned repository (architecture, critical paths, run commands, reading path, first tasks) from deterministic index facts plus one LLM call, with an honest skeleton fallback and logged call count and cost (server, client). Status: implemented.
+- `2026-10-03-pr-brief.md` — PR Brief: one Overview card with a model-written summary, risk areas and review focus built from intent, blast radius, Smart Diff roles, PR text, linked issue and attached specs; one model call, cached by head commit, click-through to the diff line (server, client). Status: approved.

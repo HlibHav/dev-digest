@@ -1,0 +1,1 @@
+[11:24:57.294] INFO (85937): onboarding generation repo=honojs/hono model=openrouter/openai/gpt-4.1-mini llm_calls=1 tokens 2441/718 $0.0021 outcome=complete duration_ms=4521

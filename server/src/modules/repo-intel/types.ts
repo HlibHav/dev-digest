@@ -129,12 +129,29 @@ export interface RepoMapResult {
   reason?: DegradedReason;
 }
 
+export interface RankedFileRow {
+  path: string;
+  pagerank: number;
+  hotness: number;
+  importers: number;
+  junk: boolean;
+}
+
 /**
  * The facade. Studio (T2+) serves reads purely from the Postgres cache; T1 and
  * CI may parse diff-scoped on the hot path. Indexing runs through
  * JobRunner handlers in studio, inline in the CI runner.
  */
 export interface RepoIntel {
+  // --- Tenancy ------------------------------------------------------------
+  /**
+   * Throw NotFoundError unless `repoId` belongs to `workspaceId`. The rest of
+   * this port is tenant-agnostic on purpose — its in-process consumers
+   * (run-executor, blast) are already scoped — so the HTTP entry points call
+   * this first instead of every read growing a workspace argument.
+   */
+  requireRepoInWorkspace(workspaceId: string, repoId: string): Promise<void>;
+
   // --- Indexing -----------------------------------------------------------
   /** Full (re)index of a repo. */
   indexRepo(repoId: string): Promise<IndexResult>;
@@ -169,4 +186,8 @@ export interface RepoIntel {
     opts?: { exclude?: string[] },
   ): Promise<string[]>;
   getCriticalPaths(repoId: string): Promise<string[][]>;
+  /** Every ranked file with its graph signals, for the onboarding tour. */
+  getRankedFiles(repoId: string): Promise<RankedFileRow[]>;
+  /** Up to `limit` "METHOD /path" routes extracted from the indexed files. */
+  getRoutes(repoId: string, limit: number): Promise<string[]>;
 }

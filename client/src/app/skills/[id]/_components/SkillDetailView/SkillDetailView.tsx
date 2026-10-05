@@ -27,9 +27,10 @@ import { SkillTypeBadge } from "@/components/skill-type-badge";
 import { useSkill, useUpdateSkill } from "@/lib/hooks/skills";
 import { SKILL_TYPES } from "../../../_components/SkillsListView/constants";
 import { VersionsTab } from "./_components/VersionsTab";
+import { ContextTab } from "./_components/ContextTab";
 import { s } from "./styles";
 
-const TABS = ["config", "preview", "versioning"] as const;
+const TABS = ["config", "context", "preview", "versioning"] as const;
 type TabKey = (typeof TABS)[number];
 
 export function SkillDetailView() {
@@ -158,6 +159,8 @@ export function SkillDetailView() {
             </div>
           </div>
         )}
+
+        {tab === "context" && <ContextTab skill={skill} />}
 
         {tab === "preview" && (
           <div style={s.preview}>
