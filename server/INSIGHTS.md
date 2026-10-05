@@ -12,6 +12,8 @@ fixed — add to the one that fits.
 
 ## What Doesn't Work
 
+- **2026-09-28** — Asserting only `decide(cmd) == "deny"` cannot catch a bug in `.claude/hooks/agent-bash-allowlist.py`. Its `main()` turns every unexpected exception into a deny (`hook error (NameError)`), so a crashing branch still returns `deny` and the test stays green. The refusal for an unwrapped test run referenced an undefined `command` for exactly this reason, and every `CodeRunsOnlyInTheSandbox` case passed. A test for a refusal branch must assert the reason text through `deny_reason()`. A command the refusal suggests must come from `render([segment])`, not `" ".join(words)`, which drops the quotes around a glob such as `'**/*.it.test.ts'` so the hook then denies its own suggestion. Evidence: `.claude/hooks/agent-bash-allowlist.py:438`, `.claude/hooks/tests/test_agent_bash_allowlist.py:60`
+
 - **2026-10-03** — `new ExternalServiceError(\`...${err.message}\`)` is sent to the browser verbatim: `app.ts` returns `AppError.message` in the response body, and the client card renders it. Provider SDK messages can echo a masked key ("Incorrect API key provided: sk-...abcd"). Throw a fixed message and put the raw text in the log note instead (the `brief:` log line carries it). If you also log it, the same key fragment lands in the log, so redact `sk-` and `Bearer` shapes first. Evidence: `server/src/modules/brief/service.ts:240`
 
 - **2026-10-03** — A "treat this as data" sentence in a system prompt is not a boundary. The brief prompt interpolates the PR title, file paths, derived intent and blast names as trusted framing, and `brief.system.md` can only declare them data; it cannot point at a fence that does not exist. Fencing them needs `test/brief-prompt.test.ts` changed first, because it asserts exactly one `<untrusted ` block. What the code does today is `sanitizeBriefFacts`, which strips hidden characters and caps length on those fields for the prompt copy only, while validation still runs on the original paths. Evidence: `server/src/modules/brief/prompt.ts:86`, `server/test/brief-prompt.test.ts:90`
@@ -68,6 +70,8 @@ fixed — add to the one that fits.
 - **2026-09-26** — A JSDoc block that spells out a glob such as `**/*.md` closes the comment at the `*/` inside it; `tsc` then reports a cascade of syntax errors from the middle of the doc text (first hit: `classify.ts(17,53)`) with nothing pointing at the comment. Describe glob patterns in words inside `/** … */` comments (or use `//` lines), never a literal `*/`. Evidence: `server/src/modules/smart-diff/classify.ts:15`
 
 ## Session Notes
+
+- **2026-09-28** — Bash-allowlist hook: the unsandboxed-run refusal raised `NameError` instead of naming the `run-tests.sh` command (PR #25) → What Doesn't Work. Evidence: `.claude/hooks/agent-bash-allowlist.py:375`
 
 - **2026-10-03** — Onboarding Tour (SPEC-2026-10-02-onboarding-tour) → server Codebase Patterns, client Tool & Library Notes, e2e comment under the tsx entry. Evidence: `server/src/modules/onboarding/service.ts:134`
 
