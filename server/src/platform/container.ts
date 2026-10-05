@@ -7,6 +7,7 @@ import type {
   Embedder,
   LLMProvider,
   RepoDocs,
+  CloneScanner,
 } from '@devdigest/shared';
 import type { AppConfig } from './config.js';
 import type { Db } from '../db/client.js';
@@ -17,6 +18,7 @@ import { LocalNoAuthProvider } from '../adapters/auth/local.js';
 import { OctokitGitHubClient } from '../adapters/github/octokit.js';
 import { SimpleGitClient } from '../adapters/git/simple-git.js';
 import { FsRepoDocs } from '../adapters/docs/fs-repo-docs.js';
+import { FsCloneScanner } from '../adapters/clone-scan/fs-clone-scanner.js';
 import { RipgrepCodeIndex } from '../adapters/codeindex/ripgrep.js';
 import { OpenAIProvider } from '../adapters/llm/openai.js';
 import { AnthropicProvider } from '../adapters/llm/anthropic.js';
@@ -48,6 +50,7 @@ export interface ContainerOverrides {
   codeIndex?: CodeIndex;
   embedder?: Embedder;
   repoDocs?: RepoDocs;
+  cloneScanner?: CloneScanner;
   /** Pre-built providers by id (skip key lookup). */
   llm?: Partial<Record<'openai' | 'anthropic' | 'openrouter', LLMProvider>>;
   /** repo-intel facade (T1.1+) — tests inject mock RepoIntel implementations. */
@@ -70,6 +73,7 @@ export class Container {
   private _codeIndex?: CodeIndex;
   private _embedder?: Embedder;
   private _repoDocs?: RepoDocs;
+  private _cloneScanner?: CloneScanner;
   private llmCache = new Map<string, LLMProvider>();
 
   // Shared repositories for cross-cutting entities (agents, reviews/pulls,
@@ -104,6 +108,13 @@ export class Container {
     if (this.overrides.repoDocs) return this.overrides.repoDocs;
     this._repoDocs ??= new FsRepoDocs();
     return this._repoDocs;
+  }
+
+  /** Read-only clone scan for the onboarding tour (counts, scripts, README). */
+  get cloneScanner(): CloneScanner {
+    if (this.overrides.cloneScanner) return this.overrides.cloneScanner;
+    this._cloneScanner ??= new FsCloneScanner();
+    return this._cloneScanner;
   }
 
   get agentsRepo(): AgentsRepository {

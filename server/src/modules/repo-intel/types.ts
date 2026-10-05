@@ -129,6 +129,14 @@ export interface RepoMapResult {
   reason?: DegradedReason;
 }
 
+export interface RankedFileRow {
+  path: string;
+  pagerank: number;
+  hotness: number;
+  importers: number;
+  junk: boolean;
+}
+
 /**
  * The facade. Studio (T2+) serves reads purely from the Postgres cache; T1 and
  * CI may parse diff-scoped on the hot path. Indexing runs through
@@ -178,4 +186,8 @@ export interface RepoIntel {
     opts?: { exclude?: string[] },
   ): Promise<string[]>;
   getCriticalPaths(repoId: string): Promise<string[][]>;
+  /** Every ranked file with its graph signals, for the onboarding tour. */
+  getRankedFiles(repoId: string): Promise<RankedFileRow[]>;
+  /** Up to `limit` "METHOD /path" routes extracted from the indexed files. */
+  getRoutes(repoId: string, limit: number): Promise<string[]>;
 }

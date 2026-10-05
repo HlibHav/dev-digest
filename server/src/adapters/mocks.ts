@@ -33,6 +33,8 @@ import type {
   SecretKey,
   RepoDocs,
   RepoDocEntry,
+  CloneScan,
+  CloneScanner,
 } from '@devdigest/shared';
 import { parseUnifiedDiff } from './git/diff-parser.js';
 
@@ -332,6 +334,38 @@ export class MockRepoDocs implements RepoDocs {
   async read(_root: string, path: string): Promise<string | null> {
     if (path in this.failures) throw new Error(this.failures[path]);
     return this.files[path] ?? null;
+  }
+}
+
+// ---------- Mock CloneScanner ----------
+export interface MockCloneScannerOptions {
+  /** Overrides on top of an empty scan. */
+  scan?: Partial<CloneScan>;
+  /** Paths `exists` reports true for. */
+  files?: string[];
+  /** Error message: `scan` throws it. */
+  throwOnScan?: string;
+}
+
+export class MockCloneScanner implements CloneScanner {
+  private files: Set<string>;
+  constructor(private opts: MockCloneScannerOptions = {}) {
+    this.files = new Set(opts.files ?? []);
+  }
+  async scan(): Promise<CloneScan> {
+    if (this.opts.throwOnScan) throw new Error(this.opts.throwOnScan);
+    return {
+      topLevel: [],
+      rootFiles: [],
+      sourceFiles: 0,
+      extensionCounts: {},
+      packageScripts: null,
+      readme: null,
+      ...this.opts.scan,
+    };
+  }
+  async exists(_root: string, path: string): Promise<boolean> {
+    return this.files.has(path);
   }
 }
 

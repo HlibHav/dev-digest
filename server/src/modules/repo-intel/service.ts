@@ -37,6 +37,7 @@ import type {
   FileRankRow,
   IndexResult,
   IndexState,
+  RankedFileRow,
   RefRow,
   RepoIntel,
   RepoMapResult,
@@ -660,6 +661,27 @@ export class RepoIntelService implements RepoIntel {
       if (out.length >= n) break;
     }
     return out;
+  }
+
+  /**
+   * Every ranked file with pagerank, hotness, in-degree and a junk flag, in
+   * rank order (onboarding tour). `[]` when the flag is off or nothing is indexed.
+   */
+  async getRankedFiles(repoId: string): Promise<RankedFileRow[]> {
+    if (!this.container.config.repoIntelEnabled) return [];
+    const rows = await this.repo.getRankedFileRows(repoId);
+    return rows.map((r) => ({ ...r, junk: isJunkPath(r.path) }));
+  }
+
+  /**
+   * Up to `limit` distinct "METHOD /path" routes from the indexed files,
+   * sorted ascending (onboarding tour). `[]` when the flag is off.
+   */
+  async getRoutes(repoId: string, limit: number): Promise<string[]> {
+    if (!this.container.config.repoIntelEnabled) return [];
+    if (limit <= 0) return [];
+    const all = await this.repo.getRouteStrings(repoId);
+    return [...new Set(all)].sort().slice(0, limit);
   }
 
   /**

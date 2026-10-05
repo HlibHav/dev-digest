@@ -33,6 +33,8 @@ fixed — add to the one that fits.
 
 ## Codebase Patterns
 
+- **2026-10-03** — The onboarding tour's "partial index" signal depends on the clone scan counting more supported files than repo-intel indexed. The indexer stops at `MAX_INDEXED_FILES` (5,000, in walk order) yet can still stamp the repo `full`, so the only proof that it stopped is N indexed < M supported files in the clone. Any cap on the clone walk must therefore stay well above the index cap. A security fix first capped the walk at 5,000 entries, and excluded dirs and symlinks also spend that budget, so M ≤ N on exactly the large repos the rule exists for and the tour would say "full". It is now 200,000. Evidence: `server/src/adapters/clone-scan/fs-clone-scanner.ts:30`, `server/src/modules/repo-intel/constants.ts:42`, `server/src/modules/onboarding/helpers.ts:92`
+
 - **2026-10-02** — Cancelling a review run is cooperative. `POST /runs/:id/cancel` sets a flag in `RunBus`, marks the row `cancelled` and ends the SSE stream immediately, but the executor only checks the flag at `checkCancelled`, before each diff chunk. A run that never reaches another checkpoint finishes normally and overwrites `cancelled` with `done`. Until bb675cd, `RunBus.complete()` also cleared the flag, and since `cancelRun` calls `complete()` right after `cancel()`, no run could be cancelled at all. No test covered it. A single-pass run cancelled during its one LLM call still ends `done`. To test a cancel deterministically, gate an adapter the run awaits before the checkpoint (a `RepoDocs.read` that waits on a promise), cancel, then release the gate. Evidence: `server/src/platform/sse.ts:76`, `reviewer-core/src/review/run.ts:173`, `server/test/project-context-run.it.test.ts:59`
 
 - **2026-09-28** — `repoIntel.getBlastRadius` never reports an incomplete index on its own: the persistent path returns `degraded: false` with no `reason` for a `partial` index, and it never emits `index_partial` or `flag_off`. A consumer that must say "index incomplete" reads `getIndexState` itself and derives `index_partial`. Its `MAX_CALLERS_PER_SYMBOL` is also applied as one global `slice` over all callers after the rank sort, not per symbol, so a busy symbol can starve the others before any per-symbol cap runs. Evidence: `server/src/modules/repo-intel/service.ts:386`, `server/src/modules/blast/helpers.ts:133`
@@ -66,6 +68,8 @@ fixed — add to the one that fits.
 - **2026-09-26** — A JSDoc block that spells out a glob such as `**/*.md` closes the comment at the `*/` inside it; `tsc` then reports a cascade of syntax errors from the middle of the doc text (first hit: `classify.ts(17,53)`) with nothing pointing at the comment. Describe glob patterns in words inside `/** … */` comments (or use `//` lines), never a literal `*/`. Evidence: `server/src/modules/smart-diff/classify.ts:15`
 
 ## Session Notes
+
+- **2026-10-03** — Onboarding Tour (SPEC-2026-10-02-onboarding-tour) → server Codebase Patterns, client Tool & Library Notes, e2e comment under the tsx entry. Evidence: `server/src/modules/onboarding/service.ts:134`
 
 - **2026-10-03** — PR Brief lane 0 (shared contract, `risk_brief` default) → Tool & Library Notes. Evidence: `server/src/vendor/shared/contracts/brief.ts:227`
 
