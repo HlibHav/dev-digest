@@ -1,5 +1,5 @@
 # State: project-context-mentor-followup
-Stage: 2 Review · next: plan-verifier on b2b6e69
+Stage: 2 Review · next: architecture-reviewer + /code-review on 598f666
 Spec: specs/2026-10-02-project-context.md (SPEC-2026-10-02-project-context) · Plan: docs/plans/2026-10-05-project-context-mentor-followup.md · Mode: single-agent
 Inputs: prompt none · designs specs/designs/project-context/design-1-page.png, specs/designs/project-context/design-3-skill-context.png
 Red-first: implementer-owned (main session, single-agent)
@@ -28,7 +28,10 @@ Branch: chore/sdd-chain-lessons (PR #31 is the follow-up PR, Glib 2026-10-05)
 ## Findings ledger
 | id | source | severity | kind | `path:line` | round opened | status | round closed |
 |---|---|---|---|---|---|---|---|
+| PV-1 | plan-verifier | partial | local fix | skill `ContextTab.tsx` warning placement (plan S3: "next to the header total") | 2 | closed | 598f666 |
 
 ## Log
 - 2026-10-05 — /implement started, single-agent
 - 2026-10-05 — steps 1-4 done test-first, gate green, committed b2b6e69
+- 2026-10-05 — plan-verifier: 12 met, 1 partial (PV-1), 0 not met; PV-1 fixed in 598f666 (skill tab 14/14, typecheck 0); traceability filled
+- 2026-10-05 — security-reviewer: skipped — client-only diff renders doc paths as React text nodes and no PR/diff/model text; no routes, queries, adapters, hooks or prompt assembly touched

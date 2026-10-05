@@ -340,7 +340,7 @@ All JSON is snake_case. Shapes are behavioural; the plan decides where they live
 | AC-7 | red-first unit | select doc, heading rendered | 12 | `ProjectContextView.test.tsx` "selecting a doc renders its markdown" | 9ab573e |
 | AC-8 | red-first unit | no script, handler or `javascript:` href | 12 | `ProjectContextView.test.tsx` "preview renders no script, handler or javascript: href" | 9ab573e |
 | AC-9 | red-first integration | 2 agents + 1 skill → "Used by 2 agents · 1 skill" | 7, 8, 9, 12 | `project-context.it.test.ts` "used_by counts agents and skills per path" | 9ab573e, 678f4f9 |
-| AC-10 | red-first unit | (amended 2026-10-05) click Edit, Plus, Folder, Download: no write request, no file input, no dialog, tree and preview unchanged; the old "no such control" test flips on purpose | 12 | `ProjectContextView.test.tsx` "offers no edit/new/folder/upload control" | 9ab573e |
+| AC-10 | red-first unit | (amended 2026-10-05) click Edit, Plus, Folder, Download: no write request, no file input, no dialog, tree and preview unchanged; the old "no such control" test flips on purpose | 4 (plan 2026-10-05) | `ProjectContextView.test.tsx` "AC-10: coming-soon controls change nothing; Refresh still re-indexes" | b2b6e69 |
 | AC-11 | red-first unit | 7 rows, "1 of 7 attached" | 13, 14 | `ContextTab.test.tsx` (agent) "lists seven docs, one checked, 1 of 7 attached" | 9ab573e |
 | AC-12 | red-first integration | attach, reorder, reload keeps order | 7, 8, 9, 14 | `project-context.it.test.ts` "agent attachments keep order across reload" | 9ab573e, 678f4f9 |
 | AC-13 | red-first unit | filter "API" | 13 | `context-doc-list/helpers.test.ts` "filterDocs is case-insensitive substring" | 9ab573e |
@@ -350,7 +350,7 @@ All JSON is snake_case. Shapes are behavioural; the plan decides where they live
 | AC-17 | red-first unit | map-reduce note shown or hidden by strategy | 13, 14 | agent `ContextTab.test.tsx` "per-file note for map-reduce, none for single-pass" | 9ab573e |
 | AC-18 | red-first integration | skill attach and reorder survive reload | 7, 8, 9, 15 | `project-context.it.test.ts` "skill attachments keep order across reload" | 9ab573e, 678f4f9 |
 | AC-19 | red-first unit | skill total ≈ 100 | 15 | skill `ContextTab.test.tsx` "≈ 100 tokens" | 9ab573e |
-| AC-20 | red-first unit | (amended 2026-10-05) four docs grouped under Specifications, Docs, Insights in that order, `README.md` under Docs, absent doc left out; the old "starts with ## Project context" test flips on purpose | 4, 8, 15 | skill `ContextTab.test.tsx` "Serializes as starts with ## Project context" | 9ab573e, 678f4f9 |
+| AC-20 | red-first unit | (amended 2026-10-05) four docs grouped under Project specifications, Project docs, Project insights in that order, `README.md` under Project docs, absent doc left out; the old "starts with ## Project context" test flips on purpose | 3 (plan 2026-10-05) | skill `ContextTab.test.tsx` "AC-20: Serializes as groups present docs under Project specifications, Project docs, Project insights" + `ContextTab/helpers.test.ts` "groups in specs, docs, insights order with other under docs" | b2b6e69 |
 | AC-21 | red-first unit | [a,b]+[b,c]+[d,a] → [a,b,c,d] | 6 | `project-context-helpers.test.ts` "buildEffectiveDocList [a,b]+[b,c]+[d,a] → [a,b,c,d]" | 678f4f9 |
 | AC-22 | red-first integration | disabled skill's doc not injected | 7, 8, 10 | `server/test/project-context-run.it.test.ts` "disabled skill's docs are not injected" | 678f4f9, 5bfc60a |
 | AC-23 | red-first integration | doc content verbatim in mock prompt | 8, 10 | `project-context-run.it.test.ts` "doc text reaches the mock LLM prompt verbatim" | 678f4f9, 5bfc60a |
@@ -374,12 +374,12 @@ All JSON is snake_case. Shapes are behavioural; the plan decides where they live
 | AC-41 | red-first integration | delete agent → used_by drops | 2, 7 | `project-context.it.test.ts` "deleting agent/skill drops used_by" | ebf36fa, 678f4f9 |
 | AC-42 | browser (main session) | dev stack, one real review: attach, run, open trace, read doc, screenshots. Not an e2e flow, because flows ban LLM calls and the hermetic seed has no clone. Injection end to end is covered by the AC-23/33/34 integration tests (mock LLM), and the trace UI by the AC-37/38 unit tests | — | main-session browser check on the dev stack, 2026-10-02 (run 70b1dfb6 on PR #3; screenshots in `docs/plans/2026-10-02-project-context.assets/ac42-*.png`) | 6476dac |
 | AC-43 | red-first unit | sidebar item links to the repo's Project Context page, active there | 11 | `client/src/components/app-shell/ProjectContextNav.test.tsx` "sidebar links to the repo's Project Context page and marks it active" | 9ab573e, f3295d5 |
-| AC-44 | red-first unit | select a doc: Preview tab selected, Edit tab disabled with "coming soon" in its name, preview still rendered | — | — | — |
-| AC-45 | red-first unit | three disabled toolbar buttons (new doc, new folder, download) with "coming soon" in their names; Refresh enabled | — | — | — |
-| AC-46 | red-first unit | agent tab: total 8001 → warning, checkboxes enabled; 8000 → none; "not in this repo" counts 0 | — | — | — |
-| AC-47 | red-first unit | skill tab: 4000 + 4001 → warning, checkboxes enabled; 4000 + 4000 → none | — | — | — |
-| AC-48 | red-first unit | paths within a group follow attachment order, and follow a reorder | — | — | — |
-| AC-49 | red-first unit | preview shows the path, not the doc's "Goals" text | — | — | — |
+| AC-44 | red-first unit | select a doc: Preview tab selected, Edit tab disabled with "coming soon" in its name, preview still rendered | 4 | `ProjectContextView.test.tsx` "AC-44: preview pane shows a selected Preview tab and a disabled Edit (coming soon) tab" | b2b6e69 |
+| AC-45 | red-first unit | three disabled toolbar buttons (new doc, new folder, download) with "coming soon" in their names; Refresh enabled | 4 | `ProjectContextView.test.tsx` "AC-45: tree header shows disabled New doc, New folder, Download before an enabled Refresh" + "shows the rewritten empty state and the not-cloned notice" | b2b6e69 |
+| AC-46 | red-first unit | agent tab: total 8001 → warning, checkboxes enabled; 8000 → none; "not in this repo" counts 0 | 1, 2 | agent `ContextTab.test.tsx` "AC-46: warns above the 8000-token budget, blocks nothing; 8000 is silent" + `context-doc-list/helpers.test.ts` "exceedsTokenBudget is strict greater-than" | b2b6e69 |
+| AC-47 | red-first unit | skill tab: 4000 + 4001 → warning, checkboxes enabled; 4000 + 4000 → none | 1, 3 | skill `ContextTab.test.tsx` "AC-47: warns above the 8000-token budget, blocks nothing; 8000 is silent" | b2b6e69, 598f666 |
+| AC-48 | red-first unit | paths within a group follow attachment order, and follow a reorder | 3 | skill `ContextTab.test.tsx` "AC-48: paths keep attachment order within a group; empty groups are hidden" + `helpers.test.ts` "sorts by order, not array position" | b2b6e69 |
+| AC-49 | red-first unit | preview shows the path, not the doc's "Goals" text | 3 | skill `ContextTab.test.tsx` "AC-49: Serializes as shows paths only, no doc text" | b2b6e69 |
 
 ## Changelog
 
