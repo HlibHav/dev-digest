@@ -27,9 +27,11 @@ interface DiffTabProps {
   /** Needed by FindingCard's inline finding cards (GitHub blob links). */
   repoFullName?: string | null;
   headSha?: string | null;
+  /** File (and line) to open, scroll to and highlight, from the page address. */
+  focus?: { file: string; line: number | null } | null;
 }
 
-export function DiffTab({ prId, filesCount, files, canComment, repoFullName, headSha }: DiffTabProps) {
+export function DiffTab({ prId, filesCount, files, canComment, repoFullName, headSha, focus }: DiffTabProps) {
   const t = useTranslations("prReview");
   const { data: comments } = usePrComments(prId);
   const create = useCreatePrComment(prId);
@@ -144,7 +146,7 @@ export function DiffTab({ prId, filesCount, files, canComment, repoFullName, hea
       >
         Files changed · {filesCount} files
       </SectionLabel>
-      <DiffViewer files={files} commenting={commenting} groups={groups} findings={findings} />
+      <DiffViewer files={files} commenting={commenting} groups={groups} findings={findings} focus={focus} />
     </section>
   );
 }

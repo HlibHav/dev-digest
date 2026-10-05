@@ -141,6 +141,19 @@ export interface ResolvedCallerRow {
 export class RepoIntelRepository {
   constructor(private db: Db) {}
 
+  /**
+   * Whether `repoId` belongs to `workspaceId`. The tenancy gate for this
+   * module's two HTTP entry points — `repos` is the only table here that
+   * carries a workspace, so the check has to start from it.
+   */
+  async repoInWorkspace(workspaceId: string, repoId: string): Promise<boolean> {
+    const [row] = await this.db
+      .select({ id: t.repos.id })
+      .from(t.repos)
+      .where(and(eq(t.repos.id, repoId), eq(t.repos.workspaceId, workspaceId)));
+    return row !== undefined;
+  }
+
   async getRepoBasics(repoId: string): Promise<RepoBasics | null> {
     const [row] = await this.db
       .select({
