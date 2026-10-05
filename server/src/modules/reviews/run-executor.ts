@@ -1,11 +1,13 @@
 import type { Container } from '../../platform/container.js';
 import { isSkillUntrusted } from '@devdigest/shared';
-import type { Provider, Review, RunTrace, UnifiedDiff } from '@devdigest/shared';
+import type { Provider, Review, RunTrace, SpecDocSnapshot, UnifiedDiff } from '@devdigest/shared';
 import {
   reviewPullRequest,
   countBlockers,
   renderSkillsBlock,
+  renderProjectContextBlock,
   type PromptSkill,
+  type PromptSpec,
   type PromptIntent,
 } from '@devdigest/reviewer-core';
 import { RunLogger } from '../../platform/run-logger.js';
@@ -16,6 +18,23 @@ import { REVIEW_STRATEGY } from './constants.js';
 import { taskLine } from './helpers.js';
 import { loadDiff } from './diff-loader.js';
 import type { IntentDeriver } from './intent-service.js';
+
+/**
+ * The project-context resolver this executor needs, declared here so the
+ * application layer depends on a port, not on the project-context module.
+ * Never throws; `tokens` on the returned snapshots is filled in by the run.
+ */
+export interface ProjectContextResolver {
+  resolveForRun(
+    input: {
+      workspaceId: string;
+      agentId: string;
+      clonePath: string | null;
+      changedPaths: readonly string[];
+    },
+    log: (msg: string) => void,
+  ): Promise<SpecDocSnapshot[]>;
+}
 
 /** Thrown by a run when the user cancels it mid-flight (between map files). */
 export class RunCancelledError extends Error {
@@ -54,6 +73,7 @@ export class ReviewRunExecutor {
     private repo: ReviewRepository,
     private agents: Container['agentsRepo'],
     private intent?: IntentDeriver,
+    private projectContext?: ProjectContextResolver,
   ) {}
 
   /**
@@ -202,6 +222,10 @@ export class ReviewRunExecutor {
     // was actually given, not an empty prompt-assembly record.
     let skillsBlock: string | null = null;
     let skillsTokens: number | null = null;
+    let specsBlock: string | null = null;
+    let specsTokens: number | null = null;
+    let specsRead: string[] = [];
+    let specsDocs: SpecDocSnapshot[] = [];
 
     try {
       // Resolve the agent's LLM provider. (container.llm throws if the provider
@@ -245,6 +269,35 @@ export class ReviewRunExecutor {
       skillsTokens = skillsBlock === null ? null : this.container.tokenizer.count(skillsBlock);
       if (skillsTokens !== null) runLog.info(`skills: ${skillsTokens} tokens in the skills block`);
 
+      // Project-context docs attached to this agent (and its enabled skills),
+      // read from the default-branch clone. The resolver never throws. The text
+      // in the trace comes from the SAME rendering as the prompt block.
+      specsDocs = (await this.projectContext?.resolveForRun(
+        {
+          workspaceId,
+          agentId: agent.id,
+          clonePath: repo.clonePath ?? null,
+          changedPaths: diff.files.map((f) => f.path),
+        },
+        (msg) => runLog.info(msg),
+      )) ?? [];
+      const injectable = specsDocs.filter(
+        (d) => (d.status === 'injected' || d.status === 'modified_by_pr') && d.text != null,
+      );
+      const specs: PromptSpec[] = injectable.map((d) => ({ path: d.path, text: d.text as string }));
+      const rendered = renderProjectContextBlock(specs);
+      if (rendered) {
+        injectable.forEach((d, k) => {
+          d.text = rendered.docs[k]!.text;
+          d.tokens = this.container.boundedTokenizer.count(d.text);
+        });
+        specsBlock = rendered.block;
+        specsTokens = this.container.boundedTokenizer.count(rendered.block);
+        // A modified_by_pr doc's base text is sent, so it counts as read.
+        specsRead = injectable.map((d) => d.path);
+        runLog.info(`project context: ${specs.length} doc(s), ${specsTokens} tokens in the section`);
+      }
+
       // ---- Engine: assemble → single-pass → grounding -----------------------
       // The pure review pipeline lives in @devdigest/reviewer-core (shared with
       // the CI runner). The service owns only I/O: repo-intel context resolution
@@ -260,6 +313,8 @@ export class ReviewRunExecutor {
         // Omitted when the agent has no skills, so its prompt stays
         // byte-identical to the pre-skills shape.
         ...(skills.length > 0 ? { skills } : {}),
+        // Omitted when no doc was injected, so the prompt stays byte-identical.
+        ...(specs.length > 0 ? { specs } : {}),
         // T1.3 — pass the callers digest only when we built one. assemblePrompt
         // omits the section when this is empty/undefined.
         ...(callersDigest ? { callers: callersDigest } : {}),
@@ -345,7 +400,7 @@ export class ReviewRunExecutor {
           grounding,
           cost_usd: costUsd,
         },
-        prompt_assembly: { ...outcome.assembly, skills_tokens: skillsTokens },
+        prompt_assembly: { ...outcome.assembly, skills_tokens: skillsTokens, specs_tokens: specsTokens },
         tool_calls: outcome.chunks.map((c) => ({
           tool: 'review_file',
           args: c.label,
@@ -354,7 +409,8 @@ export class ReviewRunExecutor {
         })),
         raw_output: outcome.raw,
         memory_pulled: [],
-        specs_read: [],
+        specs_read: specsRead,
+        specs_docs: specsDocs,
         // Persisted log = the run's FULL event buffer (incl. shared pre-work:
         // diff load + intent), not just events recorded inside this method.
         log: runLog.logFor(runId),
@@ -393,6 +449,10 @@ export class ReviewRunExecutor {
             Date.now() - start,
             skillsBlock,
             skillsTokens,
+            specsBlock,
+            specsTokens,
+            specsRead,
+            specsDocs,
           ),
         )
         .catch(() => undefined);
@@ -535,6 +595,10 @@ export class ReviewRunExecutor {
     durationMs = 0,
     skillsBlock: string | null = null,
     skillsTokens: number | null = null,
+    specsBlock: string | null = null,
+    specsTokens: number | null = null,
+    specsRead: string[] = [],
+    specsDocs: SpecDocSnapshot[] = [],
   ): RunTrace {
     return {
       config: {
@@ -554,7 +618,9 @@ export class ReviewRunExecutor {
         skills: skillsBlock,
         skills_tokens: skillsTokens,
         memory: null,
-        specs: null,
+        // Same rule as skills: null on the pre-work failure path.
+        specs: specsBlock,
+        specs_tokens: specsTokens,
         // The pre-work failure path never assembled a prompt, so it never
         // resolved intent either — always null here (unlike the success path,
         // where it comes straight from `outcome.assembly`).
@@ -564,7 +630,8 @@ export class ReviewRunExecutor {
       tool_calls: [],
       raw_output: '',
       memory_pulled: [],
-      specs_read: [],
+      specs_read: specsRead,
+      specs_docs: specsDocs,
       log: this.container.runBus.buffer(runId).map((e) => ({ t: e.t, kind: e.kind, msg: e.msg })),
     };
   }

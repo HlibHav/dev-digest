@@ -36,6 +36,12 @@
       "items": "{count, plural, one {# item} other {# items}}",
       "none": "none"
     },
+    "specStatus": {
+      "injected": "injected",
+      "notFound": "not found",
+      "unreadable": "unreadable",
+      "modifiedByPr": "modified by PR"
+    },
     "stat": {
       "duration": "DURATION",
       "tokens": "TOKENS",
@@ -47,7 +53,7 @@
       "skills": "Skills (dynamic)",
       "memory": "Memory (dynamic)",
       "repoMap": "Repo skeleton — repo-intel (dynamic)",
-      "specs": "Project context (dynamic)",
+      "specs": "Project context — attached specs (untrusted)",
       "callers": "Callers of changed symbols — repo-intel (dynamic)",
       "intent": "Stated intent (author's claim) — dynamic",
       "user": "User / diff (dynamic)",

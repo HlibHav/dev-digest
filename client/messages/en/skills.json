@@ -120,6 +120,7 @@
   "detailPage": {
     "tabs": {
       "config": "Config",
+      "context": "Context",
       "preview": "Preview",
       "versioning": "Versioning"
     },
@@ -140,5 +141,24 @@
     "restoreConfirm": "Restore the body from v{version}? It is written forward as a new version, so nothing in the history is lost.",
     "restoreAction": "Restore",
     "restoreCancel": "Cancel"
+  },
+  "context": {
+    "title": "Project context to use",
+    "attachedCount": "{count} attached",
+    "filterPlaceholder": "Filter documents…",
+    "hint": "Any agent using this skill inherits these documents.",
+    "tokens": "≈ {tokens, number} tokens",
+    "serializesAs": "Serializes as",
+    "preview": "Preview",
+    "notInRepo": "not in this repo",
+    "dragHandle": "Reorder {path}",
+    "select": "Attach {path}",
+    "noDocs": "No documents",
+    "noRepoTitle": "Select a repository",
+    "noRepoBody": "Pick a repository to choose which of its docs this skill carries.",
+    "notClonedTitle": "This repository isn’t cloned yet",
+    "notClonedBody": "Clone it first, then its docs show up here.",
+    "loadError": "Couldn’t load the project context.",
+    "previewError": "Couldn’t load this document."
   }
 }

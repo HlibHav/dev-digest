@@ -19,6 +19,7 @@ they are curated and may already answer it. Then read code.
 | `client/` | TypeScript · Next.js 15 (App Router) · React 19 | next-intl, @tanstack/react-query, zod, vitest + Testing Library | pnpm |
 | `reviewer-core/` | TypeScript source, no build step | openai SDK (OpenRouter), zod, vitest | npm |
 | `e2e/` | TypeScript run by tsx | global `agent-browser` CLI, no test framework | npm |
+| `mcp-server/` | TypeScript ESM · MCP stdio server | `@modelcontextprotocol/server` v2, zod v4, vitest | pnpm |
 
 Database: PostgreSQL 16 with pgvector (`pgvector/pgvector:pg16` in `docker-compose.yml`).
 
@@ -31,6 +32,7 @@ its commands from inside its directory.
 - `client/` — the studio UI: PR list, PR detail with findings and agent runs, agents, settings.
 - `reviewer-core/` — the pure review engine (prompt assembly, LLM call, grounding, score), shared by the server and the CI runner.
 - `e2e/` — deterministic browser flows as JSON, run against seeded data.
+- `mcp-server/` — a local stdio MCP server exposing five DevDigest review tools to an MCP client, over the already-running local API.
 - `docs/` — cross-package docs (`docs/agent-prompts/`). Package-local docs live in each package's `docs/` and `specs/`.
 - `scripts/` — `dev.sh` (local stack) and `e2e.sh` (hermetic e2e).
 - `.github/workflows/` — CI per package (server split into unit and integration) plus e2e.
@@ -56,6 +58,7 @@ Ports and machine-specific overrides live in `CLAUDE.local.md` when present.
 | `client/` | `pnpm typecheck` | `pnpm test` |
 | `reviewer-core/` | `npm run typecheck` | `npm test` |
 | `e2e/` | `npm run typecheck` | `npm run e2e:hermetic` |
+| `mcp-server/` | `pnpm typecheck` | `pnpm test` |
 
 No linter or formatter is configured in any package: typecheck + tests are the gate, plus
 `server/`'s import-boundary check (`pnpm lint:boundaries`, dependency-cruiser). A change in
@@ -106,6 +109,11 @@ No linter or formatter is configured in any package: typecheck + tests are the g
   `reviewer-core/AGENTS.md`, `e2e/AGENTS.md` (auto-load is unreliable, VS Code #24987).
   Each package keeps a `CLAUDE.md` symlink beside it, so a tool that looks for either name
   finds the same file.
+- Building a feature spec-first (spec → plan → red-first tests → implementers → reviewers) →
+  `docs/sdd-cascade.md` for how much spec it needs, then `.claude/agents/README.md` for the
+  order, the briefs, lane slices, the package gate and the fix loop. The main session
+  orchestrates. `spec-creator` and `implementation-planner` are run by hand; once a plan is
+  saved, `/implement <plan-path>` runs the rest.
 - Agent prompt templates, model choice → `docs/agent-prompts/`
 - Whether a skill actually changes a review → `docs/skills-control-experiment.md`
 - Adding or changing backend code (`server/src/**`, `reviewer-core/src/**`) → the

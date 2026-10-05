@@ -15,5 +15,53 @@
     "blame": "blame",
     "noHistory": "No history available for this line.",
     "noCommits": "No commits found for this line."
+  },
+  "card": {
+    "title": "PR Brief",
+    "generate": "Generate brief",
+    "refresh": "Refresh brief",
+    "retry": "Retry",
+    "loading": "Loading the brief",
+    "stale": "stale",
+    "staleFor": "generated for {sha}",
+    "notInDiff": "File not in this PR's diff",
+    "cost": "Cost {cost}",
+    "costNone": "—",
+    "tokens": "{tokensIn} in · {tokensOut} out"
+  },
+  "sections": {
+    "risks": "Risk areas",
+    "focus": "Review focus"
+  },
+  "focus": {
+    "hint": "Read these first"
+  },
+  "severity": {
+    "high": "high",
+    "medium": "medium",
+    "low": "low"
+  },
+  "risk": {
+    "expand": "Show explanation",
+    "collapse": "Hide explanation"
+  },
+  "inputs": {
+    "intent": "intent",
+    "blast": "blast radius",
+    "issue": "linked issue",
+    "specs": "attached specs",
+    "pr_description": "PR description",
+    "callers": "blast callers",
+    "files": "changed files"
+  },
+  "missing": {
+    "line": "Missing inputs: {inputs}"
+  },
+  "truncated": {
+    "line": "Shortened to fit the budget: {inputs}"
+  },
+  "errors": {
+    "generic": "Couldn't generate the brief: {message}",
+    "config": "No API key for the Risk Brief model. Choose a model with a key in Settings → Risk Brief."
   }
 }

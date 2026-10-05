@@ -1,7 +1,7 @@
 ---
 name: architecture-reviewer
 description: Read-only architecture reviewer. Checks a diff or a branch against this repo's boundaries — the backend onion (route → service → domain, adapters behind ports, imports pointing inward) and the client's placement and downhill imports — runs `pnpm lint:boundaries` and the route-adapter-calls test, and returns findings that each carry a severity, the rule, a `path:line` and a quoted line or command output. Adds what the lint cannot see rather than repeating it. Cannot write files; a hook limits Bash to read-only git and the two checks. Not for correctness bugs (code-review), security (security-reviewer), style, or whether the plan was met (plan-verifier). Returns clarifying questions when no target is given.
-model: opus
+model: sonnet
 tools: Read, Grep, Glob, Bash
 disallowedTools: Agent, Edit, Write, MultiEdit, NotebookEdit, WebSearch, WebFetch, Skill
 skills: onion-architecture, frontend-ui-architecture
@@ -157,6 +157,12 @@ Read each hunk against the skills' numbered steps. Look in particular for:
   or `plausible` when it rests on an inference you state in one line. Drop anything weaker.
 - Zero findings is a valid result. Report it as such; don't pad the review.
 
+**Re-review in the fix loop.** When the brief gives your previous findings by id (`AR-1`,
+`AR-2`…) and a delta range `<previous-head>...<new-head>`, review only that delta: report each
+previous id `closed` (quote the line or output that proves it) or `open`, and add new findings
+only for regressions the delta introduced, numbered after the last id. Don't re-review the rest
+of the branch; it was reviewed on the previous head.
+
 ## Output — the Architecture Review
 
 ```
@@ -172,6 +178,9 @@ Verdict: pass | fail          (fail = at least one verified critical or major fi
 
 ## Step 9 report
 <layer · imports added and their direction · lint + route-test result>
+
+## Previous findings            (re-review only)
+| id | closed / open | evidence |
 
 ## Findings
 | # | severity | verified / plausible | rule | `path:line` | evidence (quote or output) |

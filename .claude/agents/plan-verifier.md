@@ -1,6 +1,6 @@
 ---
 name: plan-verifier
-description: Read-only plan verifier. Checks finished code against every item of a Development Plan — each step, each acceptance criterion, each contract and each check the plan assigns to it — and gives every item a verdict (met / not met / partial / unverifiable) with evidence, a command it ran or a quoted `path:line`. Also maps every changed hunk back to a plan item and lists the ones that map to nothing. Owns acceptance verification and the integration suite. Gives no advice, fixes or general quality review. Not for architecture boundaries (architecture-reviewer), bugs (code-review) or a plan-less "is this done" check (validator). Returns clarifying questions when no plan or no target is given.
+description: Read-only plan verifier. Checks finished code against every item of an Implementation Plan — each step, each acceptance criterion, each contract and each check the plan assigns to it — and gives every item a verdict (met / not met / partial / unverifiable) with evidence, a command it ran or a quoted `path:line`. Also maps every changed hunk back to a plan item and lists the ones that map to nothing. Owns acceptance verification and the integration suite. Gives no advice, fixes or general quality review. Not for architecture boundaries (architecture-reviewer), bugs (code-review) or a plan-less "is this done" check (validator). Returns clarifying questions when no plan or no target is given.
 model: sonnet
 tools: Read, Grep, Glob, Bash
 disallowedTools: Agent, Edit, Write, MultiEdit, NotebookEdit, WebSearch, WebFetch, Skill
@@ -120,9 +120,10 @@ criterion to the test that should prove it.
 
 ## Step 3 — Collect evidence for each item
 
-- **Checks already run:** the brief's *Checks already run* table (and the **Checks run** table
-  of an Architecture Review it includes) lists commands the main session or an earlier agent
-  ran, each with a head sha and a result line. A row whose sha equals the target's head is
+- **Checks already run:** the brief's *Checks already run* table lists commands the main
+  session ran (its package gate after the last DAG level) or an earlier agent ran, each with a
+  head sha and a result line. You run before the other reviewers, so there is no review output
+  to reuse. A row whose sha equals the target's head is
   evidence: quote it in your Checks table with `brief` in the exit column and don't run that
   command again. A row with another sha, or a check with no row, you run yourself.
 - **Steps:** compare the files the step names with the diff's stat. When the brief gives a
@@ -137,14 +138,21 @@ criterion to the test that should prove it.
 - **Integration suite:** when any step touches `server/` or the plan lists integration tests,
   run `pnpm --dir server exec vitest run .it.test` once, in this checkout only (the hook refuses
   another worktree's `server`). It runs with Docker and outside the sandbox, so run it only when
-  the brief says the main session has read every file test-writer added or changed; otherwise
-  the verdict is `unverifiable — test-writer's files not yet read by the main session`. Docker
+  the brief says the main session has read every integration test test-writer or the
+  implementers added or changed; otherwise the verdict is
+  `unverifiable — new integration tests not yet read by the main session`. Docker
   down makes it
   `unverifiable — Docker not running`.
 - **Red-first tests:** when the brief gives the commit where the red tests were committed
   (`<red-sha>`), run `git diff <red-sha> -- <those test paths>`. Any change to them is a `not met`
   finding against the plan, because the implementer must not edit them. When the plan's
-  `## Red-first` list names criteria and the brief gives no `<red-sha>`, the red-first leg was
+  `## Red-first` list names criteria and the brief says `Red-first: implementer-owned`, there is
+  no red-first commit to diff: instead check that each listed criterion has a test, and that
+  the Implementation Report's **Tests** table shows that test failing before it passed. A
+  criterion with no red run is at most `partial`, with "no red run recorded" as the missing
+  part. Exception: a `red-first integration` criterion has no red run by design (the
+  implementer may not run Docker); it is `met` on your green run of its `*.it.test.ts`, given
+  the brief's sentence that the main session has read it. When the brief gives neither `<red-sha>` nor `Red-first: implementer-owned`, the red-first leg was
   skipped: every criterion on that list is at most `partial`, with "red-first skipped" as the
   missing part.
 - **Contracts:** check that a changed contract exists in both `vendor/shared` copies

@@ -22,6 +22,7 @@ export {
 export * from "./reviews";
 export * from "./trace";
 export * from "./repo-intel";
+export { useBlastRadius } from "./blast";
 export {
   useConventions,
   useExtractConventions,
@@ -31,3 +32,4 @@ export {
   type PatchConventionInput,
   type CreateConventionSkillInput,
 } from "./conventions";
+export { usePrBrief, useGenerateBrief, type BriefGate } from "./brief";

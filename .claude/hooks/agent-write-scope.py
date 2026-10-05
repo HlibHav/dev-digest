@@ -19,6 +19,9 @@ Profiles:
            the one allowed skip.
   docs ... doc-writer: package `docs/` and `specs/`, root `docs/` (minus product prompts and
            house-rules skills). Never INSIGHTS.md, CLAUDE.md, AGENTS.md or the root README.
+  specs .. spec-creator: spec files and their README index, flat, in a package `specs/` folder
+           (`server`, `client`, `reviewer-core`, `mcp-server`) or the root `specs/`. Never
+           `e2e/specs/` (flow JSON), design inputs or anything else.
 
 The file path is resolved (symlinks included) against `$CLAUDE_PROJECT_DIR`, the worktree
 root; anything outside it is denied. The script fails closed: unreadable input denies.
@@ -35,7 +38,7 @@ import sys
 from pathlib import Path
 
 TEST_ALLOW = (
-    re.compile(r"^(?:server/(?:src|test)|reviewer-core/(?:src|test)|client/src)/.+\.test\.tsx?$"),
+    re.compile(r"^(?:server/(?:src|test)|reviewer-core/(?:src|test)|client/src|mcp-server/test)/.+\.test\.tsx?$"),
     re.compile(r"^e2e/specs/\d{2}-[a-z0-9-]+\.flow\.json$"),
 )
 # Not writable by test-writer even when TEST_ALLOW matches. plan-verifier's Docker suite runs
@@ -43,8 +46,11 @@ TEST_ALLOW = (
 # server/test/helpers/; so test-writer may add no helper, and `.it.test` may appear in a path
 # only as the file's own `.it.test.ts` suffix. Every file that suite runs from test-writer is
 # then an `*.it.test.ts`, which the main session reads first (2026-09-25 security review).
+# `mcp-server/test/support/` holds the in-process client harness (Step 0), same reasoning as
+# `server/test/helpers/`: test-writer may not add or change it.
 TEST_DENY_RX = (
     re.compile(r"^server/test/helpers/"),
+    re.compile(r"^mcp-server/test/support/"),
     re.compile(r"\.it\.test(?!\.ts$)"),
 )
 TEST_DENY = {
@@ -63,6 +69,8 @@ DOCS_DENY = (
     re.compile(r"(?:^|/)(?:INSIGHTS|CLAUDE|AGENTS)\.md$"),
     re.compile(r"^README\.md$"),
 )
+
+SPECS_ALLOW = (re.compile(r"^(?:(?:server|client|reviewer-core|mcp-server)/)?specs/[^/]+\.md$"),)
 
 # The repo's Docker guard in every *.it.test.ts (`const d = hasDocker ? describe : describe.skip;`)
 # is the one sanctioned skip; it is removed before counting.
@@ -141,9 +149,18 @@ def check_docs(rel: str) -> str | None:
     return None
 
 
+def check_specs(rel: str) -> str | None:
+    if not any(rx.match(rel) for rx in SPECS_ALLOW):
+        return f"{rel} is not a spec path. spec-creator may write <pkg>/specs/*.md and specs/*.md only"
+    return None
+
+
+CHECKS = {"docs": check_docs, "specs": check_specs}
+
+
 def main() -> int:
     profile = sys.argv[1] if len(sys.argv) > 1 else ""
-    if profile not in ("tests", "docs"):
+    if profile != "tests" and profile not in CHECKS:
         deny(f"unknown profile {profile!r}")
         return 0
     try:
@@ -164,7 +181,7 @@ def main() -> int:
         deny(f"hook input unreadable ({exc.__class__.__name__})")
         return 0
     try:
-        reason = check_tests(rel, tool, tool_input, target) if profile == "tests" else check_docs(rel)
+        reason = check_tests(rel, tool, tool_input, target) if profile == "tests" else CHECKS[profile](rel)
     except Exception as exc:  # e.g. an unreadable existing file
         reason = f"could not check the edit ({exc.__class__.__name__})"
     if reason:

@@ -9,8 +9,8 @@
   "loadError": "Couldn’t load specs",
   "kb": "{kb}kb",
   "empty": {
-    "title": "No spec files yet",
-    "body": "Drop your PRDs, tech specs, and acceptance criteria under .devdigest/specs/. Every agent and the PR brief read them as grounding context."
+    "title": "No docs found",
+    "body": "No Markdown docs found in this repository's default branch. Attach docs to agents and skills from their Context tabs."
   },
   "mode": {
     "preview": "preview",
@@ -20,5 +20,23 @@
     "loadError": "Couldn’t load spec",
     "save": "Save",
     "saving": "Saving…"
-  }
+  },
+  "filesCount": "{count, plural, one {# file} other {# files}}",
+  "scannedAt": "scanned {time}",
+  "tokensTotal": "≈ {count} tokens total",
+  "usedBy": "Used by {agents} agents · {skills} skills",
+  "refresh": "Refresh",
+  "refreshing": "Refreshing…",
+  "selectPrompt": "Select a doc to preview it.",
+  "docLoadError": "Couldn’t load this doc",
+  "notCloned": {
+    "title": "Repository not cloned yet",
+    "body": "Sync the repository first; its docs are read from the local clone."
+  },
+  "noRepo": {
+    "title": "No repository selected",
+    "body": "Pick a repository to see its docs."
+  },
+  "treeLabel": "Docs",
+  "root": "Project Context"
 }

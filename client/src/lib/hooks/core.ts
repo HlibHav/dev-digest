@@ -15,9 +15,9 @@ import type {
   Repo,
   PrMeta,
   PrDetail,
-  SpecFile,
   IndexStatus,
 } from "../types";
+import type { ContextDocList } from "@devdigest/shared";
 
 // ---- Settings (F1: GET/PUT /settings, POST /settings/test-connection) ----
 export function useSettings() {
@@ -123,7 +123,7 @@ export function usePullDetail(prId: string | number | null | undefined) {
 export function useContextFiles(repoId: string | null | undefined) {
   return useQuery({
     queryKey: ["context", repoId],
-    queryFn: () => api.get<SpecFile[]>(`/repos/${repoId}/context`),
+    queryFn: () => api.get<ContextDocList>(`/repos/${repoId}/context`),
     enabled: !!repoId,
   });
 }

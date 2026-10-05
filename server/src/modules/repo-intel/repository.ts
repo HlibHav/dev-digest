@@ -102,6 +102,14 @@ export interface IndexerFileFactsRow {
   crons: string[];
 }
 
+/** One ranked file with its in-degree (distinct importers). */
+export interface RankedFileDbRow {
+  path: string;
+  pagerank: number;
+  hotness: number;
+  importers: number;
+}
+
 /** Candidate row for the repo-map renderer (symbols × file_rank). */
 export interface RepoMapCandidateRow {
   path: string;
@@ -132,6 +140,19 @@ export interface ResolvedCallerRow {
 
 export class RepoIntelRepository {
   constructor(private db: Db) {}
+
+  /**
+   * Whether `repoId` belongs to `workspaceId`. The tenancy gate for this
+   * module's two HTTP entry points — `repos` is the only table here that
+   * carries a workspace, so the check has to start from it.
+   */
+  async repoInWorkspace(workspaceId: string, repoId: string): Promise<boolean> {
+    const [row] = await this.db
+      .select({ id: t.repos.id })
+      .from(t.repos)
+      .where(and(eq(t.repos.id, repoId), eq(t.repos.workspaceId, workspaceId)));
+    return row !== undefined;
+  }
 
   async getRepoBasics(repoId: string): Promise<RepoBasics | null> {
     const [row] = await this.db
@@ -456,6 +477,46 @@ export class RepoIntelRepository {
       .where(eq(t.fileRank.repoId, repoId))
       .orderBy(desc(t.fileRank.rank))
       .limit(limit);
+  }
+
+  /**
+   * Every `file_rank` row with its in-degree: distinct importing files from
+   * `file_edges` (0 when nobody imports it). Ordered `rank DESC, path ASC`.
+   */
+  async getRankedFileRows(repoId: string): Promise<RankedFileDbRow[]> {
+    const importers = this.db
+      .select({
+        toFile: t.fileEdges.toFile,
+        n: sql<number>`count(distinct ${t.fileEdges.fromFile})`.as('importer_count'),
+      })
+      .from(t.fileEdges)
+      .where(eq(t.fileEdges.repoId, repoId))
+      .groupBy(t.fileEdges.toFile)
+      .as('importers');
+    const rows = await this.db
+      .select({
+        path: t.fileRank.filePath,
+        pagerank: t.fileRank.pagerank,
+        hotness: t.fileRank.hotness,
+        importers: sql<number>`coalesce(${importers.n}, 0)`,
+      })
+      .from(t.fileRank)
+      .leftJoin(importers, eq(importers.toFile, t.fileRank.filePath))
+      .where(eq(t.fileRank.repoId, repoId))
+      .orderBy(desc(t.fileRank.rank), asc(t.fileRank.filePath));
+    // count() comes back from postgres-js as a string/bigint; normalise.
+    return rows.map((r) => ({ ...r, importers: Number(r.importers) }));
+  }
+
+  /** Every endpoint string ("METHOD /path") stored in `file_facts` for a repo. */
+  async getRouteStrings(repoId: string): Promise<string[]> {
+    const rows = await this.db
+      .select({ endpoints: t.fileFacts.endpoints })
+      .from(t.fileFacts)
+      .where(eq(t.fileFacts.repoId, repoId));
+    return rows.flatMap((r) =>
+      Array.isArray(r.endpoints) ? r.endpoints.filter((e): e is string => typeof e === 'string') : [],
+    );
   }
 
   /** Repo-map candidates: symbols with a signature, joined to rank, ordered. */

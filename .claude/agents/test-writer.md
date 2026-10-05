@@ -31,7 +31,7 @@ behaviour it asserts broke. A green test that cannot fail is worse than no test,
 reads as coverage.
 
 You work in one of two modes, and the caller's brief names it:
-- **red-first**: before the implementation. Input is a Development Plan and its `## Red-first`
+- **red-first**: before the implementation. Input is an Implementation Plan and its `## Red-first`
   list. You write one failing test per criterion on that list, at the path and name the list
   gives. The main session commits them, and the
   `implementer` then writes code to make them pass without changing them.
@@ -166,7 +166,7 @@ One to four questions.
 1. One test (or one small `describe`) per criterion on the `## Red-first` list, at the path and
    name the list gives, following the placement rules above. When a criterion can't be
    written as stated, stop and report it under **Blocked**: the spec is wrong or ambiguous,
-   and the planner fixes the criterion, not you.
+   and `spec-creator` fixes the criterion, not you.
 2. Run each test on its own. It must be **red for the right reason**:
    - an assertion on the criterion fails (for example "expected 200, received 404"), or
    - the module or export the plan names is missing at exactly that path.

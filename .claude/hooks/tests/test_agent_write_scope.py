@@ -38,6 +38,7 @@ class TestsProfile(unittest.TestCase):
             "client/src/app/x/_components/Foo/Foo.test.tsx",
             "reviewer-core/test/core.test.ts",
             "e2e/specs/10-agent-summary.flow.json",
+            "mcp-server/test/new-thing.test.ts",
         ]:
             with self.subTest(path=path):
                 self.assertEqual(decide("tests", path), "allow")
@@ -53,6 +54,9 @@ class TestsProfile(unittest.TestCase):
             "client/src/test/setup.ts",
             "/etc/passwd",
             "server/test/../src/app.ts",
+            "mcp-server/src/x.ts",
+            "mcp-server/test/support/x.ts",
+            "mcp-server/test/support/in-process-client.ts",
         ]:
             with self.subTest(path=path):
                 self.assertEqual(decide("tests", path), "deny")
@@ -71,6 +75,39 @@ class DocsProfile(unittest.TestCase):
         for path in ["server/INSIGHTS.md", "README.md", "docs/skills/x.md", "docs/agent-prompts/general-reviewer.md", "server/src/app.ts"]:
             with self.subTest(path=path):
                 self.assertEqual(decide("docs", path, "# x"), "deny")
+
+
+
+class SpecsProfile(unittest.TestCase):
+    def test_allowed(self) -> None:
+        for path in [
+            "specs/2026-10-02-blast-radius.md",
+            "specs/README.md",
+            "server/specs/2026-10-02-run-cost.md",
+            "client/specs/README.md",
+            "reviewer-core/specs/2026-10-02-x.md",
+            "mcp-server/specs/2026-10-02-x.md",
+        ]:
+            with self.subTest(path=path):
+                self.assertEqual(decide("specs", path, "# x"), "allow")
+
+    def test_denied(self) -> None:
+        for path in [
+            "docs/sdd-cascade.md",
+            "server/docs/x.md",
+            "e2e/specs/01-app-boot.flow.json",
+            "e2e/specs/x.md",
+            "specs/designs/blast-radius/notes.md",
+            "server/specs/sub/x.md",
+            "specs/x.txt",
+            "server/INSIGHTS.md",
+            "README.md",
+            "server/src/app.ts",
+            ".claude/agents/spec-creator.md",
+            "../outside/specs/x.md",
+        ]:
+            with self.subTest(path=path):
+                self.assertEqual(decide("specs", path, "# x"), "deny")
 
 
 if __name__ == "__main__":

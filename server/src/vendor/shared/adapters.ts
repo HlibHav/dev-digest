@@ -292,3 +292,49 @@ export interface SecretsProvider {
    */
   set?(key: SecretKey, value: string): Promise<void>;
 }
+
+// ---------- Repo docs (discoverable project docs inside a clone) ----------
+export interface RepoDocEntry {
+  path: string;
+  size: number;
+  content: string;
+}
+
+export interface RepoDocs {
+  /** Discoverable docs only: exclusions and realpath containment applied, sorted by path. */
+  list(root: string): Promise<RepoDocEntry[]>;
+  /** Returns null when the path is absent or not discoverable (excluded
+      directories, files outside the clone after realpath); throws on any other failure. */
+  read(root: string, path: string): Promise<string | null>;
+}
+
+// ---------- Clone scan ----------
+export interface CloneScanOptions {
+  sourceExtensions: readonly string[];
+  excludedDirs: readonly string[];
+  readmeMaxChars: number;
+}
+
+export interface CloneTopLevelEntry {
+  name: string;
+  kind: 'dir' | 'file';
+  /** Source files under this entry (1 for a source file at the root). */
+  files: number;
+}
+
+export interface CloneScan {
+  topLevel: CloneTopLevelEntry[];
+  rootFiles: string[];
+  sourceFiles: number;
+  extensionCounts: Record<string, number>;
+  packageScripts: Record<string, string> | null;
+  readme: string | null;
+}
+
+export interface CloneScanner {
+  /** Walks a clone read-only. Never follows symlinks and skips the excluded dirs.
+      `sourceFiles` is M from AC-15: the count of files with a source extension. */
+  scan(root: string, opts: CloneScanOptions): Promise<CloneScan>;
+  /** True only for a regular file whose realpath is inside the realpath of `root`. */
+  exists(root: string, path: string): Promise<boolean>;
+}

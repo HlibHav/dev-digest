@@ -31,6 +31,10 @@ import type {
   AuthWorkspace,
   SecretsProvider,
   SecretKey,
+  RepoDocs,
+  RepoDocEntry,
+  CloneScan,
+  CloneScanner,
 } from '@devdigest/shared';
 import { parseUnifiedDiff } from './git/diff-parser.js';
 
@@ -305,6 +309,63 @@ export class MockCodeIndex implements CodeIndex {
   }
   async references(_repo: RepoRef, symbol: string): Promise<CodeReference[]> {
     return [{ fromPath: 'src/api/public/index.ts', toSymbol: symbol, line: 23 }];
+  }
+}
+
+// ---------- Mock RepoDocs ----------
+export interface MockRepoDocsOptions {
+  files?: Record<string, string>;
+  /** path -> error message: `read` throws for these. */
+  failures?: Record<string, string>;
+}
+
+export class MockRepoDocs implements RepoDocs {
+  private files: Record<string, string>;
+  private failures: Record<string, string>;
+  constructor(opts: MockRepoDocsOptions = {}) {
+    this.files = opts.files ?? {};
+    this.failures = opts.failures ?? {};
+  }
+  async list(): Promise<RepoDocEntry[]> {
+    return Object.keys(this.files)
+      .sort()
+      .map((path) => ({ path, size: this.files[path]!.length, content: this.files[path]! }));
+  }
+  async read(_root: string, path: string): Promise<string | null> {
+    if (path in this.failures) throw new Error(this.failures[path]);
+    return this.files[path] ?? null;
+  }
+}
+
+// ---------- Mock CloneScanner ----------
+export interface MockCloneScannerOptions {
+  /** Overrides on top of an empty scan. */
+  scan?: Partial<CloneScan>;
+  /** Paths `exists` reports true for. */
+  files?: string[];
+  /** Error message: `scan` throws it. */
+  throwOnScan?: string;
+}
+
+export class MockCloneScanner implements CloneScanner {
+  private files: Set<string>;
+  constructor(private opts: MockCloneScannerOptions = {}) {
+    this.files = new Set(opts.files ?? []);
+  }
+  async scan(): Promise<CloneScan> {
+    if (this.opts.throwOnScan) throw new Error(this.opts.throwOnScan);
+    return {
+      topLevel: [],
+      rootFiles: [],
+      sourceFiles: 0,
+      extensionCounts: {},
+      packageScripts: null,
+      readme: null,
+      ...this.opts.scan,
+    };
+  }
+  async exists(_root: string, path: string): Promise<boolean> {
+    return this.files.has(path);
   }
 }
 

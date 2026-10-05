@@ -64,10 +64,21 @@ export const ChangedSymbol = z.object({
 });
 export type ChangedSymbol = z.infer<typeof ChangedSymbol>;
 
+/** Why a blast-radius result is incomplete (homework-5). */
+export const BlastDegradedReason = z.enum([
+  'flag_off',
+  'index_failed',
+  'index_partial',
+  'repo_too_large',
+  'no_data',
+]);
+export type BlastDegradedReason = z.infer<typeof BlastDegradedReason>;
+
 export const BlastCaller = z.object({
   name: z.string(),
   file: z.string(),
   line: z.number().int(),
+  rank: z.number().nullish(),
 });
 export type BlastCaller = z.infer<typeof BlastCaller>;
 
@@ -83,6 +94,8 @@ export const BlastRadius = z.object({
   changed_symbols: z.array(ChangedSymbol),
   downstream: z.array(DownstreamImpact),
   summary: z.string(),
+  degraded: z.boolean().nullish(),
+  reason: BlastDegradedReason.nullish(),
 });
 export type BlastRadius = z.infer<typeof BlastRadius>;
 
@@ -90,17 +103,25 @@ export type BlastRadius = z.infer<typeof BlastRadius>;
 export const RiskSeverity = z.enum(['high', 'medium', 'low']);
 export type RiskSeverity = z.infer<typeof RiskSeverity>;
 
+export const RiskLineRef = z.object({
+  file: z.string(),
+  start_line: z.number().int().min(1),
+  end_line: z.number().int().min(1),
+});
+export type RiskLineRef = z.infer<typeof RiskLineRef>;
+
 export const Risk = z.object({
   kind: z.string(),
-  title: z.string(),
-  explanation: z.string(),
+  title: z.string().max(160),
+  explanation: z.string().max(800),
   severity: RiskSeverity,
   file_refs: z.array(z.string()),
+  line_refs: z.array(RiskLineRef).optional(),
 });
 export type Risk = z.infer<typeof Risk>;
 
 export const Risks = z.object({
-  risks: z.array(Risk),
+  risks: z.array(Risk).max(5),
 });
 export type Risks = z.infer<typeof Risks>;
 
@@ -156,10 +177,61 @@ export const SmartDiff = z.object({
 export type SmartDiff = z.infer<typeof SmartDiff>;
 
 // ---- Composed PR Brief (pr_brief.json) ----
-export const PrBrief = z.object({
-  intent: Intent,
-  blast: BlastRadius,
-  risks: Risks,
-  history: PrHistory,
+export const ReviewFocusItem = z.object({
+  file: z.string(),
+  line: z.number().int().min(1),
+  reason: z.string().max(300),
 });
+export type ReviewFocusItem = z.infer<typeof ReviewFocusItem>;
+
+export const BriefMissingInput = z.enum(['intent', 'blast', 'issue', 'specs', 'pr_description']);
+export type BriefMissingInput = z.infer<typeof BriefMissingInput>;
+
+export const BriefTruncatedInput = z.enum(['specs', 'issue', 'pr_description', 'callers', 'files']);
+export type BriefTruncatedInput = z.infer<typeof BriefTruncatedInput>;
+
+export const PrBriefBase = z.object({
+  summary: z.string().max(1200),
+  intent: Intent.nullable(),
+  blast: BlastRadius.nullable(),
+  risks: Risks,
+  review_focus: z.array(ReviewFocusItem).max(6),
+  history: PrHistory.nullable(),
+  head_sha: z.string(),
+  generated_at: z.string(),
+  model: z.string(),
+  tokens_in: z.number().int(),
+  tokens_out: z.number().int(),
+  cost_usd: z.number().nullable(),
+  missing_inputs: z.array(BriefMissingInput),
+  truncated_inputs: z.array(BriefTruncatedInput),
+});
+
+/** Stored-brief rules the permissive model schema leaves out: a risk names files, line ranges run forward, and a line ref points at one of the risk's own files. */
+export function briefCrossChecks(b: z.infer<typeof PrBriefBase>, ctx: z.RefinementCtx): void {
+  b.risks.risks.forEach((risk, i) => {
+    if (risk.file_refs.length === 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['risks', 'risks', i, 'file_refs'], message: 'a risk needs at least one file ref' });
+    }
+    (risk.line_refs ?? []).forEach((ref, j) => {
+      if (ref.end_line < ref.start_line) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['risks', 'risks', i, 'line_refs', j, 'end_line'], message: 'end_line is below start_line' });
+      }
+      if (!risk.file_refs.includes(ref.file)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['risks', 'risks', i, 'line_refs', j, 'file'], message: 'line ref file is not in the risk file_refs' });
+      }
+    });
+  });
+}
+
+export const PrBrief = PrBriefBase.superRefine(briefCrossChecks);
 export type PrBrief = z.infer<typeof PrBrief>;
+
+export const PrBriefResult = PrBriefBase.extend({ stale: z.boolean() }).superRefine(briefCrossChecks);
+export type PrBriefResult = z.infer<typeof PrBriefResult>;
+
+export const PrBriefResponse = z.object({ brief: PrBriefResult.nullable() });
+export type PrBriefResponse = z.infer<typeof PrBriefResponse>;
+
+export const PrBriefGenerateResponse = z.object({ brief: PrBriefResult });
+export type PrBriefGenerateResponse = z.infer<typeof PrBriefGenerateResponse>;

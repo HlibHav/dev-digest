@@ -1,16 +1,49 @@
 {
   "title": "Onboarding Tour",
-  "sections": "Sections",
-  "sectionCount": "{count} sections",
   "regenerate": "Regenerate",
-  "regenerating": "Regenerating…",
+  "shareLink": "Share link",
+  "linkCopied": "Link copied",
+  "copied": "Copied",
+  "open": "Open",
+  "onThisPage": "On this page",
   "unknownError": "Unknown error",
+  "header": {
+    "titlePrefix": "Onboarding for"
+  },
+  "subline": {
+    "calls": "{count, plural, one {# LLM call} other {# LLM calls}}",
+    "indexFull": "Generated from index of {n, number} files",
+    "indexPartial": "Indexed {indexed, number} of {total, number} files · partial index",
+    "generated": "generated {unit, select, now {just now} minutes {{n}m ago} hours {{n}h ago} other {{n}d ago}}"
+  },
   "generate": {
     "title": "Generate onboarding tour",
-    "body": "DevDigest indexes the repo and specs, then writes a 5-section guided tour: overview, architecture, key modules, getting started, and conventions & gotchas.",
+    "body": "DevDigest reads the indexed repository and writes a five-part guided tour: architecture overview, critical paths, how to run locally, a guided reading path and first tasks.",
     "cta": "Generate onboarding tour",
     "generating": "Generating…"
   },
+  "notCloned": {
+    "title": "This repository isn't cloned yet",
+    "body": "Sync the repository first, then come back to build its tour."
+  },
+  "status": {
+    "llmFailed": "AI summary failed — showing facts from code only",
+    "timedOut": "AI summary timed out after 90 s — showing facts from code only",
+    "indexUnavailable": "The code index isn't ready — showing what can be read without it. Resync the repository to build the index.",
+    "error": "Some facts couldn't be read — showing what was collected from code"
+  },
+  "banner": {
+    "lastFailure": "Last regeneration failed ({reason}) at {time}",
+    "stale": "This tour was built from an older version of the code"
+  },
+  "section": {
+    "collapse": "Collapse section",
+    "expand": "Expand section"
+  },
+  "openAria": "Open {path} on GitHub",
+  "copyAria": "Copy {command}",
+  "noCommands": "No run commands found in this repository's manifests",
+  "readingOrder": "Ordered by how many files depend on it",
   "loadError": {
     "title": "Couldn’t load the onboarding tour"
   }
