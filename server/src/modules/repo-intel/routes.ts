@@ -35,7 +35,8 @@ export default async function repoIntelRoutes(appBase: FastifyInstance) {
     async (req): Promise<IndexState> => {
       // Resolve tenancy so the request is workspace-scoped even though the
       // facade itself is tenant-agnostic (consistent with blast routes).
-      await getContext(container, req);
+      const { workspaceId } = await getContext(container, req);
+      await container.repoIntel.requireRepoInWorkspace(workspaceId, req.params.id);
       return container.repoIntel.getIndexState(req.params.id);
     },
   );
@@ -45,6 +46,9 @@ export default async function repoIntelRoutes(appBase: FastifyInstance) {
     { schema: { params: IdParams } },
     async (req, reply) => {
       const { workspaceId } = await getContext(container, req);
+      // Ahead of the degraded-path try/catch below: a foreign repo must 404, not
+      // be swallowed into a cheerful 202 that reindexes another tenant's clone.
+      await container.repoIntel.requireRepoInWorkspace(workspaceId, req.params.id);
       // 202 even when enqueue fails (no handler / DB hiccup) so the UI can
       // still poll /index-state without an inline error path. The actual
       // outcome shows up in `repo_index_state` once the worker runs.
