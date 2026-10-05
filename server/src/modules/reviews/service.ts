@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { Container } from '../../platform/container.js';
-import type { FindingActionKind, RunEventKind, RunTrace } from '@devdigest/shared';
+import type { FindingActionKind, RunEvent, RunEventKind, RunTrace } from '@devdigest/shared';
 import { AppError, NotFoundError } from '../../platform/errors.js';
 import type { AgentRow } from '../../db/rows.js';
 import { ReviewRepository } from './repository.js';
@@ -87,12 +87,58 @@ export class ReviewService {
    * checkpoint AND marks the DB row cancelled + completes the bus immediately —
    * so cancel also works for ORPHANED runs (whose background process died on a
    * server restart) where signalling alone would do nothing.
+   *
+   * Workspace-scoped: an unknown or foreign run id must not reach the bus, whose
+   * publish/cancel/complete all create process-lifetime entries for whatever id
+   * they are handed.
    */
-  async cancelRun(runId: string): Promise<void> {
+  async cancelRun(workspaceId: string, runId: string): Promise<void> {
+    await this.requireRun(workspaceId, runId);
     this.publish(runId, 'info', 'Cancellation requested — stopping…');
     this.container.runBus.cancel(runId);
-    await this.repo.cancelRunIfRunning(runId);
+    await this.repo.cancelRunIfRunning(workspaceId, runId);
     this.container.runBus.complete(runId);
+  }
+
+  /** Resolve a run inside the caller's workspace, or 404. */
+  private async requireRun(
+    workspaceId: string,
+    runId: string,
+  ): Promise<{ id: string; status: string | null }> {
+    const run = await this.repo.getRunForWorkspace(workspaceId, runId);
+    if (!run) throw new NotFoundError('Run not found');
+    return run;
+  }
+
+  /**
+   * How an SSE subscriber should be served.
+   *
+   * `live` only while the DB still says the run is running. Anything else — a
+   * finished run, or one ORPHANED by a restart (reaped to 'failed' at boot, with
+   * no RunBus entry and no runner that will ever emit 'done') — gets the events
+   * replayed and the stream ended. Subscribing to an orphan used to park the
+   * generator on a 'done' that could never fire, holding the connection open for
+   * the life of the process.
+   */
+  async streamPlan(
+    workspaceId: string,
+    runId: string,
+  ): Promise<{ live: true } | { live: false; replay: RunEvent[] }> {
+    const run = await this.requireRun(workspaceId, runId);
+    if (run.status === 'running') return { live: true };
+    const buffered = this.container.runBus.buffer(runId);
+    if (buffered.length > 0) return { live: false, replay: buffered };
+    // The durable copy. `RunTrace.log` is RunLogLine (no runId/seq), so number
+    // the lines here to keep the wire shape a RunEvent.
+    const trace = await this.repo.getRunTrace(workspaceId, runId);
+    const replay = (trace?.log ?? []).map((line, i) => ({
+      runId,
+      seq: i + 1,
+      kind: line.kind,
+      msg: line.msg,
+      t: line.t,
+    }));
+    return { live: false, replay };
   }
 
   /** Reap runs left 'running' by a previous (now-dead) process. Called on boot. */
@@ -182,7 +228,7 @@ export class ReviewService {
     );
   }
 
-  async getRunTrace(runId: string): Promise<RunTrace | undefined> {
-    return this.repo.getRunTrace(runId);
+  async getRunTrace(workspaceId: string, runId: string): Promise<RunTrace | undefined> {
+    return this.repo.getRunTrace(workspaceId, runId);
   }
 }

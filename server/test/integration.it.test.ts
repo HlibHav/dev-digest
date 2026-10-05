@@ -7,6 +7,7 @@ import { loadConfig } from '../src/platform/config.js';
 import { seed } from '../src/db/seed.js';
 import * as t from '../src/db/schema.js';
 import { MockGitClient, MockGitHubClient } from '../src/adapters/mocks.js';
+import { RESYNC_JOB_KIND } from '../src/modules/repo-intel/constants.js';
 
 const hasDocker = await dockerAvailable();
 const d = hasDocker ? describe : describe.skip;
@@ -83,6 +84,33 @@ d('Testcontainers: DB-backed routes via app.inject', () => {
   });
   afterAll(async () => {
     await pg?.stop();
+  });
+
+  it('repo-intel routes 404 on a repo from another workspace instead of reindexing it', async () => {
+    const config = loadConfig({ ...process.env, NODE_ENV: 'test' } as NodeJS.ProcessEnv);
+    const app = await buildApp({
+      config,
+      db: pg.handle.db,
+      overrides: { git: new MockGitClient(), github: new MockGitHubClient() },
+    });
+    const db = pg.handle.db;
+    const [other] = await db.insert(t.workspaces).values({ name: 'Other Tenant' }).returning();
+    const [foreignRepo] = await db
+      .insert(t.repos)
+      .values({ workspaceId: other!.id, owner: 'other', name: 'private', fullName: 'other/private' })
+      .returning();
+
+    // index-state used to answer for any repo id, and resync used to enqueue a
+    // reindex of it under the CALLER's workspace — a 202 that touched another
+    // tenant's clone.
+    const state = await app.inject({ method: 'GET', url: `/repos/${foreignRepo!.id}/index-state` });
+    expect(state.statusCode).toBe(404);
+    const resync = await app.inject({ method: 'POST', url: `/repos/${foreignRepo!.id}/resync` });
+    expect(resync.statusCode).toBe(404);
+    const jobs = await db.select().from(t.jobs).where(eq(t.jobs.kind, RESYNC_JOB_KIND));
+    expect(jobs).toEqual([]);
+
+    await app.close();
   });
 
   it('POST /repos persists + enqueues a clone (mock git) and GET /repos lists it', async () => {
