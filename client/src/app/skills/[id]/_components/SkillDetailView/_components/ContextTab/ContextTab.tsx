@@ -100,6 +100,11 @@ export function ContextTab({ skill }: { skill: Skill }) {
         <span className="mono" style={s.tokens}>
           {t("context.tokens", { tokens })}
         </span>
+        {exceedsTokenBudget(tokens) && (
+          <span style={s.overBudget}>
+            {t("context.overBudget", { budget: CONTEXT_TOKEN_BUDGET })}
+          </span>
+        )}
         <span style={s.spacer} />
         <div style={s.search}>
           <Icon.Search size={13} style={s.searchIcon} />
@@ -113,9 +118,6 @@ export function ContextTab({ skill }: { skill: Skill }) {
       </div>
 
       <p style={s.hint}>{t("context.hint")}</p>
-      {exceedsTokenBudget(tokens) && (
-        <p style={s.overBudget}>{t("context.overBudget", { budget: CONTEXT_TOKEN_BUDGET })}</p>
-      )}
 
       <ContextDocList
         rows={rows}
