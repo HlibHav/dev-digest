@@ -249,3 +249,18 @@ export interface SecretsProvider {
    */
   set?(key: SecretKey, value: string): Promise<void>;
 }
+
+// ---------- Repo docs (discoverable project docs inside a clone) ----------
+export interface RepoDocEntry {
+  path: string;
+  size: number;
+  content: string;
+}
+
+export interface RepoDocs {
+  /** Discoverable docs only: exclusions and realpath containment applied, sorted by path. */
+  list(root: string): Promise<RepoDocEntry[]>;
+  /** Returns null when the path is absent or not discoverable (excluded
+      directories, files outside the clone after realpath); throws on any other failure. */
+  read(root: string, path: string): Promise<string | null>;
+}

@@ -10,6 +10,7 @@ import { IntentService } from './intent-service.js';
 import { loadDiff } from './diff-loader.js';
 import { resolveFeatureModel } from '../settings/feature-models.js';
 import { buildPullsService } from '../pulls/wiring.js';
+import { buildProjectContextService } from '../project-context/wiring.js';
 
 /**
  * reviews module.
@@ -52,7 +53,7 @@ export default async function reviewsRoutes(appBase: FastifyInstance) {
     llm: (provider) => container.llm(provider),
   });
 
-  const service = new ReviewService(container, intentService);
+  const service = new ReviewService(container, intentService, buildProjectContextService(container));
 
   // ---- Run a review (manual trigger) -------------------------------
   // Tight per-route limit: each call can fan out to expensive LLM runs.
