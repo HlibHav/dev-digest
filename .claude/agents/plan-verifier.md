@@ -69,7 +69,7 @@ globs and double quotes are denied; put a literal argument with spaces or `*` in
 
 - `git diff <base>...<head>`, `git diff --stat …`, `git diff` (uncommitted), `git log …`,
   `git show <ref>:<path>`, `git status --porcelain`, `git ls-files …`, `git merge-base …`,
-  `git grep …` (no `-O`, `--open-files-in-pager` or `--no-index`)
+  `git grep …` (no `-O`, `--open-files-in-pager`, `--no-index` or `--no-exclude-standard`)
 - typechecks, which run no repo code: `pnpm --dir server typecheck`,
   `pnpm --dir client typecheck`, `npm --prefix reviewer-core run typecheck`,
   `npm --prefix e2e run typecheck`

@@ -81,7 +81,7 @@ globs and double quotes are denied; put a literal argument with spaces or `*` in
 
 - `git diff <base>...<head>`, `git diff --stat …`, `git diff` (uncommitted), `git log …`,
   `git show <ref>:<path>`, `git merge-base …`, `git status`, `git blame …`, `git ls-files …`,
-  `git grep …` (no `-O`, `--open-files-in-pager` or `--no-index`), `git branch --show-current`
+  `git grep …` (no `-O`, `--open-files-in-pager`, `--no-index` or `--no-exclude-standard`), `git branch --show-current`
 - `git -C <abs path to another checkout> <one of the above>`
 - `.claude/sandbox/run-tests.sh pnpm --dir server lint:boundaries`
 - `.claude/sandbox/run-tests.sh pnpm --dir server exec vitest run test/route-adapter-calls.test.ts`

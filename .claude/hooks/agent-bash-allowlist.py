@@ -85,8 +85,9 @@ GIT_READ_SUBCOMMANDS = {"diff", "log", "show", "status", "merge-base", "rev-pars
 # abbreviation git would accept (`--outp`, `--ext`, `--textc`) is refused too.
 GIT_FORBIDDEN_LONG = ("output", "ext-diff", "textconv", "exec-path", "git-dir", "work-tree", "config-env")
 # `git grep` is the reviewers' search when the Grep tool is absent (L-10). `-O` /
-# `--open-files-in-pager` runs a program, also bundled (`-nOvim`); `--no-index` leaves the repo.
-GIT_GREP_FORBIDDEN_LONG = ("open-files-in-pager", "no-index")
+# `--open-files-in-pager` runs a program, also bundled (`-nOvim`). `--no-index` and
+# `--no-exclude-standard` (with `--untracked`) search gitignored files such as `server/.env`.
+GIT_GREP_FORBIDDEN_LONG = ("open-files-in-pager", "no-index", "no-exclude-standard")
 
 
 def git_grep_option_forbidden(word: str) -> bool:

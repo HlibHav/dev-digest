@@ -271,7 +271,8 @@ class ReadOnlyGitStillWorks(unittest.TestCase):
 
 class GitGrepSearch(unittest.TestCase):
     """Reviewers run without the Grep/Glob tools (L-10, L-11), so `git grep` is their search.
-    `-O`/`--open-files-in-pager` runs a program and `--no-index` searches outside the repo."""
+    `-O`/`--open-files-in-pager` runs a program; `--no-index` and `--no-exclude-standard` reach
+    files outside the tracked set, gitignored secrets included."""
 
     def test_allowed_in_reviewer_profiles(self) -> None:
         for profile in ("architecture", "verify", "security"):
@@ -280,6 +281,7 @@ class GitGrepSearch(unittest.TestCase):
                 "git grep -n -e x -- server/src",
                 "git grep -l 'from lucide' -- client",
                 "git grep -nI --count x",
+                "git grep -n --untracked x -- client",
             ]:
                 with self.subTest(profile=profile, cmd=cmd):
                     self.assertEqual(decide(cmd, profile), "allow")
@@ -296,6 +298,9 @@ class GitGrepSearch(unittest.TestCase):
             "git grep --no-index x /etc",
             "git grep --no-ind x /etc",
             "git -c core.pager=sh grep -O x",
+            # SR-1 (2026-10-06, verified on git 2.55): these read a gitignored server/.env
+            "git grep --untracked --no-exclude-standard KEY -- server",
+            "git grep --untracked --no-exclude KEY",
         ]:
             with self.subTest(cmd=cmd):
                 self.assertEqual(decide(cmd), "deny")

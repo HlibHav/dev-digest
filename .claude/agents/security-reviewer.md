@@ -66,7 +66,7 @@ denied, so put a literal argument with spaces or `*` in single quotes:
 
 - `git diff <base>...<head>`, `git diff --stat …`, `git diff` (uncommitted), `git log …`,
   `git show <ref>:<path>`, `git merge-base …`, `git status`, `git blame …`, `git ls-files …`,
-  `git grep …` (no `-O`, `--open-files-in-pager` or `--no-index`)
+  `git grep …` (no `-O`, `--open-files-in-pager`, `--no-index` or `--no-exclude-standard`)
 - `diff [-rquN] <path> <path>` between two paths inside the repo
 - `gh pr view <number | url> --json <fields> [--jq <expr>] [--repo <owner/repo>]`, to read the
   PR body when the brief names a PR
