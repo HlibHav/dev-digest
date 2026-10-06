@@ -84,6 +84,11 @@ lanes are done.
    it. Watch for the write-audit's `additionalContext` after each Agent call: a write outside a
    lane's owned paths is a finding even when the report says `done`. A Red-first row with no
    failing run in the report's **Tests** table was not written test-first; send it back once.
+   Read the report's **Skills applied**: a skill under "named by the plan but not invoked",
+   or one the plan names that is missing from "invoked through Skill", with no line under
+   **Deviations from plan**, makes the lane `partial`, so send it back in `Mode: fix` before
+   the gate. The rule in `implementer.md` alone didn't hold — in three
+   runs lanes applied skills "from the plan" without loading them.
 3. **Package gate**, once the level is done: for each touched package its typecheck and unit
    suite from the root `CLAUDE.md` Check table (`server/` excludes `*.it.test.ts`; a
    `reviewer-core` change also runs the `server` checks). `lint:boundaries` and the route test
@@ -95,9 +100,13 @@ lanes are done.
    - **Green** → commit only the level's owned paths and the state file (not `git add -A`), and
      record each command, sha and result line under *Checks already run*.
 
-**Single-agent.** Execute the plan's linear steps yourself, test-first (write each red-first
-test, see it fail for the right reason, then the code), run the package checks, commit, and
-record them the same way.
+**Single-agent.** Start one `implementer` with `Mode: whole plan`, `Red-first:
+implementer-owned`, the plan's saved path and the whole plan verbatim (a single-agent plan is
+short), plus the `--design` paths. Read its report as in step 2 above, then run the package
+gate, commit and record it yourself. Don't execute the steps in the main session: by Step 1
+its context already holds the spec, the plan and every report, so each edit re-reads all of
+it (2026-10-05 mentor follow-up: the main session was 15.7M of 21.2M tokens, peak context
+251k), and nothing checks that the plan-named skills were loaded.
 
 **Read the integration tests.** Before review, Read every `*.it.test.ts` the implementers added
 or changed. plan-verifier runs them with Docker outside the sandbox, and its brief may say "the

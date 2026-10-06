@@ -119,9 +119,11 @@ coupled change). The main session saves the plan as `docs/plans/YYYY-MM-DD-<feat
     a consumer's typecheck red. After every lane of a DAG level is done, the main session runs
     each touched package's typecheck and unit suite once and records the results for the
     *Checks already run* table.
-- **Single-agent** runs the plan's one linear sequence in the main session alone, with no
-  subagents: it writes and commits the red-first tests, executes the steps test-first, then
-  runs the implementer checks and every check under *Checks for reviewers* itself.
+- **Single-agent** runs the plan's one linear sequence in one `implementer` (`Mode: whole
+  plan`) instead of parallel lanes. The main session keeps the package gate, the commits and
+  the review phase, which runs the same reviewers as multi-agent. It no longer executes the
+  steps itself: by then its context holds the spec, the plan and every report (2026-10-05:
+  main session 15.7M of 21.2M tokens), and no one checked its skills were loaded (L-12, L-26).
 
 ## Spec and tests: one loop inside another
 

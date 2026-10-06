@@ -140,9 +140,9 @@ write a single step, and record the mode in the plan's `Execution mode:` field.
   - lanes share one working tree, so a lane runs only targeted tests and the typecheck of its
     owned paths; the main session runs each touched package's typecheck and unit suite once per
     DAG level, after every lane at that level is done.
-- **Single-agent** — the main session runs everything itself, with no subagents: red-first tests,
-  the steps test-first, the implementer checks, then every check under **Checks for
-  reviewers**. Write one linear sequence ordered for one context: contracts first, then each
+- **Single-agent** — one `implementer` (`Mode: whole plan`) runs everything in one context:
+  red-first tests, the steps test-first, the implementer checks; the main session then runs
+  the same reviewers as multi-agent. Write one linear sequence ordered for one context: contracts first, then each
   layer inward to outward, so every step builds on what is already in view. Lanes and owned
   paths don't apply.
 
@@ -164,7 +164,7 @@ coupled change where the handoffs cost more than they save.
 - **List the red-first criteria under `## Red-first`:** every `AC-N` the spec tags
   `red-first unit` or `red-first integration`, with the test path and name you propose. In
   multi-agent mode the caller runs `test-writer` in red-first mode on that list before the
-  implementer starts; in single-agent mode the main session writes those tests itself first. An
+  implementer starts; in single-agent mode the one implementer writes those tests itself first. An
   empty list needs one line saying why (for example, a pure docs change or a no-spec intent).
 - **No-spec intent:** there are no `AC-N`. Don't invent them. Each step's **verify** line says
   what the check proves, and the `## Red-first` list is empty with that reason.
