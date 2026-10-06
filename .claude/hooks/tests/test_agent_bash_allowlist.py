@@ -269,6 +269,38 @@ class ReadOnlyGitStillWorks(unittest.TestCase):
                 self.assertEqual(decide(cmd), "allow")
 
 
+class GitGrepSearch(unittest.TestCase):
+    """Reviewers run without the Grep/Glob tools (L-10, L-11), so `git grep` is their search.
+    `-O`/`--open-files-in-pager` runs a program and `--no-index` searches outside the repo."""
+
+    def test_allowed_in_reviewer_profiles(self) -> None:
+        for profile in ("architecture", "verify", "security"):
+            for cmd in [
+                "git grep -n 'lucide-react' -- client/src",
+                "git grep -n -e x -- server/src",
+                "git grep -l 'from lucide' -- client",
+                "git grep -nI --count x",
+            ]:
+                with self.subTest(profile=profile, cmd=cmd):
+                    self.assertEqual(decide(cmd, profile), "allow")
+
+    def test_denied(self) -> None:
+        for cmd in [
+            "git grep -n x | head",
+            "git grep -O vim x",
+            "git grep -Ovim x",
+            "git grep -nOvim x",
+            "git grep -iO x",
+            "git grep --open-files-in-pager=vim x",
+            "git grep --open x",
+            "git grep --no-index x /etc",
+            "git grep --no-ind x /etc",
+            "git -c core.pager=sh grep -O x",
+        ]:
+            with self.subTest(cmd=cmd):
+                self.assertEqual(decide(cmd), "deny")
+
+
 class CodeRunsOnlyInTheSandbox(unittest.TestCase):
     """Anything that executes repo code (tests, the lint config) goes through run-tests.sh."""
 
