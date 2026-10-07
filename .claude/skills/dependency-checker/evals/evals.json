@@ -1,5 +1,5 @@
 {
-  "skill_name": "dependencies-checker",
+  "skill_name": "dependency-checker",
   "base_commit": "a3ce9b44e22b65f79ad6fcf9304af7f13d926fb8",
   "fixture_format": "no patch: the repo at base_commit with every package installed (setup.sh `install`)",
   "evals": [

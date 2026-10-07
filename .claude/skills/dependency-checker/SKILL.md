@@ -1,11 +1,11 @@
 ---
-name: dependencies-checker
+name: dependency-checker
 description: Audits the npm dependencies of every package in this repo (server, client, reviewer-core, e2e, mcp-server) and reports how the packages depend on each other, what each one depends on by type (prod or dev; runtime, types or build tool), how much each installed dependency and each node_modules weighs, version drift across packages, stale installs and possibly unused dependencies, with a Mermaid map and prioritized recommendations at the end. Use it whenever someone asks about dependencies, packages, node_modules size, what is heavy, what can be removed, version drift (for example zod 3 vs 4), unused packages, a dependency audit or cleanup, or says "залежності", "скільки важить", "що можна викинути", "аудит пакетів", even if they name only one package. Read-only. Not for adding or upgrading one dependency (use the package manager) or for import boundaries inside server/ (onion-architecture).
 metadata:
   version: 1.0.0
 ---
 
-# dependencies-checker
+# dependency-checker
 
 Produces one structured report a developer can act on. Every number in it comes from the
 collector's JSON, so two runs on the same tree give the same facts; your judgement goes into the
