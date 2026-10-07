@@ -2,12 +2,14 @@
 name: onion-architecture
 description: Keeps DevDigest's backend an onion — route → service → domain wired in the container; git, GitHub, the code index, secrets and LLMs behind adapters at the edge; imports pointing inward; no adapter call inside a route handler. Use before adding or changing code in server/src/modules, server/src/adapters, server/src/platform or reviewer-core/src — a new endpoint, module, service, integration, background job, SSE stream or query — and when deciding which layer backend code belongs in. Also triggers on "onion", "hexagonal", "ports and adapters", "layers", "where does this go", "куди покласти", "новий модуль", "lint:boundaries". Not for Fastify API details (fastify-best-practices), writing queries (drizzle-orm-patterns) or client/ (frontend-ui-architecture).
 metadata:
-  version: 2.2.0
+  version: 2.2.1
 ---
 
 # onion-architecture
 
 Governs **new and changed** backend code. Code that predates it is [grandfathered](reference.md#grandfathered): don't copy it, and don't migrate it unless asked. In `server/`, `pnpm lint:boundaries` machine-checks the import rules and `test/route-adapter-calls.test.ts` the route rule in step 2. Sources and history: [references.md](references.md).
+
+## Steps
 
 1. **Name the layer first.** Route `modules/<m>/routes.ts` → service `modules/<m>/service.ts` → domain `reviewer-core/src`, with contracts in `src/vendor/shared/`, and the module composed in `modules/<m>/wiring.ts`. Queries go in the module's repository, external systems in `src/adapters/`. Every other file, `src/platform/` included, is in the [ring table](reference.md#rings).
 2. **A route handler parses, calls a service and maps the result.** It runs no query and calls no adapter: not `container.github()`, `.git`, `.codeIndex`, `.secrets`, `.llm` or `.embedder`. Anything more can't be reused by a job or tested without Fastify. **Composition lives in `wiring.ts`, not `routes.ts`:** a new module, and new composition in a module that already has a `wiring.ts`, goes through `build<M>Service(container, log)` exported from `modules/<m>/wiring.ts`, which builds the repository, hands the container's adapters and other modules' services (through their `wiring.ts`) to the service's ports, and registers the module's job handlers. `routes.ts` calls it once and holds only handlers; it constructs no service, repository or scheduler and registers no job. An adapter call inside a port lambda in `wiring.ts` is composition, not a route call. Copy `brief/wiring.ts:18` and `brief/routes.ts:19`. Modules that still compose in `routes.ts` are grandfathered: a change there keeps their shape unless a migration is asked for.

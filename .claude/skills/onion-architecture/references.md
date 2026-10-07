@@ -7,6 +7,7 @@ agent reads.
 
 | Version | Date | Change |
 |---|---|---|
+| 2.2.1 | 2026-10-07 | Review evals moved out of the skill into the course `evals/` package (`evals/skills/onion-architecture/`); a `## Steps` heading for the `eval:quality` gate |
 | 2.2.0 | 2026-10-07 | No file imports another module's data access (step 3), checked by the bundled `scripts/cross-module-imports.py`; `pnpm lint:boundaries` only sees cross-module imports from application files. No existing module broke the rule when it was added (Glib, 2026-10-07) |
 | 2.1.0 | 2026-10-07 | Composition lives in `modules/<m>/wiring.ts` (step 2) and job handlers are registered there (step 6); `routes.ts` only holds handlers. Codifies the convention five modules adopted after v2 (Glib, 2026-10-07). Evals added in `evals/` |
 | 2.0.0 | 2026-09-22 | Rewritten from a rule-by-rule audit of v1 against the code; import rules machine-checked by `pnpm lint:boundaries` |
@@ -59,14 +60,14 @@ one in `pulls/routes.ts` failed it with both `file:line`s, and it passed after t
 
 ## Verification status
 
-Review evals live in `evals/`: four fixture patches against a pinned base, each with planted
-violations (and decoys in `pr-label-suggestions`), graded per assertion. Run them with
-`scripts/skill-evals/` (its README has the steps); ADR `../decisions/2026-10-07-skill-evals-in-skill-folder.md`.
-Iteration 1 (2026-10-07, no skill vs v2.0, Sonnet): both arms found all 9 planted violations; the
-only gap was composition. Iteration 2 (v2.1 vs v2.0, Sonnet, n=1): 16/16 vs 13/16 (15/16 under a
-strict reading of the `pr-label-suggestions` decoy); the whole delta is composition in `routes.ts`,
-which v2.0 clears as "wiring, not a call". The coding-task evals and trigger queries from
-`docs/onion-architecture-skill-plan.md` §6 are still not built.
+Review evals live in the course package, `evals/skills/onion-architecture/`: five diff fixtures with
+planted violations (and decoys where a practice says "does NOT flag") and their practices in
+`onion-architecture.cases.ts`. Fixtures stay out of the skill so the model never reads a planted
+violation as guidance. Run `cd evals && pnpm eval:skills onion-architecture`; measure lift with
+`pnpm eval:benchmark skills/onion-architecture -n 5` and a skill change with `eval:repeat --label`
++ `eval:delta`. ADR `../decisions/2026-10-07-skill-evals-in-course-package.md`. Iterations 1-3
+(2026-10-07, tool-using review agents, Sonnet): recall saturated in every arm; v2.1 added
+composition in `routes.ts`, v2.2 the cross-module data-access scan.
 
 ## Design rules
 

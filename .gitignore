@@ -28,5 +28,5 @@ test-results/
 __pycache__/
 *.pyc
 
-# skill eval runs (results; fixtures and keys live in .claude/skills/<skill>/evals)
+# legacy local skill-eval results (cases now live in the evals/ package)
 .skill-evals/
