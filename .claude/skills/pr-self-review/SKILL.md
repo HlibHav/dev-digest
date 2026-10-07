@@ -71,7 +71,9 @@ paraphrase them here.
 
 6. **Delegate when the diff is big.** Over ~10 changed files or ~400 changed lines, give each
    surface its own subagent with that surface's skills and its slice of the diff, and keep only the
-   findings. Below that, review inline — a subagent per surface costs more than it saves.
+   findings. Start each one with `model: sonnet`: routing a diff to skills is not judgement work,
+   and an inherited Opus cost 1.3–1.4M tokens per surface in two runs, against 388k on Sonnet.
+   Below that, review inline — a subagent per surface costs more than it saves.
 
 7. **Report one block, in this shape.** The verdict is `ready` or `blocked`, and it is keyed on
    `critical` alone: any critical → `blocked`; otherwise `ready`, findings and all.

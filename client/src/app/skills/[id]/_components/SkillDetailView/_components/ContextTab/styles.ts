@@ -27,7 +27,10 @@ export const s = {
   } satisfies CSSProperties,
   hint: { fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 } satisfies CSSProperties,
   label: { fontSize: 11, fontWeight: 650, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)", marginTop: 10 } satisfies CSSProperties,
-  pre: { margin: 0, padding: "14px 16px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-surface)", fontSize: 12, lineHeight: 1.6, whiteSpace: "pre-wrap", overflowWrap: "anywhere" } satisfies CSSProperties,
+  serialized: { display: "flex", flexDirection: "column", gap: 6, padding: "14px 16px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-surface)", fontSize: 12, lineHeight: 1.6, overflowWrap: "anywhere" } satisfies CSSProperties,
+  groupHeading: { margin: 0, fontSize: 12, fontWeight: 650, color: "var(--text-secondary)" } satisfies CSSProperties,
+  groupList: { margin: 0, paddingLeft: 18 } satisfies CSSProperties,
+  overBudget: { fontSize: 12, color: "var(--warn)", lineHeight: 1.5 } satisfies CSSProperties,
   tokens: { fontSize: 12, color: "var(--text-secondary)" } satisfies CSSProperties,
   list: { display: "flex", flexDirection: "column", gap: 6 } satisfies CSSProperties,
 } as const;

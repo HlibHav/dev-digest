@@ -80,10 +80,21 @@ GH_PR_REF = re.compile(rf"[0-9]+|https://github\.com/{GH_REPO.pattern}/pull/[0-9
 GH_JSON_FIELDS = re.compile(r"[A-Za-z]+(,[A-Za-z]+)*")
 DIFF_FLAGS = re.compile(r"-[rquN]+")
 
-GIT_READ_SUBCOMMANDS = {"diff", "log", "show", "status", "merge-base", "rev-parse", "ls-files", "blame"}
+GIT_READ_SUBCOMMANDS = {"diff", "log", "show", "status", "merge-base", "rev-parse", "ls-files", "blame", "grep"}
 # Long options that make a read-only git subcommand write a file or run a program. Any
 # abbreviation git would accept (`--outp`, `--ext`, `--textc`) is refused too.
 GIT_FORBIDDEN_LONG = ("output", "ext-diff", "textconv", "exec-path", "git-dir", "work-tree", "config-env")
+# `git grep` is the reviewers' search when the Grep tool is absent (L-10). `-O` /
+# `--open-files-in-pager` runs a program, also bundled (`-nOvim`). `--no-index` and
+# `--no-exclude-standard` (with `--untracked`) search gitignored files such as `server/.env`.
+GIT_GREP_FORBIDDEN_LONG = ("open-files-in-pager", "no-index", "no-exclude-standard")
+
+
+def git_grep_option_forbidden(word: str) -> bool:
+    if word.startswith("--"):
+        name = word[2:].split("=", 1)[0]
+        return bool(name) and any(opt.startswith(name) for opt in GIT_GREP_FORBIDDEN_LONG)
+    return word.startswith("-") and "O" in word[1:]
 
 PACKAGES = ("server", "client", "reviewer-core", "e2e", "mcp-server")
 
@@ -229,6 +240,8 @@ def git_allowed(words: list[str]) -> bool:
     if rest == ["branch", "--show-current"]:
         return True
     if not rest or rest[0] not in GIT_READ_SUBCOMMANDS:
+        return False
+    if rest[0] == "grep" and any(git_grep_option_forbidden(w) for w in rest[1:] if w != "--"):
         return False
     return not any(git_option_forbidden(w) for w in rest[1:])
 

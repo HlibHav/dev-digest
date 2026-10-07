@@ -1,10 +1,12 @@
 /* /repos/:repoId/context — read-only browser of the repo's Markdown docs.
-   What gets attached to an agent or skill is chosen on their Context tabs. */
+   What gets attached to an agent or skill is chosen on their Context tabs.
+   The New doc / New folder / Download controls are "coming soon" and do nothing. */
 "use client";
 
 import React from "react";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { Download } from "lucide-react";
 import { Button, EmptyState, ErrorState, Skeleton } from "@devdigest/ui";
 import { AppShell } from "@/components/app-shell";
 import { useContextFiles, useReindexContext } from "@/lib/hooks/core";
@@ -47,15 +49,29 @@ export function ProjectContextView() {
         <aside style={s.side}>
           <div style={s.sideHead}>
             <div style={s.eyebrow}>{t("treeLabel")}</div>
-            <Button
-              size="sm"
-              kind="ghost"
-              icon="RefreshCw"
-              loading={reindex.isPending}
-              onClick={() => reindex.mutate(repoId)}
-            >
-              {reindex.isPending ? t("refreshing") : t("refresh")}
-            </Button>
+            <div role="toolbar" aria-label={t("toolbar.label")} style={s.toolbar}>
+              <Button size="sm" kind="ghost" icon="Plus" disabled aria-label={t("toolbar.newDoc")} title={t("toolbar.newDoc")} />
+              <Button
+                size="sm"
+                kind="ghost"
+                icon="Folder"
+                disabled
+                aria-label={t("toolbar.newFolder")}
+                title={t("toolbar.newFolder")}
+              />
+              <Button size="sm" kind="ghost" disabled aria-label={t("toolbar.download")} title={t("toolbar.download")}>
+                <Download size={14} aria-hidden />
+              </Button>
+              <Button
+                size="sm"
+                kind="ghost"
+                icon="RefreshCw"
+                loading={reindex.isPending}
+                onClick={() => reindex.mutate(repoId)}
+              >
+                {reindex.isPending ? t("refreshing") : t("refresh")}
+              </Button>
+            </div>
           </div>
           <div style={s.tree}>
             <DocTree nodes={tree} selected={selected} onSelect={setSelected} />

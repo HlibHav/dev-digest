@@ -171,4 +171,29 @@ describe("agent ContextTab", () => {
     expect(screen.getByText("This repository isn’t cloned yet")).toBeInTheDocument();
     expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
   });
+  it("AC-46: warns above the 8000-token budget, blocks nothing; 8000 is silent", () => {
+    const WARNING = "Attached docs exceed the 8000-token budget.";
+    const run = (inhTokens: number, withGone: boolean) => {
+      cleanup();
+      setFiles([file("own1.md", 5000), file("own2.md", 2000), file("inh.md", inhTokens)]);
+      setCtx({
+        attached: [
+          { path: "own1.md", order: 0, tokens: 5000, present: true },
+          { path: "own2.md", order: 1, tokens: 2000, present: true },
+          ...(withGone ? [{ path: "gone.md", order: 2, tokens: 0, present: false }] : []),
+        ],
+        inherited: [{ path: "inh.md", skill_id: "s", skill_name: "rubric", tokens: inhTokens, present: true }],
+      });
+      renderTab();
+    };
+    for (const withGone of [false, true]) {
+      run(1001, withGone);
+      expect(screen.getByText(WARNING)).toBeInTheDocument();
+      for (const own of ["own1.md", "own2.md"]) {
+        expect(screen.getByRole("checkbox", { name: `Attach ${own}` })).not.toBeDisabled();
+      }
+      run(1000, withGone);
+      expect(screen.queryByText(WARNING)).toBeNull();
+    }
+  });
 });

@@ -73,14 +73,15 @@ intent-layer PR spent 0 of 101 tool calls on Grep and read a 7k-char test file t
 
 Search with the Grep and Glob tools and read with Read; Bash is only for the commands below,
 never for `find`, `grep`, `cat` or `ls`. A denied command is final: don't rephrase it to get
-past the hook. Run from the repo root; one command, or several joined with `;` or `&&` (each is
+past the hook. When the Grep or Glob tool is missing from the session (it was in three runs,
+2026-10-02 to 2026-10-05), search with `git grep -n '<pattern>' -- <path>` instead. Run from the repo root; one command, or several joined with `;` or `&&` (each is
 checked on its own and the shell gets them joined with `&&`). `cd`, `|`, `||`, `>`, `$…`, braces,
 globs and double quotes are denied; put a literal argument with spaces or `*` in single quotes
 (`[` and `]` in a path are quoted for you):
 
 - `git diff <base>...<head>`, `git diff --stat …`, `git diff` (uncommitted), `git log …`,
   `git show <ref>:<path>`, `git merge-base …`, `git status`, `git blame …`, `git ls-files …`,
-  `git branch --show-current`
+  `git grep …` (no `-O`, `--open-files-in-pager`, `--no-index` or `--no-exclude-standard`), `git branch --show-current`
 - `git -C <abs path to another checkout> <one of the above>`
 - `.claude/sandbox/run-tests.sh pnpm --dir server lint:boundaries`
 - `.claude/sandbox/run-tests.sh pnpm --dir server exec vitest run test/route-adapter-calls.test.ts`

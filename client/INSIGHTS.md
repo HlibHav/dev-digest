@@ -22,6 +22,8 @@ fixed — add to the one that fits.
 
 ## Tool & Library Notes
 
+- **2026-10-05** — The vendored `Icon` registry has `Plus`, `Folder` and `Upload` but no `Download` (or `FolderPlus`). The Project Context toolbar imports `Download` straight from `lucide-react`, the only direct `lucide-react` import outside `src/vendor` as of bf0ce1f. That is a recorded stopgap, not a pattern to copy: when a second icon is missing, add it to the registry upstream and switch this import too, because `src/vendor/ui/README.md:34` calls `icons.tsx` the single source. Evidence: `client/src/app/repos/[repoId]/context/_components/ProjectContextView/ProjectContextView.tsx:15`, `client/src/vendor/ui/icons.tsx`
+
 - **2026-10-03** — The vendored `Markdown` primitive accepts only `children`, with no `components` or `urlTransform` prop. It drops raw HTML and blanks `javascript:` hrefs, but it still renders remote images and live links. When the Markdown is written by a model from untrusted repo text, an injected `![x](https://attacker/p.png)` becomes a request beacon. For text like that, render a local `ReactMarkdown` with `a` and `img` renderers that output plain text, instead of editing `src/vendor/ui`. The tree-level override also catches reference links, `<https://…>` and bare GFM autolinks, which a regex pass misses. Evidence: `client/src/vendor/ui/primitives/Markdown.tsx:6`, `client/src/app/repos/[repoId]/onboarding/_components/OnboardingTourView/_components/OverviewBody/OverviewBody.tsx:23`
 
 - **2026-10-03** — Several feature models share the same registry default. Intent, Conventions and now Risk Brief all default to `openai/gpt-4.1-mini` (`platform.ts:59,66,84`), so in a Settings test `screen.getByText("openai/gpt-4.1-mini")` throws on multiple matches. Find the feature's label first, take its row, and query inside it with `within(row)`. Evidence: `client/src/app/settings/[section]/_components/SettingsView/_components/SettingsModels/SettingsModels.test.tsx:24-27`
@@ -38,10 +40,14 @@ fixed — add to the one that fits.
 
 ## Recurring Errors & Fixes
 
+- **2026-10-05** — On the agent Context tab an inherited doc's row renders a native `<input type="checkbox" disabled>` (AC-15: detach it on the skill), so `getAllByRole("checkbox").forEach(b => expect(b).not.toBeDisabled())` fails whenever the fixture has an inherited doc. For a "the warning blocks nothing" check, query the own rows by accessible name, `getByRole("checkbox", { name: "Attach <path>" })`. The skill tab has no inherited rows, so every checkbox there is fair game. Evidence: `client/src/components/context-doc-list/ContextDocList.tsx:77-84`, `client/src/app/agents/[id]/_components/AgentEditor/_components/ContextTab/ContextTab.test.tsx` "AC-46"
+
 - **2026-09-28** — Every vendored `Icon.*` (SectionLabel's `icon` prop, `Chip`'s `icon` prop, `Button`'s `icon`/loading spinner) renders a lucide `<svg>`. A test that uses `document.querySelector("svg")` as a stand-in for "no graph rendered" (rather than `queryByLabelText("Blast radius graph")`) fails the moment ANY icon appears anywhere in that render — not just the graph. Drop icon props from components under test with that assertion, or ask for the assertion to be scoped to the graph's `aria-label`. Evidence: `client/src/app/repos/[repoId]/pulls/[number]/_components/OverviewTab/_components/BlastRadiusCard/BlastRadiusCard.test.tsx:96,129`, `client/src/vendor/ui/primitives/Chip.tsx:22`
   - **2026-09-28** — Refined: the test was the bug, not the icons. `test-writer` fixed the assertion to `queryByLabelText("Blast radius graph")` for "no graph" and to `getByRole("button", { name: /foo/ })` for "still on tree", so a bare `svg` query is gone from the suite. Icons (`SectionLabel`'s, and `Globe`/`Clock` on the endpoint/cron chips) are back — nothing about the design needs to drop them; only scope a "no graph" assertion to the graph's own `aria-label`, never to `document.querySelector('svg')` globally. Evidence: `client/src/app/repos/[repoId]/pulls/[number]/_components/OverviewTab/_components/BlastRadiusCard/BlastRadiusCard.test.tsx:131-137`, `BlastRadiusCard.tsx:45,68`, `_components/BlastTree/BlastTree.tsx:75,85`
 
 ## Session Notes
+
+- **2026-10-05** — Project Context mentor follow-up (coming-soon controls, 8000-token warning, grouped Serializes-as preview) → Recurring Errors & Fixes, Tool & Library Notes. Evidence: `client/src/components/context-doc-list/constants.ts:2`
 
 - **2026-10-03** — PR Brief lane 0 (Risk Brief default in Settings) → Tool & Library Notes. Evidence: `client/src/lib/feature-models.ts:30`
 

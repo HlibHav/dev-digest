@@ -3,6 +3,7 @@ import type { AgentContext, SpecFile } from "@devdigest/shared";
 import {
   buildAgentRows,
   contextTotals,
+  exceedsTokenBudget,
   filterDocs,
   isPerFileStrategy,
   moveDoc,
@@ -99,5 +100,13 @@ describe("contextTotals", () => {
   });
   it("is zero for an empty context", () => {
     expect(contextTotals({ attached: [], inherited: [] })).toEqual({ total: 0, inherited: 0 });
+  });
+});
+
+describe("exceedsTokenBudget", () => {
+  it("exceedsTokenBudget is strict greater-than", () => {
+    expect(exceedsTokenBudget(8000)).toBe(false);
+    expect(exceedsTokenBudget(8001)).toBe(true);
+    expect(exceedsTokenBudget(0)).toBe(false);
   });
 });

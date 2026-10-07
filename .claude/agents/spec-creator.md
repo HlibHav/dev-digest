@@ -131,6 +131,11 @@ Sort every open point into one of two piles:
   value means, or touching a do-not-touch area such as `server/src/vendor/shared/` beyond an
   additive field, is. Each gets two to four concrete options and your
   recommendation.
+  A default that removes or raises a resource limit (a size cap, a timeout, a token or count
+  ceiling) is always blocking and is asked **alone**, never batched with other questions, with
+  its risk stated: what unbounded input would cost (time, memory, money) and the cheapest
+  bound that keeps the feature working. A doc size cap dropped as a small default left the quadratic
+  tokenizer unbounded: 32 KB of one character took 62 s to count.
 - **Non-blocking:** the answer changes one criterion or one detail. These become
   `[NEEDS CLARIFICATION: …]` in the spec and rows under `## Open questions`.
 

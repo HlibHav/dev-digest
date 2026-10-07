@@ -70,7 +70,10 @@ lanes are done.
    `Mode: lane <n>`, `Red-first: implementer-owned`, the plan's saved path, and the lane's slice
    copied verbatim — the header, *Constraints*, *Skills for the implementer*, the lane's *Lanes*
    row, its steps, the *Red-first* rows those steps turn green and the *Contracts & data* items
-   they touch. Not the whole plan: at ~18k tokens it was re-sent on every request of a lane.
+   they touch, plus the text of every `AC-N` those steps trace to, copied from the plan's
+   *Acceptance criteria* section, never just the ids: an implementer given `AC-14` and nothing
+   else builds from the step title and misses what the criterion actually says. Not the whole
+   plan: at ~18k tokens it was re-sent on every request of a lane.
    The lane's owned paths include the test files its *Red-first* rows name, even when the
    plan's *Lanes* row doesn't list them: plans shaped for `test-writer` left those files to it.
    Say so in the brief.
@@ -81,6 +84,11 @@ lanes are done.
    it. Watch for the write-audit's `additionalContext` after each Agent call: a write outside a
    lane's owned paths is a finding even when the report says `done`. A Red-first row with no
    failing run in the report's **Tests** table was not written test-first; send it back once.
+   Read the report's **Skills applied**: a skill under "named by the plan but not invoked",
+   or one the plan names that is missing from "invoked through Skill", with no line under
+   **Deviations from plan**, makes the lane `partial`, so send it back in `Mode: fix` before
+   the gate. The rule in `implementer.md` alone didn't hold — in three
+   runs lanes applied skills "from the plan" without loading them.
 3. **Package gate**, once the level is done: for each touched package its typecheck and unit
    suite from the root `CLAUDE.md` Check table (`server/` excludes `*.it.test.ts`; a
    `reviewer-core` change also runs the `server` checks). `lint:boundaries` and the route test
@@ -92,9 +100,13 @@ lanes are done.
    - **Green** → commit only the level's owned paths and the state file (not `git add -A`), and
      record each command, sha and result line under *Checks already run*.
 
-**Single-agent.** Execute the plan's linear steps yourself, test-first (write each red-first
-test, see it fail for the right reason, then the code), run the package checks, commit, and
-record them the same way.
+**Single-agent.** Start one `implementer` with `Mode: whole plan`, `Red-first:
+implementer-owned`, the plan's saved path and the whole plan verbatim (a single-agent plan is
+short), plus the `--design` paths. Read its report as in step 2 above, then run the package
+gate, commit and record it yourself. Don't execute the steps in the main session: by Step 1
+its context already holds the spec, the plan and every report, so each edit re-reads all of
+it (2026-10-05 mentor follow-up: the main session was 15.7M of 21.2M tokens, peak context
+251k), and nothing checks that the plan-named skills were loaded.
 
 **Read the integration tests.** Before review, Read every `*.it.test.ts` the implementers added
 or changed. plan-verifier runs them with Docker outside the sandbox, and its brief may say "the
@@ -107,8 +119,10 @@ proven by plan-verifier's green run alone (an accepted gap, see the ADR).
 1. Bundle once per head:
    `.claude/scripts/review-bundle.sh $(git merge-base HEAD origin/main)...HEAD <scratchpad>/bundle-<sha>`.
 2. **plan-verifier first.** Brief: target range and head sha, bundle path, *Checks already run*,
-   the full plan, every Implementation Report, `Red-first: implementer-owned`, and the
-   integration-test sentence (only if true). `gaps` → fix loop before any other review: an
+   the full plan, every Implementation Report in full (the file text, never your summary of
+   it), `Red-first: implementer-owned`, and the integration-test sentence (only if true). A
+   condensed report drops the red-run rows, and plan-verifier then marks each affected
+   criterion `partial` (18 false `partial` verdicts on the Project Context run). `gaps` → fix loop before any other review: an
    architecture review of unfinished code is wasted.
 3. **Then in parallel**, one message: `architecture-reviewer` with target, head sha, bundle path
    and *Checks already run*; `security-reviewer` with the same, **only when** the diff touches a

@@ -59,12 +59,14 @@ read `stat.txt` and `index.txt` there first, then the per-file `hunks/<path>.pat
 
 ## Commands you may run
 
-Search with Grep and Glob, read with Read; Bash is only for these. Run from the repo root, one
+Search with Grep and Glob, read with Read; Bash is only for these. When the Grep or Glob tool is missing from the session (it was in three runs,
+2026-10-02 to 2026-10-05), search with `git grep -n '<pattern>' -- <path>` instead. Run from the repo root, one
 command or several joined with `;` or `&&`; `|`, `>`, `$…`, braces, globs and double quotes are
 denied, so put a literal argument with spaces or `*` in single quotes:
 
 - `git diff <base>...<head>`, `git diff --stat …`, `git diff` (uncommitted), `git log …`,
-  `git show <ref>:<path>`, `git merge-base …`, `git status`, `git blame …`, `git ls-files …`
+  `git show <ref>:<path>`, `git merge-base …`, `git status`, `git blame …`, `git ls-files …`,
+  `git grep …` (no `-O`, `--open-files-in-pager`, `--no-index` or `--no-exclude-standard`)
 - `diff [-rquN] <path> <path>` between two paths inside the repo
 - `gh pr view <number | url> --json <fields> [--jq <expr>] [--repo <owner/repo>]`, to read the
   PR body when the brief names a PR

@@ -1,5 +1,6 @@
 /* Read-only Markdown preview of one doc. The vendored Markdown renders no raw
-   HTML and drops javascript: URLs (react-markdown defaults). */
+   HTML and drops javascript: URLs (react-markdown defaults). The Edit tab is
+   "coming soon": disabled, it does nothing. */
 "use client";
 
 import React from "react";
@@ -19,6 +20,23 @@ export function DocPreview({ repoId, file }: { repoId: string; file: SpecFile })
         <span className="mono" style={s.path}>
           {file.path}
         </span>
+        <div role="tablist" aria-label={t("tabs.label")} style={s.tabs}>
+          <button type="button" role="tab" aria-selected="true" style={{ ...s.tab, ...s.tabActive }}>
+            {t("tabs.preview")}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected="false"
+            disabled
+            aria-label={t("tabs.editComingSoon")}
+            title={t("tabs.editComingSoon")}
+            style={{ ...s.tab, ...s.tabDisabled }}
+          >
+            {t("tabs.edit")}
+          </button>
+        </div>
+        <span style={s.spacer} />
         <span style={s.usedBy}>
           {t("usedBy", { agents: file.used_by.agents, skills: file.used_by.skills })}
         </span>

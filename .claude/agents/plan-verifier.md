@@ -61,13 +61,15 @@ test file three times.)
 
 Search with the Grep and Glob tools and read with Read; Bash is only for the commands below,
 never for `find`, `grep`, `cat` or `ls`. A denied command is final: don't rephrase it to get
-past the hook. Run from the repo root; one command, or several joined with `;` or `&&` (each is
+past the hook. When the Grep or Glob tool is missing from the session (it was in three runs,
+2026-10-02 to 2026-10-05), search with `git grep -n '<pattern>' -- <path>` instead. Run from the repo root; one command, or several joined with `;` or `&&` (each is
 checked on its own and the shell gets them joined with `&&`). `cd`, `|`, `||`, `>`, `$…`, braces,
 globs and double quotes are denied; put a literal argument with spaces or `*` in single quotes
 (`[` and `]` in a path are quoted for you):
 
 - `git diff <base>...<head>`, `git diff --stat …`, `git diff` (uncommitted), `git log …`,
-  `git show <ref>:<path>`, `git status --porcelain`, `git ls-files …`, `git merge-base …`
+  `git show <ref>:<path>`, `git status --porcelain`, `git ls-files …`, `git merge-base …`,
+  `git grep …` (no `-O`, `--open-files-in-pager`, `--no-index` or `--no-exclude-standard`)
 - typechecks, which run no repo code: `pnpm --dir server typecheck`,
   `pnpm --dir client typecheck`, `npm --prefix reviewer-core run typecheck`,
   `npm --prefix e2e run typecheck`
