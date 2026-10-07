@@ -5,11 +5,11 @@
 #   scripts/skill-evals/setup.sh --teardown <skill> <eval-name> [dest-dir]
 #
 # Reads .claude/skills/<skill>/evals/evals.json, creates a worktree at the eval's
-# base_commit, applies its fixture patch as one commit on the eval's branch, hides
+# base_commit, applies its fixture patch (if any) as one commit on the eval's branch, hides
 # every skill's evals/ folder and the skill under test from the worktree (the
 # answer key must not be greppable, and each arm gets its own copy of the skill by
-# path, so none may find a different version in the tree), and installs server/ and reviewer-core/
-# dependencies for real (a symlinked node_modules changes resolved paths and
+# path, so none may find a different version in the tree), and installs the eval's `install` list
+# (default server/ and reviewer-core/) for real (a symlinked node_modules changes resolved paths and
 # breaks the lint:boundaries baseline). Prints the worktree path.
 set -euo pipefail
 
@@ -38,7 +38,10 @@ if sys.argv[3] == "base_commit":
     print(data["base_commit"]); sys.exit()
 match = [e for e in data["evals"] if e["name"] == sys.argv[2]]
 if not match: sys.exit(f"no eval named {sys.argv[2]}")
-print(match[0][sys.argv[3]])
+value = match[0].get(sys.argv[3])
+if sys.argv[3] == "install":
+    value = " ".join(value or ["server", "reviewer-core"])
+print("" if value is None else value)
 ' "$evals_json" "$eval_name" "$1"
 }
 
@@ -55,8 +58,9 @@ if [[ $teardown -eq 1 ]]; then
 fi
 
 base="$(field base_commit)"
-patch="$evals_dir/$(field fixture)"
+fixture="$(field fixture)"
 message="$(field commit_message)"
+read -r -a install <<< "$(field install)"
 
 if git -C "$repo" show-ref --verify --quiet "refs/heads/$branch"; then
   echo "branch $branch already exists; run with --teardown first" >&2
@@ -64,9 +68,12 @@ if git -C "$repo" show-ref --verify --quiet "refs/heads/$branch"; then
 fi
 
 git -C "$repo" worktree add -q -b "$branch" "$dest" "$base"
-git -C "$dest" apply --index "$patch"
-git -C "$dest" -c user.name="DevDigest Eval" -c user.email="eval@devdigest.local" \
-  commit -q -m "$message"
+# An eval without a fixture runs on the base tree itself (e.g. a whole-repo audit).
+if [[ -n "$fixture" ]]; then
+  git -C "$dest" apply --index "$evals_dir/$fixture"
+  git -C "$dest" -c user.name="DevDigest Eval" -c user.email="eval@devdigest.local" \
+    commit -q -m "$message"
+fi
 
 # Hide the answer keys and the skill under test without leaving a deletion in `git status`.
 hidden=()
@@ -77,7 +84,13 @@ if [[ ${#hidden[@]} -gt 0 ]]; then
 fi
 rm -rf "$dest"/.claude/skills/*/evals "$dest/.claude/skills/$skill"
 
-(cd "$dest/server" && pnpm install --frozen-lockfile --prefer-offline --silent)
-(cd "$dest/reviewer-core" && npm ci --prefer-offline --no-audit --no-fund --silent)
+# Packages to install come from the eval's `install` list (default: server, reviewer-core).
+for pkg in "${install[@]}"; do
+  if [[ -f "$dest/$pkg/pnpm-lock.yaml" ]]; then
+    (cd "$dest/$pkg" && pnpm install --frozen-lockfile --prefer-offline --silent)
+  else
+    (cd "$dest/$pkg" && npm ci --prefer-offline --no-audit --no-fund --silent)
+  fi
+done
 
 echo "$dest"

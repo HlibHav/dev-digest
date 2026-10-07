@@ -146,6 +146,66 @@
       "prompt": "I'm about to open a PR from this branch. Review its backend changes against main: is the code structured the way this repo wants it? List what you'd change before merge.",
       "files": [],
       "expected_output": "A review that names each finding assertion's problem with path:line and leaves every decoy alone."
+    },
+    {
+      "id": 5,
+      "name": "team-digest",
+      "branch": "feat/team-digest",
+      "commit_message": "feat(digest): weekly review digest per workspace",
+      "fixture": "fixtures/team-digest.patch",
+      "prompt": "I'm about to open a PR from this branch. Review its backend changes against main: is the code structured the way this repo wants it? List what you'd change before merge.",
+      "files": [],
+      "expected_output": "A review that names each finding assertion's problem with path:line and leaves every decoy alone.",
+      "assertions": [
+        {
+          "id": "xmod-wiring-brief-repository",
+          "kind": "finding",
+          "caught_by": null,
+          "text": "Flags digest/wiring.ts:3 \u2014 wiring imports BriefRepository from another module (brief/repository.ts) and builds it; another module's data must come through its builder/service or a container repository."
+        },
+        {
+          "id": "xmod-repository-pull-repo",
+          "kind": "finding",
+          "caught_by": null,
+          "text": "Flags digest/repository.ts:4 \u2014 the repository imports getRepo from reviews/repository/pull.repo.ts, another module's data access (container.reviewRepo.getRepo exists)."
+        },
+        {
+          "id": "xmod-routes-skillrow-type",
+          "kind": "finding",
+          "caught_by": null,
+          "text": "Flags digest/routes.ts:14 \u2014 routes.ts imports the SkillRow type from skills/repository.ts (another module's data access, type-only)."
+        },
+        {
+          "id": "route-github-call",
+          "kind": "finding",
+          "caught_by": "test/route-adapter-calls.test.ts",
+          "text": "Flags digest/routes.ts:57 \u2014 the POST /digests handler calls container.github() / currentLogin itself."
+        },
+        {
+          "id": "service-imports-fastify",
+          "kind": "finding",
+          "caught_by": "pnpm lint:boundaries",
+          "text": "Flags digest/service.ts:4 \u2014 the service imports FastifyBaseLogger from fastify (application code imports no fastify)."
+        },
+        {
+          "id": "service-writes-files",
+          "kind": "finding",
+          "caught_by": null,
+          "text": "Flags digest/service.ts:1,93-95 \u2014 the service writes Markdown files to the home directory with node:fs: new I/O outside an adapter, with no port or double."
+        },
+        {
+          "id": "job-registered-in-routes",
+          "kind": "finding",
+          "caught_by": null,
+          "text": "Flags digest/routes.ts:31 \u2014 the job handler is registered in routes.ts instead of digest/wiring.ts."
+        },
+        {
+          "id": "decoy-allowed-cross-module",
+          "kind": "decoy",
+          "caught_by": null,
+          "text": "Does NOT flag as a violation any of: wiring.ts:4 importing settings/feature-models, wiring.ts using container.skillsRepo / container.llm in port lambdas, routes.ts:12-13 importing _shared/context and _shared/schemas."
+        }
+      ]
     }
   ]
 }

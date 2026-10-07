@@ -204,6 +204,32 @@ class ShellExpansionBypasses(unittest.TestCase):
                 self.assertEqual(decide(cmd), "deny")
 
 
+class CrossModuleScan(unittest.TestCase):
+    """onion-architecture's import scan reads the tree it is given, and a branch under review can
+    rewrite it, so it runs only through the wrapper, with `.` and a plain ref (2026-10-07)."""
+
+    SCRIPT = "python3 .claude/skills/onion-architecture/scripts/cross-module-imports.py"
+
+    def test_allowed_wrapped(self) -> None:
+        for profile in ("architecture", "verify", "test"):
+            with self.subTest(profile=profile):
+                self.assertEqual(decide(W + self.SCRIPT + " . main", profile), "allow")
+                self.assertEqual(decide(W + self.SCRIPT + " . origin/main", profile), "allow")
+
+    def test_denied(self) -> None:
+        for cmd, profile in [
+            (self.SCRIPT + " . main", "architecture"),
+            (W + self.SCRIPT + " . main", "security"),
+            (W + self.SCRIPT + " /tmp/evil main", "architecture"),
+            (W + self.SCRIPT + " . --all", "architecture"),
+            (W + self.SCRIPT + " . ../main", "architecture"),
+            (W + self.SCRIPT + " . main extra", "architecture"),
+            (W + "python3 /tmp/evil.py . main", "architecture"),
+        ]:
+            with self.subTest(cmd=cmd, profile=profile):
+                self.assertEqual(decide(cmd, profile), "deny")
+
+
 class PackageDirectories(unittest.TestCase):
     """`--dir` / `--prefix` must name a package of this repo or of one of its worktrees."""
 

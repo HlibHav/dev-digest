@@ -1,0 +1,547 @@
+diff --git a/server/src/modules/digest/constants.ts b/server/src/modules/digest/constants.ts
+new file mode 100644
+index 0000000..f8febd4
+--- /dev/null
++++ b/server/src/modules/digest/constants.ts
+@@ -0,0 +1,16 @@
++/** Job kind for the weekly digest of one workspace. */
++export const DIGEST_JOB_KIND = 'digest.weekly';
++
++/** Default digest window. */
++export const DIGEST_PERIOD_DAYS = 7;
++
++/** Reviewed PRs listed in one digest, highest-risk first. */
++export const MAX_DIGEST_PRS = 25;
++
++/** Skills listed in the "what the reviewers used" section. */
++export const MAX_DIGEST_SKILLS = 8;
++
++/** Where generated digests are kept as Markdown files, under the user's home. */
++export const DIGEST_DIR = '.devdigest/digests';
++
++export const SEVERITY_ORDER = ['critical', 'high', 'medium', 'low', 'info'] as const;
+diff --git a/server/src/modules/digest/helpers.ts b/server/src/modules/digest/helpers.ts
+new file mode 100644
+index 0000000..83d9bdf
+--- /dev/null
++++ b/server/src/modules/digest/helpers.ts
+@@ -0,0 +1,88 @@
++import { DIGEST_PERIOD_DAYS, MAX_DIGEST_PRS, SEVERITY_ORDER } from './constants.js';
++
++export type Severity = (typeof SEVERITY_ORDER)[number];
++
++export interface DigestPeriod {
++  start: Date;
++  end: Date;
++}
++
++export interface ReviewedPr {
++  reviewId: string;
++  prId: string;
++  repoFullName: string;
++  number: number;
++  title: string;
++  verdict: string | null;
++  score: number | null;
++  reviewedAt: Date;
++}
++
++export interface DigestEntry extends ReviewedPr {
++  counts: Partial<Record<Severity, number>>;
++  briefHeadline: string | null;
++}
++
++export interface SkillRef {
++  id: string;
++  name: string;
++}
++
++export interface DigestSummary {
++  id: string;
++  period_start: string;
++  period_end: string;
++  prs: number;
++  generated_by: string | null;
++}
++
++const DAY_MS = 24 * 60 * 60 * 1000;
++
++/** The window that ends at `now` and spans `days` days. */
++export function periodEndingAt(now: Date, days = DIGEST_PERIOD_DAYS): DigestPeriod {
++  return { start: new Date(now.getTime() - days * DAY_MS), end: now };
++}
++
++/** Weight findings so a PR with one critical outranks one with three lows. */
++export function riskScore(counts: Partial<Record<Severity, number>>): number {
++  const weights: Record<Severity, number> = { critical: 100, high: 20, medium: 5, low: 1, info: 0 };
++  return SEVERITY_ORDER.reduce((sum, s) => sum + (counts[s] ?? 0) * weights[s], 0);
++}
++
++export function rankEntries(entries: DigestEntry[]): DigestEntry[] {
++  return [...entries]
++    .sort((a, b) => riskScore(b.counts) - riskScore(a.counts) || b.reviewedAt.getTime() - a.reviewedAt.getTime())
++    .slice(0, MAX_DIGEST_PRS);
++}
++
++function countsLine(counts: Partial<Record<Severity, number>>): string {
++  const parts = SEVERITY_ORDER.filter((s) => (counts[s] ?? 0) > 0).map((s) => `${counts[s]} ${s}`);
++  return parts.length ? parts.join(', ') : 'no findings';
++}
++
++export function renderDigest(
++  period: DigestPeriod,
++  entries: DigestEntry[],
++  skills: SkillRef[],
++  headline: string,
++): string {
++  const day = (d: Date) => d.toISOString().slice(0, 10);
++  const lines = [
++    `# Review digest ${day(period.start)} – ${day(period.end)}`,
++    '',
++    headline.trim(),
++    '',
++    `## Pull requests (${entries.length})`,
++    '',
++  ];
++  for (const e of entries) {
++    const verdict = e.verdict ? ` · ${e.verdict}` : '';
++    const score = e.score === null ? '' : ` · ${e.score}/100`;
++    lines.push(`- **${e.repoFullName}#${e.number}** ${e.title}${verdict}${score} — ${countsLine(e.counts)}`);
++    if (e.briefHeadline) lines.push(`  - Risk brief: ${e.briefHeadline}`);
++  }
++  if (skills.length) {
++    lines.push('', '## Skills the reviewers used', '', ...skills.map((s) => `- ${s.name}`));
++  }
++  return `${lines.join('\n')}\n`;
++}
+diff --git a/server/src/modules/digest/repository.ts b/server/src/modules/digest/repository.ts
+new file mode 100644
+index 0000000..adfe00f
+--- /dev/null
++++ b/server/src/modules/digest/repository.ts
+@@ -0,0 +1,119 @@
++import { and, desc, eq, gte, inArray, lt, sql } from 'drizzle-orm';
++import type { Db } from '../../db/client.js';
++import * as t from '../../db/schema.js';
++import { getRepo } from '../reviews/repository/pull.repo.js';
++import { SEVERITY_ORDER } from './constants.js';
++import type { DigestPeriod, ReviewedPr, Severity } from './helpers.js';
++
++export interface StoredDigest {
++  id: string;
++  periodStart: Date | null;
++  periodEnd: Date | null;
++  bodyMd: string | null;
++  deliveredTo: string | null;
++}
++
++export class DigestRepository {
++  constructor(private db: Db) {}
++
++  /** Reviews finished in the period, one row per review, newest first. */
++  async listReviewed(workspaceId: string, period: DigestPeriod): Promise<ReviewedPr[]> {
++    const rows = await this.db
++      .select({
++        reviewId: t.reviews.id,
++        prId: t.pullRequests.id,
++        repoId: t.pullRequests.repoId,
++        number: t.pullRequests.number,
++        title: t.pullRequests.title,
++        verdict: t.reviews.verdict,
++        score: t.reviews.score,
++        reviewedAt: t.reviews.createdAt,
++      })
++      .from(t.reviews)
++      .innerJoin(t.pullRequests, eq(t.pullRequests.id, t.reviews.prId))
++      .where(
++        and(
++          eq(t.reviews.workspaceId, workspaceId),
++          eq(t.reviews.kind, 'review'),
++          gte(t.reviews.createdAt, period.start),
++          lt(t.reviews.createdAt, period.end),
++        ),
++      )
++      .orderBy(desc(t.reviews.createdAt));
++
++    const names = new Map<string, string>();
++    const out: ReviewedPr[] = [];
++    for (const r of rows) {
++      if (!names.has(r.repoId)) {
++        const repo = await getRepo(this.db, r.repoId);
++        names.set(r.repoId, repo?.fullName ?? 'unknown/unknown');
++      }
++      out.push({
++        reviewId: r.reviewId,
++        prId: r.prId,
++        repoFullName: names.get(r.repoId)!,
++        number: r.number,
++        title: r.title,
++        verdict: r.verdict,
++        score: r.score,
++        reviewedAt: r.reviewedAt,
++      });
++    }
++    return out;
++  }
++
++  /** Finding counts per severity, keyed by review id. */
++  async findingCounts(reviewIds: string[]): Promise<Map<string, Partial<Record<Severity, number>>>> {
++    const out = new Map<string, Partial<Record<Severity, number>>>();
++    if (reviewIds.length === 0) return out;
++    const rows = await this.db
++      .select({ reviewId: t.findings.reviewId, severity: t.findings.severity, n: sql<number>`count(*)::int` })
++      .from(t.findings)
++      .where(inArray(t.findings.reviewId, reviewIds))
++      .groupBy(t.findings.reviewId, t.findings.severity);
++    for (const r of rows) {
++      if (!(SEVERITY_ORDER as readonly string[]).includes(r.severity)) continue;
++      const counts = out.get(r.reviewId) ?? {};
++      counts[r.severity as Severity] = r.n;
++      out.set(r.reviewId, counts);
++    }
++    return out;
++  }
++
++  async save(workspaceId: string, period: DigestPeriod, bodyMd: string, deliveredTo: string | null): Promise<string> {
++    const [row] = await this.db
++      .insert(t.digests)
++      .values({ workspaceId, periodStart: period.start, periodEnd: period.end, bodyMd, deliveredTo })
++      .returning({ id: t.digests.id });
++    return row!.id;
++  }
++
++  async list(workspaceId: string, limit = 20): Promise<StoredDigest[]> {
++    return this.db
++      .select({
++        id: t.digests.id,
++        periodStart: t.digests.periodStart,
++        periodEnd: t.digests.periodEnd,
++        bodyMd: t.digests.bodyMd,
++        deliveredTo: t.digests.deliveredTo,
++      })
++      .from(t.digests)
++      .where(eq(t.digests.workspaceId, workspaceId))
++      .orderBy(desc(t.digests.periodEnd))
++      .limit(limit);
++  }
++
++  async get(workspaceId: string, id: string): Promise<StoredDigest | undefined> {
++    const [row] = await this.db
++      .select({
++        id: t.digests.id,
++        periodStart: t.digests.periodStart,
++        periodEnd: t.digests.periodEnd,
++        bodyMd: t.digests.bodyMd,
++        deliveredTo: t.digests.deliveredTo,
++      })
++      .from(t.digests)
++      .where(and(eq(t.digests.workspaceId, workspaceId), eq(t.digests.id, id)));
++    return row;
++  }
++}
+diff --git a/server/src/modules/digest/routes.ts b/server/src/modules/digest/routes.ts
+new file mode 100644
+index 0000000..c4fa5c3
+--- /dev/null
++++ b/server/src/modules/digest/routes.ts
+@@ -0,0 +1,68 @@
++/**
++ * Digest HTTP module.
++ *
++ *   GET  /digests          → the workspace's stored digests, newest first
++ *   GET  /digests/:id      → one digest with its Markdown body
++ *   POST /digests          → generate a digest for the last N days now
++ *   POST /digests/schedule → 202 + jobId; generate in the background
++ */
++import type { FastifyInstance } from 'fastify';
++import type { ZodTypeProvider } from 'fastify-type-provider-zod';
++import { z } from 'zod';
++import { getContext } from '../_shared/context.js';
++import { IdParams } from '../_shared/schemas.js';
++import type { SkillRow } from '../skills/repository.js';
++import { DIGEST_JOB_KIND, DIGEST_PERIOD_DAYS } from './constants.js';
++import { periodEndingAt, type DigestSummary } from './helpers.js';
++import { buildDigestService } from './wiring.js';
++
++const GenerateBody = z.object({ days: z.number().int().min(1).max(31).default(DIGEST_PERIOD_DAYS) });
++const JobPayload = z.object({ workspaceId: z.string().uuid(), days: z.number().int().min(1).max(31) });
++
++function toSkillRef(s: Pick<SkillRow, 'id' | 'name'>): { id: string; name: string } {
++  return { id: s.id, name: s.name };
++}
++
++export default async function digestRoutes(appBase: FastifyInstance) {
++  const app = appBase.withTypeProvider<ZodTypeProvider>();
++  const { container } = app;
++  const service = buildDigestService(container, app.log);
++
++  container.jobs.register(DIGEST_JOB_KIND, async (payload) => {
++    const { workspaceId, days } = JobPayload.parse(payload);
++    await service.generate(workspaceId, periodEndingAt(new Date(), days), null);
++  });
++
++  app.get('/digests', async (req) => {
++    const { workspaceId } = await getContext(container, req);
++    const rows = await service.list(workspaceId);
++    const items: DigestSummary[] = rows.map((d) => ({
++      id: d.id,
++      period_start: d.periodStart?.toISOString() ?? '',
++      period_end: d.periodEnd?.toISOString() ?? '',
++      prs: (d.bodyMd?.match(/^- \*\*/gm) ?? []).length,
++      generated_by: d.deliveredTo,
++    }));
++    return { items };
++  });
++
++  app.get('/digests/:id', { schema: { params: IdParams } }, async (req) => {
++    const { workspaceId } = await getContext(container, req);
++    const d = await service.get(workspaceId, req.params.id);
++    return { id: d.id, body_md: d.bodyMd ?? '' };
++  });
++
++  app.post('/digests', { schema: { body: GenerateBody } }, async (req) => {
++    const { workspaceId } = await getContext(container, req);
++    const gh = await container.github();
++    const login = await gh.currentLogin().catch(() => null);
++    const digest = await service.generate(workspaceId, periodEndingAt(new Date(), req.body.days), login);
++    return { id: digest.id, prs: digest.prs, skills: digest.skills.map(toSkillRef), body_md: digest.bodyMd };
++  });
++
++  app.post('/digests/schedule', { schema: { body: GenerateBody } }, async (req, reply) => {
++    const { workspaceId } = await getContext(container, req);
++    const job = await container.jobs.enqueue(workspaceId, DIGEST_JOB_KIND, { workspaceId, days: req.body.days });
++    return reply.code(202).send({ job_id: job.id });
++  });
++}
+diff --git a/server/src/modules/digest/service.ts b/server/src/modules/digest/service.ts
+new file mode 100644
+index 0000000..e3dc51e
+--- /dev/null
++++ b/server/src/modules/digest/service.ts
+@@ -0,0 +1,98 @@
++import { mkdir, writeFile } from 'node:fs/promises';
++import { homedir } from 'node:os';
++import { join } from 'node:path';
++import type { FastifyBaseLogger } from 'fastify';
++import type { FeatureModelChoice, LLMProvider } from '@devdigest/shared';
++import { NotFoundError } from '../../platform/errors.js';
++import { DIGEST_DIR, MAX_DIGEST_SKILLS } from './constants.js';
++import {
++  rankEntries,
++  renderDigest,
++  type DigestEntry,
++  type DigestPeriod,
++  type ReviewedPr,
++  type Severity,
++  type SkillRef,
++} from './helpers.js';
++import type { StoredDigest } from './repository.js';
++
++export interface DigestPorts {
++  listReviewed(workspaceId: string, period: DigestPeriod): Promise<ReviewedPr[]>;
++  findingCounts(reviewIds: string[]): Promise<Map<string, Partial<Record<Severity, number>>>>;
++  briefHeadline(prId: string): Promise<string | null>;
++  skillsInUse(workspaceId: string): Promise<SkillRef[]>;
++  resolveModel(workspaceId: string): Promise<FeatureModelChoice>;
++  llm(provider: FeatureModelChoice['provider']): Promise<LLMProvider>;
++  save(workspaceId: string, period: DigestPeriod, bodyMd: string, deliveredTo: string | null): Promise<string>;
++  list(workspaceId: string): Promise<StoredDigest[]>;
++  get(workspaceId: string, id: string): Promise<StoredDigest | undefined>;
++  log: FastifyBaseLogger;
++}
++
++export interface GeneratedDigest {
++  id: string;
++  bodyMd: string;
++  prs: number;
++  skills: SkillRef[];
++  file: string;
++}
++
++/** Builds the weekly review digest of a workspace: ranked PRs, a one-paragraph headline, the skills in use. */
++export class DigestService {
++  constructor(private ports: DigestPorts) {}
++
++  async generate(workspaceId: string, period: DigestPeriod, generatedBy: string | null): Promise<GeneratedDigest> {
++    const reviewed = await this.ports.listReviewed(workspaceId, period);
++    const counts = await this.ports.findingCounts(reviewed.map((r) => r.reviewId));
++    const entries: DigestEntry[] = [];
++    for (const r of reviewed) {
++      entries.push({ ...r, counts: counts.get(r.reviewId) ?? {}, briefHeadline: await this.ports.briefHeadline(r.prId) });
++    }
++    const ranked = rankEntries(entries);
++    const skills = (await this.ports.skillsInUse(workspaceId)).slice(0, MAX_DIGEST_SKILLS);
++    const headline = await this.headline(workspaceId, ranked);
++    const bodyMd = renderDigest(period, ranked, skills, headline);
++
++    const id = await this.ports.save(workspaceId, period, bodyMd, generatedBy);
++    const file = await this.writeCopy(id, bodyMd);
++    this.ports.log.info({ workspaceId, id, prs: ranked.length }, 'digest generated');
++    return { id, bodyMd, prs: ranked.length, skills, file };
++  }
++
++  async list(workspaceId: string): Promise<StoredDigest[]> {
++    return this.ports.list(workspaceId);
++  }
++
++  async get(workspaceId: string, id: string): Promise<StoredDigest> {
++    const digest = await this.ports.get(workspaceId, id);
++    if (!digest) throw new NotFoundError('Digest not found');
++    return digest;
++  }
++
++  private async headline(workspaceId: string, entries: DigestEntry[]): Promise<string> {
++    if (entries.length === 0) return 'No pull requests were reviewed in this period.';
++    const choice = await this.ports.resolveModel(workspaceId);
++    const llm = await this.ports.llm(choice.provider);
++    const list = entries
++      .map((e) => `${e.repoFullName}#${e.number} ${e.title} (verdict: ${e.verdict ?? 'n/a'})`)
++      .join('\n');
++    const res = await llm.complete({
++      model: choice.model,
++      temperature: 0.2,
++      maxTokens: 200,
++      messages: [
++        { role: 'system', content: 'Write one short paragraph summarising the week of code reviews for the team. No lists.' },
++        { role: 'user', content: list },
++      ],
++    });
++    return res.text;
++  }
++
++  private async writeCopy(id: string, bodyMd: string): Promise<string> {
++    const dir = join(homedir(), DIGEST_DIR);
++    await mkdir(dir, { recursive: true });
++    const file = join(dir, `${id}.md`);
++    await writeFile(file, bodyMd, 'utf8');
++    return file;
++  }
++}
+diff --git a/server/src/modules/digest/wiring.ts b/server/src/modules/digest/wiring.ts
+new file mode 100644
+index 0000000..cced4b0
+--- /dev/null
++++ b/server/src/modules/digest/wiring.ts
+@@ -0,0 +1,31 @@
++import type { FastifyBaseLogger } from 'fastify';
++import type { Container } from '../../platform/container.js';
++import { BriefRepository } from '../brief/repository.js';
++import { resolveFeatureModel } from '../settings/feature-models.js';
++import { DigestRepository } from './repository.js';
++import { DigestService } from './service.js';
++
++/** Composition for the digest module. */
++export function buildDigestService(container: Container, log: FastifyBaseLogger): DigestService {
++  const repo = new DigestRepository(container.db);
++  const briefs = new BriefRepository(container.db);
++
++  return new DigestService({
++    listReviewed: (workspaceId, period) => repo.listReviewed(workspaceId, period),
++    findingCounts: (reviewIds) => repo.findingCounts(reviewIds),
++    briefHeadline: async (prId) => {
++      const stored = (await briefs.get(prId)) as { headline?: unknown } | undefined;
++      return typeof stored?.headline === 'string' ? stored.headline : null;
++    },
++    skillsInUse: async (workspaceId) => {
++      const rows = await container.skillsRepo.list(workspaceId);
++      return rows.filter((s) => s.enabled).map((s) => ({ id: s.id, name: s.name }));
++    },
++    resolveModel: (workspaceId) => resolveFeatureModel(container, workspaceId, 'review_intent'),
++    llm: (provider) => container.llm(provider),
++    save: (workspaceId, period, bodyMd, deliveredTo) => repo.save(workspaceId, period, bodyMd, deliveredTo),
++    list: (workspaceId) => repo.list(workspaceId),
++    get: (workspaceId, id) => repo.get(workspaceId, id),
++    log,
++  });
++}
+diff --git a/server/src/modules/index.ts b/server/src/modules/index.ts
+index 5fbe565..82afcf4 100644
+--- a/server/src/modules/index.ts
++++ b/server/src/modules/index.ts
+@@ -14,6 +14,7 @@ import blast from './blast/routes.js';
+ import projectContext from './project-context/routes.js';
+ import onboarding from './onboarding/routes.js';
+ import brief from './brief/routes.js';
++import digest from './digest/routes.js';
+ 
+ /**
+  * Module registry. Each feature module is a Fastify plugin in
+@@ -44,4 +45,5 @@ export const modules: Record<string, FastifyPluginAsync> = {
+   projectContext,
+   onboarding,
+   brief,
++  digest,
+ };
+diff --git a/server/test/digest-service.test.ts b/server/test/digest-service.test.ts
+new file mode 100644
+index 0000000..aa22ed1
+--- /dev/null
++++ b/server/test/digest-service.test.ts
+@@ -0,0 +1,67 @@
++import { describe, expect, it, vi } from 'vitest';
++
++vi.mock('node:fs/promises', () => ({ mkdir: vi.fn(async () => undefined), writeFile: vi.fn(async () => undefined) }));
++
++import { MockLLMProvider } from '../src/adapters/mocks.js';
++import { DigestService, type DigestPorts } from '../src/modules/digest/service.js';
++import { periodEndingAt, rankEntries, riskScore, type DigestEntry } from '../src/modules/digest/helpers.js';
++import { NotFoundError } from '../src/platform/errors.js';
++
++const NOW = new Date('2026-10-07T09:00:00Z');
++const log = { info: vi.fn(), warn: vi.fn(), error: vi.fn() } as unknown as DigestPorts['log'];
++
++function ports(over: Partial<DigestPorts> = {}): DigestPorts {
++  return {
++    listReviewed: async () => [
++      { reviewId: 'r1', prId: 'p1', repoFullName: 'acme/api', number: 1, title: 'Retry', verdict: 'approve', score: 90, reviewedAt: new Date('2026-10-05') },
++      { reviewId: 'r2', prId: 'p2', repoFullName: 'acme/web', number: 2, title: 'Auth', verdict: 'request_changes', score: 40, reviewedAt: new Date('2026-10-04') },
++    ],
++    findingCounts: async () => new Map([['r1', { low: 3 }], ['r2', { critical: 1 }]]),
++    briefHeadline: async (prId) => (prId === 'p2' ? 'Touches session handling' : null),
++    skillsInUse: async () => [{ id: 's1', name: 'api-contract' }],
++    resolveModel: async () => ({ provider: 'openai', model: 'gpt-4.1-mini' }),
++    llm: async () => new MockLLMProvider('openai', { completionText: 'A calm week.' }),
++    save: async () => 'd1',
++    list: async () => [],
++    get: async () => undefined,
++    log,
++    ...over,
++  };
++}
++
++describe('DigestService.generate', () => {
++  it('ranks the critical PR first and renders the headline', async () => {
++    const out = await new DigestService(ports()).generate('ws', periodEndingAt(NOW), null);
++    expect(out.id).toBe('d1');
++    expect(out.prs).toBe(2);
++    expect(out.bodyMd.indexOf('acme/web#2')).toBeLessThan(out.bodyMd.indexOf('acme/api#1'));
++    expect(out.bodyMd).toContain('A calm week.');
++    expect(out.bodyMd).toContain('Risk brief: Touches session handling');
++  });
++
++  it('skips the model when nothing was reviewed', async () => {
++    const llm = vi.fn();
++    const out = await new DigestService(ports({ listReviewed: async () => [], llm })).generate('ws', periodEndingAt(NOW), null);
++    expect(llm).not.toHaveBeenCalled();
++    expect(out.bodyMd).toContain('No pull requests were reviewed');
++  });
++});
++
++describe('DigestService.get', () => {
++  it('throws NotFoundError for an unknown digest', async () => {
++    await expect(new DigestService(ports()).get('ws', 'nope')).rejects.toBeInstanceOf(NotFoundError);
++  });
++});
++
++describe('helpers', () => {
++  it('weights severities', () => {
++    expect(riskScore({ critical: 1 })).toBeGreaterThan(riskScore({ low: 50 }));
++  });
++  it('caps and orders entries', () => {
++    const e = (id: string, crit: number): DigestEntry => ({
++      reviewId: id, prId: id, repoFullName: 'a/b', number: 1, title: id, verdict: null, score: null,
++      reviewedAt: NOW, counts: { critical: crit }, briefHeadline: null,
++    });
++    expect(rankEntries([e('a', 0), e('b', 2)]).map((x) => x.reviewId)).toEqual(['b', 'a']);
++  });
++});

@@ -50,6 +50,14 @@ One decorator, `app.decorate('container', …)`. A module's `wiring.ts` builds i
 reuses another through that module's builder (`brief/wiring.ts:20-22`), never by constructing its
 service or repository. A second DI mechanism (awilix, tsyringe) needs an ADR.
 
+## Cross-module data access
+
+`scripts/cross-module-imports.py` parses every import of a changed module file (multi-line and
+type-only ones too), resolves it, and labels imports of another module's `repository.ts`,
+`repository/*` or `*.repo.ts` as `VIOLATION`. When the rule was added no module did this
+(`--all` over `server/src/modules` found 0), so nothing is grandfathered. Shared entities are
+served by repositories the container builds (`platform/container.ts:79-84`).
+
 ## Ports
 
 Seven, each with an adapter and a double in `adapters/mocks.ts`: `LLMProvider` (:58),

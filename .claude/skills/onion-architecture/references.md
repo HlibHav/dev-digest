@@ -7,6 +7,7 @@ agent reads.
 
 | Version | Date | Change |
 |---|---|---|
+| 2.2.0 | 2026-10-07 | No file imports another module's data access (step 3), checked by the bundled `scripts/cross-module-imports.py`; `pnpm lint:boundaries` only sees cross-module imports from application files. No existing module broke the rule when it was added (Glib, 2026-10-07) |
 | 2.1.0 | 2026-10-07 | Composition lives in `modules/<m>/wiring.ts` (step 2) and job handlers are registered there (step 6); `routes.ts` only holds handlers. Codifies the convention five modules adopted after v2 (Glib, 2026-10-07). Evals added in `evals/` |
 | 2.0.0 | 2026-09-22 | Rewritten from a rule-by-rule audit of v1 against the code; import rules machine-checked by `pnpm lint:boundaries` |
 | 1.0.0 | 2026-09-20 | First release, commit `6a80fd1` |
