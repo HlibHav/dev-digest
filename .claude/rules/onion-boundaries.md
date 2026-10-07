@@ -15,6 +15,9 @@ checked by `server/test/route-adapter-calls.test.ts`.
 
 - A route handler parses, calls a service and maps the result. It runs no query and calls no
   adapter (`container.github()`, `.git`, `.codeIndex`, `.secrets`, `.llm`, `.embedder`).
+- A new module is composed in `modules/<m>/wiring.ts` (`build<M>Service(container, log)`), which
+  builds the repository, fills the service's ports and registers the module's job handlers;
+  `routes.ts` calls it once and holds only handlers. No check sees this one.
 - Application code (a service and its helpers) imports no `fastify`, `drizzle-orm`, `src/db/**`
   or adapter, and gets other modules only as ports. Vendor SDKs are imported only under
   `src/adapters/**` (and `src/db/` for `postgres`), and every new adapter gets a double in

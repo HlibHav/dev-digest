@@ -133,9 +133,14 @@ worktree when the checks must run; then pass its path.
 ## Step 3 — Review what the checks can't see
 
 Read each hunk against the skills' numbered steps. Look in particular for:
-- a route handler that calls anything on `container` beyond wiring a service. This includes
+- a route handler that runs a query or calls an adapter on `container`. This includes
   `container.db`, which `ADAPTER_MEMBERS` in the route test does not list, so a query in a
   route passes both checks (onion step 2);
+- composition in a new module's `routes.ts`: building a service, repository or scheduler, or
+  registering a job, instead of calling `build<M>Service` from `modules/<m>/wiring.ts` once
+  (onion steps 2 and 6). Adapter calls inside port lambdas in `wiring.ts` are composition, not
+  a finding. Modules that already compose in `routes.ts` are grandfathered (the skill's
+  `reference.md`);
 - a new service whose constructor takes `Container` (onion step 5);
 - new I/O without a port in `src/vendor/shared/adapters.ts` or without a double in
   `src/adapters/mocks.ts` (onion step 4);
