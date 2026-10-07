@@ -7,6 +7,7 @@ agent reads.
 
 | Version | Date | Change |
 |---|---|---|
+| 2.1.0 | 2026-10-07 | Composition lives in `modules/<m>/wiring.ts` (step 2) and job handlers are registered there (step 6); `routes.ts` only holds handlers. Codifies the convention five modules adopted after v2 (Glib, 2026-10-07). Evals added in `evals/` |
 | 2.0.0 | 2026-09-22 | Rewritten from a rule-by-rule audit of v1 against the code; import rules machine-checked by `pnpm lint:boundaries` |
 | 1.0.0 | 2026-09-20 | First release, commit `6a80fd1` |
 
@@ -57,10 +58,14 @@ one in `pulls/routes.ts` failed it with both `file:line`s, and it passed after t
 
 ## Verification status
 
-The evals are deferred to a later course module. Their spec is `docs/onion-architecture-skill-plan.md`
-§6: six coding tasks graded on the diff, 20 trigger queries, and arms for no skill, v1 (commit
-`6a80fd1`) and v2. Until those run, a rule's "general knowledge" class is judgement, not
-measurement.
+Review evals live in `evals/`: four fixture patches against a pinned base, each with planted
+violations (and decoys in `pr-label-suggestions`), graded per assertion. Run them with
+`scripts/skill-evals/` (its README has the steps); ADR `../decisions/2026-10-07-skill-evals-in-skill-folder.md`.
+Iteration 1 (2026-10-07, no skill vs v2.0, Sonnet): both arms found all 9 planted violations; the
+only gap was composition. Iteration 2 (v2.1 vs v2.0, Sonnet, n=1): 16/16 vs 13/16 (15/16 under a
+strict reading of the `pr-label-suggestions` decoy); the whole delta is composition in `routes.ts`,
+which v2.0 clears as "wiring, not a call". The coding-task evals and trigger queries from
+`docs/onion-architecture-skill-plan.md` §6 are still not built.
 
 ## Design rules
 

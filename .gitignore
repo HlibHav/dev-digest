@@ -27,3 +27,6 @@ test-results/
 # Python bytecode from the .claude hooks
 __pycache__/
 *.pyc
+
+# skill eval runs (results; fixtures and keys live in .claude/skills/<skill>/evals)
+.skill-evals/
