@@ -23,7 +23,11 @@ Top direct dependencies by own installed size (up to 10):
 | Dependency | Type | Kind | Range | Installed | Own size |
 |---|---|---|---|---|---|
 
-Possibly unused: `<dep>` (evidence) — or "none found".
+Possibly unused (each with its priority from the table in SKILL.md and the grep evidence):
+
+- `<dep>`: P1 | P2, what the grep found, or "used only through `<other dep>`"
+
+Or "none found".
 
 <repeat per package>
 

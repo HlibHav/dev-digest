@@ -1,0 +1,1071 @@
+{
+ "root": "dev-digest",
+ "packages": [
+  {
+   "path": "client",
+   "name": "@devdigest/web",
+   "manager": "pnpm",
+   "counts": {
+    "prod": 14,
+    "dev": 12,
+    "peer": 0,
+    "optional": 0
+   },
+   "node_modules_kb": 634792,
+   "installed_packages": 439,
+   "install_health": "stale: declared but not installed",
+   "missing_from_install": [
+    "@dnd-kit/core",
+    "@dnd-kit/sortable",
+    "@dnd-kit/utilities"
+   ],
+   "possibly_unused": [
+    "postcss"
+   ],
+   "dependencies": [
+    {
+     "name": "@dnd-kit/core",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^6.3.1",
+     "installed": null,
+     "own_size_kb": null,
+     "referenced": true
+    },
+    {
+     "name": "@dnd-kit/sortable",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^10.0.0",
+     "installed": null,
+     "own_size_kb": null,
+     "referenced": true
+    },
+    {
+     "name": "@dnd-kit/utilities",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^3.2.2",
+     "installed": null,
+     "own_size_kb": null,
+     "referenced": true
+    },
+    {
+     "name": "@tanstack/react-query",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^5.62.8",
+     "installed": "5.101.0",
+     "own_size_kb": 1756,
+     "referenced": true
+    },
+    {
+     "name": "lucide-react",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^0.469.0",
+     "installed": "0.469.0",
+     "own_size_kb": 37100,
+     "referenced": true
+    },
+    {
+     "name": "mermaid",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^11.15.0",
+     "installed": "11.15.0",
+     "own_size_kb": 77104,
+     "referenced": true
+    },
+    {
+     "name": "next",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^15.1.3",
+     "installed": "15.5.19",
+     "own_size_kb": 155972,
+     "referenced": true
+    },
+    {
+     "name": "next-intl",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^3.26.0",
+     "installed": "3.26.5",
+     "own_size_kb": 1392,
+     "referenced": true
+    },
+    {
+     "name": "react",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^19.0.0",
+     "installed": "19.2.7",
+     "own_size_kb": 252,
+     "referenced": true
+    },
+    {
+     "name": "react-dom",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^19.0.0",
+     "installed": "19.2.7",
+     "own_size_kb": 7264,
+     "referenced": true
+    },
+    {
+     "name": "react-markdown",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^9.0.3",
+     "installed": "9.1.0",
+     "own_size_kb": 80,
+     "referenced": true
+    },
+    {
+     "name": "recharts",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^2.15.0",
+     "installed": "2.15.4",
+     "own_size_kb": 5288,
+     "referenced": true
+    },
+    {
+     "name": "remark-gfm",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^4.0.0",
+     "installed": "4.0.1",
+     "own_size_kb": 44,
+     "referenced": true
+    },
+    {
+     "name": "zod",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^3.24.1",
+     "installed": "3.25.76",
+     "own_size_kb": 5136,
+     "referenced": true
+    },
+    {
+     "name": "@tailwindcss/postcss",
+     "type": "dev",
+     "kind": "dev library",
+     "range": "^4.0.0",
+     "installed": "4.3.0",
+     "own_size_kb": 116,
+     "referenced": true
+    },
+    {
+     "name": "@testing-library/jest-dom",
+     "type": "dev",
+     "kind": "build/test tool",
+     "range": "^6.6.3",
+     "installed": "6.9.1",
+     "own_size_kb": 420,
+     "referenced": true
+    },
+    {
+     "name": "@testing-library/react",
+     "type": "dev",
+     "kind": "build/test tool",
+     "range": "^16.1.0",
+     "installed": "16.3.2",
+     "own_size_kb": 392,
+     "referenced": true
+    },
+    {
+     "name": "@types/node",
+     "type": "dev",
+     "kind": "types",
+     "range": "^22.10.0",
+     "installed": "22.19.19",
+     "own_size_kb": 2548,
+     "referenced": true
+    },
+    {
+     "name": "@types/react",
+     "type": "dev",
+     "kind": "types",
+     "range": "^19.0.2",
+     "installed": "19.2.16",
+     "own_size_kb": 436,
+     "referenced": true
+    },
+    {
+     "name": "@types/react-dom",
+     "type": "dev",
+     "kind": "types",
+     "range": "^19.0.2",
+     "installed": "19.2.3",
+     "own_size_kb": 80,
+     "referenced": true
+    },
+    {
+     "name": "@vitejs/plugin-react",
+     "type": "dev",
+     "kind": "build/test tool",
+     "range": "^4.3.4",
+     "installed": "4.7.0",
+     "own_size_kb": 80,
+     "referenced": true
+    },
+    {
+     "name": "jsdom",
+     "type": "dev",
+     "kind": "build/test tool",
+     "range": "^25.0.1",
+     "installed": "25.0.1",
+     "own_size_kb": 4248,
+     "referenced": true
+    },
+    {
+     "name": "postcss",
+     "type": "dev",
+     "kind": "build/test tool",
+     "range": "^8.4.49",
+     "installed": "8.5.15",
+     "own_size_kb": 336,
+     "referenced": false
+    },
+    {
+     "name": "tailwindcss",
+     "type": "dev",
+     "kind": "build/test tool",
+     "range": "^4.0.0",
+     "installed": "4.3.0",
+     "own_size_kb": 832,
+     "referenced": true
+    },
+    {
+     "name": "typescript",
+     "type": "dev",
+     "kind": "build/test tool",
+     "range": "^5.7.2",
+     "installed": "5.9.3",
+     "own_size_kb": 23388,
+     "referenced": true
+    },
+    {
+     "name": "vitest",
+     "type": "dev",
+     "kind": "build/test tool",
+     "range": "^2.1.8",
+     "installed": "2.1.9",
+     "own_size_kb": 1896,
+     "referenced": true
+    }
+   ],
+   "links": [
+    {
+     "to": "server",
+     "kind": "mirrored copy",
+     "detail": "src/vendor/shared copies server/src/vendor/shared"
+    },
+    {
+     "to": "server",
+     "kind": "HTTP",
+     "detail": "calls the DevDigest API"
+    }
+   ]
+  },
+  {
+   "path": "e2e",
+   "name": "@devdigest/e2e",
+   "manager": "npm",
+   "counts": {
+    "prod": 0,
+    "dev": 3,
+    "peer": 0,
+    "optional": 0
+   },
+   "node_modules_kb": null,
+   "installed_packages": null,
+   "install_health": "not installed",
+   "missing_from_install": [],
+   "possibly_unused": [],
+   "dependencies": [
+    {
+     "name": "@types/node",
+     "type": "dev",
+     "kind": "types",
+     "range": "^22.10.0",
+     "installed": null,
+     "own_size_kb": null,
+     "referenced": true
+    },
+    {
+     "name": "tsx",
+     "type": "dev",
+     "kind": "build/test tool",
+     "range": "^4.19.2",
+     "installed": null,
+     "own_size_kb": null,
+     "referenced": true
+    },
+    {
+     "name": "typescript",
+     "type": "dev",
+     "kind": "build/test tool",
+     "range": "^5.7.2",
+     "installed": null,
+     "own_size_kb": null,
+     "referenced": true
+    }
+   ],
+   "links": []
+  },
+  {
+   "path": "evals",
+   "name": "@devdigest/evals",
+   "manager": "pnpm",
+   "counts": {
+    "prod": 2,
+    "dev": 5,
+    "peer": 0,
+    "optional": 0
+   },
+   "node_modules_kb": 360064,
+   "installed_packages": 183,
+   "install_health": "ok",
+   "missing_from_install": [],
+   "possibly_unused": [],
+   "dependencies": [
+    {
+     "name": "@anthropic-ai/claude-agent-sdk",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^0.3.198",
+     "installed": "0.3.198",
+     "own_size_kb": 3632,
+     "referenced": true
+    },
+    {
+     "name": "openai",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^4.77.0",
+     "installed": "4.104.0",
+     "own_size_kb": 7536,
+     "referenced": true
+    },
+    {
+     "name": "@types/node",
+     "type": "dev",
+     "kind": "types",
+     "range": "^22.0.0",
+     "installed": "22.20.0",
+     "own_size_kb": 2544,
+     "referenced": true
+    },
+    {
+     "name": "gray-matter",
+     "type": "dev",
+     "kind": "dev library",
+     "range": "^4.0.3",
+     "installed": "4.0.3",
+     "own_size_kb": 76,
+     "referenced": true
+    },
+    {
+     "name": "tsx",
+     "type": "dev",
+     "kind": "build/test tool",
+     "range": "^4.19.0",
+     "installed": "4.22.4",
+     "own_size_kb": 664,
+     "referenced": true
+    },
+    {
+     "name": "typescript",
+     "type": "dev",
+     "kind": "build/test tool",
+     "range": "^5.6.0",
+     "installed": "5.9.3",
+     "own_size_kb": 23388,
+     "referenced": true
+    },
+    {
+     "name": "vitest",
+     "type": "dev",
+     "kind": "build/test tool",
+     "range": "^2.1.0",
+     "installed": "2.1.9",
+     "own_size_kb": 1896,
+     "referenced": true
+    }
+   ],
+   "links": []
+  },
+  {
+   "path": "mcp-server",
+   "name": "@devdigest/mcp-server",
+   "manager": "pnpm",
+   "counts": {
+    "prod": 2,
+    "dev": 5,
+    "peer": 0,
+    "optional": 0
+   },
+   "node_modules_kb": null,
+   "installed_packages": null,
+   "install_health": "not installed",
+   "missing_from_install": [],
+   "possibly_unused": [],
+   "dependencies": [
+    {
+     "name": "@modelcontextprotocol/server",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "2.1.0",
+     "installed": null,
+     "own_size_kb": null,
+     "referenced": true
+    },
+    {
+     "name": "zod",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^4.6.5",
+     "installed": null,
+     "own_size_kb": null,
+     "referenced": true
+    },
+    {
+     "name": "@modelcontextprotocol/client",
+     "type": "dev",
+     "kind": "dev library",
+     "range": "2.1.0",
+     "installed": null,
+     "own_size_kb": null,
+     "referenced": true
+    },
+    {
+     "name": "@types/node",
+     "type": "dev",
+     "kind": "types",
+     "range": "^22.10.0",
+     "installed": null,
+     "own_size_kb": null,
+     "referenced": true
+    },
+    {
+     "name": "tsx",
+     "type": "dev",
+     "kind": "build/test tool",
+     "range": "^4.19.2",
+     "installed": null,
+     "own_size_kb": null,
+     "referenced": true
+    },
+    {
+     "name": "typescript",
+     "type": "dev",
+     "kind": "build/test tool",
+     "range": "^5.7.2",
+     "installed": null,
+     "own_size_kb": null,
+     "referenced": true
+    },
+    {
+     "name": "vitest",
+     "type": "dev",
+     "kind": "build/test tool",
+     "range": "^2.1.8",
+     "installed": null,
+     "own_size_kb": null,
+     "referenced": true
+    }
+   ],
+   "links": [
+    {
+     "to": "server",
+     "kind": "path alias",
+     "detail": "@devdigest/shared -> ../server/src/vendor/shared/index.ts"
+    },
+    {
+     "to": "server",
+     "kind": "HTTP",
+     "detail": "calls the DevDigest API"
+    }
+   ]
+  },
+  {
+   "path": "reviewer-core",
+   "name": "@devdigest/reviewer-core",
+   "manager": "npm",
+   "counts": {
+    "prod": 2,
+    "dev": 4,
+    "peer": 0,
+    "optional": 0
+   },
+   "node_modules_kb": 80028,
+   "installed_packages": 87,
+   "install_health": "ok",
+   "missing_from_install": [],
+   "possibly_unused": [
+    "tsx"
+   ],
+   "dependencies": [
+    {
+     "name": "openai",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^4.77.0",
+     "installed": "4.104.0",
+     "own_size_kb": 7536,
+     "referenced": true
+    },
+    {
+     "name": "zod",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^3.24.1",
+     "installed": "3.25.76",
+     "own_size_kb": 5136,
+     "referenced": true
+    },
+    {
+     "name": "@types/node",
+     "type": "dev",
+     "kind": "types",
+     "range": "^22.10.0",
+     "installed": "22.19.20",
+     "own_size_kb": 2548,
+     "referenced": true
+    },
+    {
+     "name": "tsx",
+     "type": "dev",
+     "kind": "build/test tool",
+     "range": "^4.19.2",
+     "installed": "4.22.4",
+     "own_size_kb": 664,
+     "referenced": false
+    },
+    {
+     "name": "typescript",
+     "type": "dev",
+     "kind": "build/test tool",
+     "range": "^5.7.2",
+     "installed": "5.9.3",
+     "own_size_kb": 23388,
+     "referenced": true
+    },
+    {
+     "name": "vitest",
+     "type": "dev",
+     "kind": "build/test tool",
+     "range": "^2.1.8",
+     "installed": "2.1.9",
+     "own_size_kb": 1896,
+     "referenced": true
+    }
+   ],
+   "links": [
+    {
+     "to": "server",
+     "kind": "path alias",
+     "detail": "@devdigest/shared -> ../server/src/vendor/shared/index.ts"
+    }
+   ]
+  },
+  {
+   "path": "server",
+   "name": "@devdigest/api",
+   "manager": "pnpm",
+   "counts": {
+    "prod": 23,
+    "dev": 8,
+    "peer": 0,
+    "optional": 0
+   },
+   "node_modules_kb": 243916,
+   "installed_packages": 441,
+   "install_health": "stale: declared but not installed",
+   "missing_from_install": [
+    "fflate"
+   ],
+   "possibly_unused": [
+    "@fastify/autoload",
+    "testcontainers"
+   ],
+   "dependencies": [
+    {
+     "name": "@anthropic-ai/sdk",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^0.33.1",
+     "installed": "0.33.1",
+     "own_size_kb": 1884,
+     "referenced": true
+    },
+    {
+     "name": "@ast-grep/napi",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "0.43.0",
+     "installed": "0.43.0",
+     "own_size_kb": 392,
+     "referenced": true
+    },
+    {
+     "name": "@fastify/autoload",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^6.0.3",
+     "installed": "6.3.1",
+     "own_size_kb": 1216,
+     "referenced": false
+    },
+    {
+     "name": "@fastify/cors",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^10.0.2",
+     "installed": "10.1.0",
+     "own_size_kb": 168,
+     "referenced": true
+    },
+    {
+     "name": "@fastify/helmet",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^13.0.2",
+     "installed": "13.0.2",
+     "own_size_kb": 108,
+     "referenced": true
+    },
+    {
+     "name": "@fastify/rate-limit",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^11.0.0",
+     "installed": "11.0.0",
+     "own_size_kb": 276,
+     "referenced": true
+    },
+    {
+     "name": "@vscode/ripgrep",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^1.15.9",
+     "installed": "1.18.0",
+     "own_size_kb": 20,
+     "referenced": true
+    },
+    {
+     "name": "dependency-cruiser",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^17.4.3",
+     "installed": "17.4.3",
+     "own_size_kb": 1552,
+     "referenced": true
+    },
+    {
+     "name": "dotenv",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^16.4.7",
+     "installed": "16.6.1",
+     "own_size_kb": 108,
+     "referenced": true
+    },
+    {
+     "name": "drizzle-orm",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^0.38.3",
+     "installed": "0.38.4",
+     "own_size_kb": 13484,
+     "referenced": true
+    },
+    {
+     "name": "fastify",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^5.2.0",
+     "installed": "5.8.5",
+     "own_size_kb": 3544,
+     "referenced": true
+    },
+    {
+     "name": "fastify-sse-v2",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^4.2.1",
+     "installed": "4.2.2",
+     "own_size_kb": 76,
+     "referenced": true
+    },
+    {
+     "name": "fastify-type-provider-zod",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^4.0.2",
+     "installed": "4.0.2",
+     "own_size_kb": 56,
+     "referenced": true
+    },
+    {
+     "name": "fflate",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^0.8.3",
+     "installed": null,
+     "own_size_kb": null,
+     "referenced": true
+    },
+    {
+     "name": "graphology",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^0.26.0",
+     "installed": "0.26.0",
+     "own_size_kb": 2724,
+     "referenced": true
+    },
+    {
+     "name": "graphology-metrics",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^2.4.0",
+     "installed": "2.4.0",
+     "own_size_kb": 304,
+     "referenced": true
+    },
+    {
+     "name": "js-tiktoken",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^1.0.21",
+     "installed": "1.0.21",
+     "own_size_kb": 22008,
+     "referenced": true
+    },
+    {
+     "name": "octokit",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^4.0.3",
+     "installed": "4.1.4",
+     "own_size_kb": 88,
+     "referenced": true
+    },
+    {
+     "name": "openai",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^4.77.0",
+     "installed": "4.104.0",
+     "own_size_kb": 7536,
+     "referenced": true
+    },
+    {
+     "name": "p-queue",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^8.0.1",
+     "installed": "8.1.1",
+     "own_size_kb": 80,
+     "referenced": true
+    },
+    {
+     "name": "postgres",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^3.4.5",
+     "installed": "3.4.9",
+     "own_size_kb": 380,
+     "referenced": true
+    },
+    {
+     "name": "simple-git",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^3.27.0",
+     "installed": "3.36.0",
+     "own_size_kb": 1316,
+     "referenced": true
+    },
+    {
+     "name": "zod",
+     "type": "prod",
+     "kind": "runtime",
+     "range": "^3.24.1",
+     "installed": "3.25.76",
+     "own_size_kb": 5136,
+     "referenced": true
+    },
+    {
+     "name": "@testcontainers/postgresql",
+     "type": "dev",
+     "kind": "build/test tool",
+     "range": "^10.16.0",
+     "installed": "10.28.0",
+     "own_size_kb": 40,
+     "referenced": true
+    },
+    {
+     "name": "@types/node",
+     "type": "dev",
+     "kind": "types",
+     "range": "^22.10.0",
+     "installed": "22.19.19",
+     "own_size_kb": 2536,
+     "referenced": true
+    },
+    {
+     "name": "drizzle-kit",
+     "type": "dev",
+     "kind": "build/test tool",
+     "range": "^0.30.1",
+     "installed": "0.30.6",
+     "own_size_kb": 7604,
+     "referenced": true
+    },
+    {
+     "name": "pino-pretty",
+     "type": "dev",
+     "kind": "dev library",
+     "range": "^13.0.0",
+     "installed": "13.1.3",
+     "own_size_kb": 448,
+     "referenced": true
+    },
+    {
+     "name": "testcontainers",
+     "type": "dev",
+     "kind": "build/test tool",
+     "range": "^10.16.0",
+     "installed": "10.28.0",
+     "own_size_kb": 1184,
+     "referenced": false
+    },
+    {
+     "name": "tsx",
+     "type": "dev",
+     "kind": "build/test tool",
+     "range": "^4.19.2",
+     "installed": "4.22.4",
+     "own_size_kb": 664,
+     "referenced": true
+    },
+    {
+     "name": "typescript",
+     "type": "dev",
+     "kind": "build/test tool",
+     "range": "^5.7.2",
+     "installed": "5.9.3",
+     "own_size_kb": 23388,
+     "referenced": true
+    },
+    {
+     "name": "vitest",
+     "type": "dev",
+     "kind": "build/test tool",
+     "range": "^2.1.8",
+     "installed": "2.1.9",
+     "own_size_kb": 1896,
+     "referenced": true
+    }
+   ],
+   "links": [
+    {
+     "to": "reviewer-core",
+     "kind": "path alias",
+     "detail": "@devdigest/reviewer-core -> ../reviewer-core/src/index.ts"
+    }
+   ]
+  }
+ ],
+ "shared_dependencies": [
+  {
+   "name": "@types/node",
+   "packages": [
+    {
+     "path": "client",
+     "range": "^22.10.0",
+     "installed": "22.19.19"
+    },
+    {
+     "path": "e2e",
+     "range": "^22.10.0",
+     "installed": null
+    },
+    {
+     "path": "mcp-server",
+     "range": "^22.10.0",
+     "installed": null
+    },
+    {
+     "path": "reviewer-core",
+     "range": "^22.10.0",
+     "installed": "22.19.20"
+    },
+    {
+     "path": "server",
+     "range": "^22.10.0",
+     "installed": "22.19.19"
+    },
+    {
+     "path": "evals",
+     "range": "^22.0.0",
+     "installed": "22.20.0"
+    }
+   ],
+   "major_drift": false
+  },
+  {
+   "name": "openai",
+   "packages": [
+    {
+     "path": "reviewer-core",
+     "range": "^4.77.0",
+     "installed": "4.104.0"
+    },
+    {
+     "path": "server",
+     "range": "^4.77.0",
+     "installed": "4.104.0"
+    },
+    {
+     "path": "evals",
+     "range": "^4.77.0",
+     "installed": "4.104.0"
+    }
+   ],
+   "major_drift": false
+  },
+  {
+   "name": "tsx",
+   "packages": [
+    {
+     "path": "e2e",
+     "range": "^4.19.2",
+     "installed": null
+    },
+    {
+     "path": "mcp-server",
+     "range": "^4.19.2",
+     "installed": null
+    },
+    {
+     "path": "reviewer-core",
+     "range": "^4.19.2",
+     "installed": "4.22.4"
+    },
+    {
+     "path": "server",
+     "range": "^4.19.2",
+     "installed": "4.22.4"
+    },
+    {
+     "path": "evals",
+     "range": "^4.19.0",
+     "installed": "4.22.4"
+    }
+   ],
+   "major_drift": false
+  },
+  {
+   "name": "typescript",
+   "packages": [
+    {
+     "path": "client",
+     "range": "^5.7.2",
+     "installed": "5.9.3"
+    },
+    {
+     "path": "e2e",
+     "range": "^5.7.2",
+     "installed": null
+    },
+    {
+     "path": "mcp-server",
+     "range": "^5.7.2",
+     "installed": null
+    },
+    {
+     "path": "reviewer-core",
+     "range": "^5.7.2",
+     "installed": "5.9.3"
+    },
+    {
+     "path": "server",
+     "range": "^5.7.2",
+     "installed": "5.9.3"
+    },
+    {
+     "path": "evals",
+     "range": "^5.6.0",
+     "installed": "5.9.3"
+    }
+   ],
+   "major_drift": false
+  },
+  {
+   "name": "vitest",
+   "packages": [
+    {
+     "path": "client",
+     "range": "^2.1.8",
+     "installed": "2.1.9"
+    },
+    {
+     "path": "mcp-server",
+     "range": "^2.1.8",
+     "installed": null
+    },
+    {
+     "path": "reviewer-core",
+     "range": "^2.1.8",
+     "installed": "2.1.9"
+    },
+    {
+     "path": "server",
+     "range": "^2.1.8",
+     "installed": "2.1.9"
+    },
+    {
+     "path": "evals",
+     "range": "^2.1.0",
+     "installed": "2.1.9"
+    }
+   ],
+   "major_drift": false
+  },
+  {
+   "name": "zod",
+   "packages": [
+    {
+     "path": "client",
+     "range": "^3.24.1",
+     "installed": "3.25.76"
+    },
+    {
+     "path": "mcp-server",
+     "range": "^4.6.5",
+     "installed": null
+    },
+    {
+     "path": "reviewer-core",
+     "range": "^3.24.1",
+     "installed": "3.25.76"
+    },
+    {
+     "path": "server",
+     "range": "^3.24.1",
+     "installed": "3.25.76"
+    }
+   ],
+   "major_drift": true
+  }
+ ],
+ "notes": [],
+ "mermaid": "graph LR\n  client[\"client<br/>14 prod / 12 dev<br/>620 MB installed\"]\n  e2e[\"e2e<br/>0 prod / 3 dev\"]\n  evals[\"evals<br/>2 prod / 5 dev<br/>352 MB installed\"]\n  mcp_server[\"mcp-server<br/>2 prod / 5 dev\"]\n  reviewer_core[\"reviewer-core<br/>2 prod / 4 dev<br/>78 MB installed\"]\n  server[\"server<br/>23 prod / 8 dev<br/>238 MB installed\"]\n  client -.->|mirrored copy| server\n  client -.->|HTTP| server\n  mcp_server -->|path alias| server\n  mcp_server -.->|HTTP| server\n  reviewer_core -->|path alias| server\n  server -->|path alias| reviewer_core\n  client_next([\"next 152.3 MB\"])\n  client --- client_next\n  client_mermaid([\"mermaid 75.3 MB\"])\n  client --- client_mermaid\n  client_lucide_react([\"lucide-react 36.2 MB\"])\n  client --- client_lucide_react\n  reviewer_core_openai([\"openai 7.4 MB\"])\n  reviewer_core --- reviewer_core_openai\n  reviewer_core_zod([\"zod 5.0 MB\"])\n  reviewer_core --- reviewer_core_zod\n  server_js_tiktoken([\"js-tiktoken 21.5 MB\"])\n  server --- server_js_tiktoken\n  server_drizzle_orm([\"drizzle-orm 13.2 MB\"])\n  server --- server_drizzle_orm\n  server_openai([\"openai 7.4 MB\"])\n  server --- server_openai"
+}

@@ -2,7 +2,7 @@
 name: dependency-checker
 description: Audits the npm dependencies of every package in this repo (server, client, reviewer-core, e2e, mcp-server) and reports how the packages depend on each other, what each one depends on by type (prod or dev; runtime, types or build tool), how much each installed dependency and each node_modules weighs, version drift across packages, stale installs and possibly unused dependencies, with a Mermaid map and prioritized recommendations at the end. Use it whenever someone asks about dependencies, packages, node_modules size, what is heavy, what can be removed, version drift (for example zod 3 vs 4), unused packages, a dependency audit or cleanup, or says "залежності", "скільки важить", "що можна викинути", "аудит пакетів", even if they name only one package. Read-only. Not for adding or upgrading one dependency (use the package manager) or for import boundaries inside server/ (onion-architecture).
 metadata:
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # dependency-checker
@@ -34,10 +34,25 @@ API). Across packages it lists deps declared more than once and flags major-vers
 - **Possibly unused** means no import, script, peer or config reference was found. Before you
   recommend removing one, grep for it yourself and quote what you found (or didn't). Transitive
   helpers declared directly (a plugin's own dependency) are "declared but only used through X".
+- **On an uninstalled package the list is weaker.** The collector resolves peer and config
+  references through `node_modules`, so without it a dependency that nothing imports but another
+  dependency needs as a peer (`react-dom` next to `react` and `next`) shows up as unused. Say the
+  list is less reliable there, and never recommend removing a peer.
 - **Sizes** are installed disk size, not bundle size. Say so once in the report; a 150 MB `next`
   is not 150 MB shipped to users.
-- **Not installed / stale**: a package without `node_modules` gets "n/a" for sizes; a declared dep
-  missing from `node_modules` means the install is older than `package.json`. Both are findings.
+- **Own size is not total weight.** `own_size_kb` is the dependency's own directory without its
+  dependencies, and `node_modules_kb` is the whole package. Neither answers "how much does X weigh
+  with everything it pulls in". When that is the question, say the collector doesn't measure it and
+  how to: list X's resolved tree (`pnpm why X`, `pnpm list X --depth Infinity --json`, or
+  `npm ls X --all`) and sum those directories' sizes.
+- **Not installed / stale**: a package without `node_modules` gets "n/a" for sizes, never an
+  estimate; a declared dep missing from `node_modules` means the install is older than
+  `package.json`. Both are findings. Tell the user how to get real numbers without changing this
+  tree: re-run the collector on a checkout where the package is installed (a fresh worktree often
+  has none while the main checkout does), or install it as a separate step and re-run.
+- **Major drift across shared code**: look at how the package on the other major imports the shared
+  code. If every crossing import is `import type`, the two majors never meet at runtime; if any
+  value is imported (a schema it parses, a function it calls), they do. That decides P0 vs P1.
 - Network checks (`pnpm outdated`, `npm audit`) only when asked, labelled as such.
 
 ## 3. Prioritize
@@ -46,8 +61,8 @@ Every recommendation carries a priority, the package, the dependency, the eviden
 
 | Priority | Use it for |
 |---|---|
-| **P0**, fix now | Something is broken or will break: a declared prod dep missing from the install; a major-version split in a library that crosses packages through shared code (a contract schema read by two packages on different majors); a vulnerability, if an audit was run |
-| **P1**, plan it | Real cost: a prod dep with no usage found; a dev-only tool declared as prod; a heavy prod dep (own size over ~20 MB) that has a lighter or narrower option; a major split that doesn't cross packages |
+| **P0**, fix now | Something is broken or will break: a declared prod dep missing from the install; a major-version split in a library whose values cross packages at runtime (a shared contract schema parsed by a package on another major); a vulnerability, if an audit was run |
+| **P1**, plan it | Real cost: a prod dep with no usage found; a dev-only tool declared as prod; a heavy prod dep (own size over ~20 MB) that has a lighter or narrower option; a major split that doesn't cross packages, or crosses only through `import type` (name what would make it P0) |
 | **P2**, hygiene | Possibly unused dev deps, deps declared directly but used only through another, `@types/*` out of step with their library, packages not installed locally |
 
 Order recommendations P0 → P2, then by size of the win.
