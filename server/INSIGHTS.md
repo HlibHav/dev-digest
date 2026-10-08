@@ -12,6 +12,10 @@ fixed — add to the one that fits.
 
 ## What Doesn't Work
 
+- **2026-10-08** — One rule paragraph does not stop `architecture-reviewer` from answering `Verdict: needs-answers` on a pasted diff. `eval:repeat agents/architecture-reviewer/ -n 2` (4 cases, 8 runs): baseline 6/8; adding "a pasted diff is a target, never needs-answers" to Step 1 gave 4/8, because Haiku quoted the new rule and still asked about the base branch, and it bolded the value (`Verdict: **fail**`), which the plain `Verdict: fail` grounding substring misses. What fixed it was telling the agent where the question goes instead (an assumption under `## Not checked`) plus a plain-text verdict line the caller can parse: 7/8, needs-answers 1/8 → 0/8. Evidence: `.claude/agents/architecture-reviewer.md:114`, `.claude/agents/architecture-reviewer.md:213`
+
+- **2026-10-08** — The course template's eval cases (`bbcbced`) fail here for reasons that are not the artifact's fault: the `architecture-reviewer` cases expected rule ids (`inward-only-dependencies`, `reviewer-core-zero-io`) no doc in this repo defines and a `reviewer-core/src/pipeline/run.ts` that doesn't exist, and the workflow traces expected `server/docs/api-contracts.md`, `reviewer-core/docs/pipeline.md` and `reviewer-core/insights/gotchas.md`, also absent. Before reading a red template case as a defect, `ls` every path it names and grep the identifiers it expects; rewrite it to the artifact's own contract, then re-baseline. Evidence: `evals/agents/architecture-reviewer/architecture-reviewer.cases.ts:13`, `evals/workflow/review-workflow.cases.ts:18`
+
 - **2026-09-28** — Asserting only `decide(cmd) == "deny"` cannot catch a bug in `.claude/hooks/agent-bash-allowlist.py`. Its `main()` turns every unexpected exception into a deny (`hook error (NameError)`), so a crashing branch still returns `deny` and the test stays green. The refusal for an unwrapped test run referenced an undefined `command` for exactly this reason, and every `CodeRunsOnlyInTheSandbox` case passed. A test for a refusal branch must assert the reason text through `deny_reason()`. A command the refusal suggests must come from `render([segment])`, not `" ".join(words)`, which drops the quotes around a glob such as `'**/*.it.test.ts'` so the hook then denies its own suggestion. Evidence: `.claude/hooks/agent-bash-allowlist.py:438`, `.claude/hooks/tests/test_agent_bash_allowlist.py:60`
 
 - **2026-10-03** — `new ExternalServiceError(\`...${err.message}\`)` is sent to the browser verbatim: `app.ts` returns `AppError.message` in the response body, and the client card renders it. Provider SDK messages can echo a masked key ("Incorrect API key provided: sk-...abcd"). Throw a fixed message and put the raw text in the log note instead (the `brief:` log line carries it). If you also log it, the same key fragment lands in the log, so redact `sk-` and `Bearer` shapes first. Evidence: `server/src/modules/brief/service.ts:240`
@@ -70,6 +74,8 @@ fixed — add to the one that fits.
 - **2026-09-26** — A JSDoc block that spells out a glob such as `**/*.md` closes the comment at the `*/` inside it; `tsc` then reports a cascade of syntax errors from the middle of the doc text (first hit: `classify.ts(17,53)`) with nothing pointing at the comment. Describe glob patterns in words inside `/** … */` comments (or use `//` lines), never a literal `*/`. Evidence: `server/src/modules/smart-diff/classify.ts:15`
 
 ## Session Notes
+
+- **2026-10-08** — L06 evals: architecture-reviewer before/after (pasted diff → verdict, not questions), template agent and workflow cases rewritten to this repo → What Doesn't Work ×2. Evidence: `.claude/agents/architecture-reviewer.md:114`
 
 - **2026-09-28** — Bash-allowlist hook: the unsandboxed-run refusal raised `NameError` instead of naming the `run-tests.sh` command (PR #25) → What Doesn't Work. Evidence: `.claude/hooks/agent-bash-allowlist.py:375`
 
