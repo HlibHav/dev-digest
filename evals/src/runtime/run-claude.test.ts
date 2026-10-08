@@ -11,15 +11,17 @@ import { describe, expect, test } from "vitest";
 import { buildOptions } from "./run-claude.js";
 
 describe("buildOptions", () => {
-  test("the allow-list is also the session's whole tool set", () => {
+  // A restricted set without ToolSearch dies with "Prompt is too long" on the first tool result.
+  test("the allow-list plus ToolSearch is the session's whole tool set", () => {
     const options = buildOptions({ allowedTools: ["Read", "Grep", "Glob", "Bash"] });
-    expect(options.tools).toEqual(["Read", "Grep", "Glob", "Bash"]);
+    expect(options.tools).toEqual(["Read", "Grep", "Glob", "Bash", "ToolSearch"]);
     expect(options.allowedTools).toEqual(["Read", "Grep", "Glob", "Bash"]);
   });
 
-  test("Skill brings ToolSearch along, and nothing that writes", () => {
+  test("nothing that writes gets in", () => {
     const options = buildOptions({ allowedTools: ["Read", "Grep", "Glob", "Skill"] });
-    expect(options.tools).toEqual(["Read", "Grep", "Glob", "Skill", "ToolSearch"]);
+    expect(options.tools).not.toContain("Write");
+    expect(options.tools).not.toContain("Edit");
   });
 
   test("a content-only run gets no tools at all", () => {

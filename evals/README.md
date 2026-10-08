@@ -572,7 +572,7 @@ tokens > 125% of baseline), `missing_data` (a config has zero records for a test
 
 Sessions run with `permissionMode: "bypassPermissions"`, so `workflowTask` keeps a **read-only
 allow-list** (`Read, Grep, Glob, Task, Agent, Skill` — no `Bash`/`Write`/`Edit`). It holds only
-because `buildOptions` also sets `tools` to that list (plus `ToolSearch` when `Skill` is in it);
+because `buildOptions` also sets `tools` to that list (plus `ToolSearch`, without which the first tool result fails);
 `allowedTools` alone auto-approves and restricts nothing. Don't copy the bypass pattern into a
 context that grants write tools.
 

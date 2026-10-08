@@ -66,9 +66,10 @@ export function buildOptions(opts: RunOptions): Options {
     systemPrompt,
     // `allowedTools` only auto-approves; `tools` is what removes every other built-in tool.
     // Without it, bypassPermissions leaves Write/Edit/Bash open and a session can edit the repo.
-    // A Skill launch without ToolSearch in the set fails with "Prompt is too long" (CLI, SDK
-    // 0.3.198), so Skill brings ToolSearch along; it only loads schemas, it runs nothing.
-    tools: allowedTools.includes("Skill") ? [...allowedTools, "ToolSearch"] : allowedTools,
+    // A restricted set without ToolSearch fails with "Prompt is too long" on the first tool
+    // result (CLI, SDK 0.3.198), so every non-empty set brings ToolSearch along; it only loads
+    // tool schemas, it runs nothing.
+    tools: allowedTools.length > 0 ? [...allowedTools, "ToolSearch"] : [],
     allowedTools,
     cwd: opts.cwd ?? REPO_ROOT,
     // Default: do NOT load on-disk config — isolates the injected artifact. workflowTask overrides.
