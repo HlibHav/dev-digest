@@ -9,6 +9,8 @@ metadata:
 
 Governs **new and changed** backend code. Code that predates it is [grandfathered](reference.md#grandfathered): don't copy it, and don't migrate it unless asked. In `server/`, `pnpm lint:boundaries` machine-checks the import rules and `test/route-adapter-calls.test.ts` the route rule in step 2. Sources and history: [references.md](references.md).
 
+## Steps
+
 1. **Name the layer first.** Route `modules/<m>/routes.ts` → service `modules/<m>/service.ts` → domain `reviewer-core/src`, with contracts in `src/vendor/shared/`. Queries go in the module's repository, external systems in `src/adapters/`. Every other file, `src/platform/` included, is in the [ring table](reference.md#rings).
 2. **A route handler parses, calls a service and maps the result.** It runs no query and calls no adapter: not `container.github()`, `.git`, `.codeIndex`, `.secrets`, `.llm` or `.embedder`. Anything more can't be reused by a job or tested without Fastify. Handing adapters to a service's ports while building it in `routes.ts` is wiring, not a call (`conventions/routes.ts:71,76`).
 3. **Imports point inward.** Application files (a service, `run-executor.ts`, helpers) import no `fastify`, `drizzle-orm`, `src/db/**` (schema or row types) and no adapter. `reviewer-core` imports nothing from `server/` except `@devdigest/shared`. A route may import another module's `service.ts` to compose it; application code gets other modules only as ports.

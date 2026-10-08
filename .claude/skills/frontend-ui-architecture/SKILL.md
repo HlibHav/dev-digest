@@ -1,12 +1,14 @@
 ---
 name: frontend-ui-architecture
-version: 1.0.0
+version: 1.0.1
 description: Decides where frontend UI code goes in DevDigest's client package — which file or folder a component, constant, style, type, pure function, hook or API call belongs in, when a file becomes a folder, when something is promoted to shared, and which import directions are allowed. Use before creating any new file under client/src, when a component outgrows one file, when deciding between a colocated and a shared location, and when reviewing a diff's structure. Also triggers on "де покласти", "where does this go", "структура компонента", "folder structure", "промоутнути в shared", "barrel", "index.ts". Does NOT cover component-internal hygiene, hooks rules or React anti-patterns (react-best-practices), app/ route file conventions or RSC mechanics (next-best-practices), or performance.
 ---
 
 # frontend-ui-architecture
 
 Governs **new and changed** code under `client/src`. Existing files that predate it are grandfathered — do not restructure them as a side effect of an unrelated task. Full detail, trees and rationale: [reference.md](reference.md). Sources: [README.md](README.md).
+
+## Steps
 
 1. **Place it as close to its only consumer as possible.** A new component starts in the `_components/` folder of the route that uses it, never in `src/components/`. Same for its constants, helpers and styles. Create a shared file only when a second consumer actually exists — not in anticipation of one.
 2. **Promote on the second consumer, not before.** When a component is needed by a second *route*, move it to `src/components/<kebab-name>/` keeping the same internal shape. When it is needed by a second sibling inside one route, lift it to that route's own `constants.ts` / `helpers.ts` / `styles.ts` beside `page.tsx`. State in your report that you promoted it and what the second consumer is.

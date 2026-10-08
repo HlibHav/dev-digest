@@ -5,6 +5,8 @@ description: Reads and records module-local engineering insights in DevDigest's 
 
 # engineering-insights
 
+## Steps
+
 1. **Read first.** Once the request is known and before any work, map it to a module ([reference.md](reference.md)), read that `INSIGHTS.md` in full, and state which file you read plus up to 3 entries that bear on the task, or "nothing relevant".
 2. **Collect as you go.** When something non-obvious surfaces (a user correction, a failed approach, a repeated error, a surprising tool behavior, an undocumented convention), note it as a candidate. Record only what the session confirmed; an unconfirmed hunch goes to `Open Questions`.
 3. **Gate at the end.** Drop a candidate that is obvious to anyone reading the code, too generic to act on cold, or already in `CLAUDE.md`, `.claude/rules/`, or `docs/`. Nothing left → say "nothing worth recording" and stop.
