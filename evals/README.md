@@ -181,10 +181,9 @@ workflow cases:
    model invokes the Skill tool, so it passes.)
 
 > **Isolation note.** `workflowTask` runs with `settingSources:["project"]` + `bypassPermissions`
-> against the live repo. A model that decides to `Write` can touch real files (e.g. your local
-> memory dir) even though `WORKFLOW_ALLOWED_TOOLS` is a read-only list. In CI this is harmless (the
-> checkout is disposable); locally, prefer the Anthropic path or a throwaway clone for the workflow
-> tier.
+> against the live repo. `runClaude` passes the allow-list as `tools` too, because `allowedTools`
+> alone only auto-approves: before that, sessions used `Write`/`Edit` and changed real files.
+> Reads still hit the live repo, including absolute paths outside a worktree.
 
 ### Wiring it into GitHub Actions (per-PR)
 
@@ -572,8 +571,10 @@ tokens > 125% of baseline), `missing_data` (a config has zero records for a test
 ## Safety
 
 Sessions run with `permissionMode: "bypassPermissions"`, so `workflowTask` keeps a **read-only
-allow-list** (`Read, Grep, Glob, Task, Agent, Skill` — no `Bash`/`Write`/`Edit`). Don't copy the
-bypass pattern into a context that grants write tools.
+allow-list** (`Read, Grep, Glob, Task, Agent, Skill` — no `Bash`/`Write`/`Edit`). It holds only
+because `buildOptions` also sets `tools` to that list (plus `ToolSearch` when `Skill` is in it);
+`allowedTools` alone auto-approves and restricts nothing. Don't copy the bypass pattern into a
+context that grants write tools.
 
 ## Deferred (recorded so it isn't rediscovered)
 

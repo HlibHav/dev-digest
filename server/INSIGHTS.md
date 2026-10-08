@@ -55,6 +55,8 @@ fixed — add to the one that fits.
 
 ## Tool & Library Notes
 
+- **2026-10-08** — In the Claude Agent SDK (0.3.198) `allowedTools` only auto-approves; under `permissionMode: "bypassPermissions"` every built-in tool stays in the session (the init message listed 31, Write/Edit/Bash among them). Eval sessions with a "read-only" allow-list wrote a made-up pgvector insight into the main checkout's `server/INSIGHTS.md` (Edit) and a new `.claude/skills/engineering-insights/INSIGHTS.md` (Write). The option that restricts is `tools`. Trap: a `tools` set that holds `Skill` without `ToolSearch` dies right after a skill launch with "Prompt is too long" at ~19k tokens, so Skill brings ToolSearch along. Evidence: `evals/src/runtime/run-claude.ts:71`, `evals/src/runtime/run-claude.test.ts:14`
+
 - **2026-10-03** — In zod v3, `.superRefine()` returns a `ZodEffects`, and `ZodEffects` has no `.extend`. Once a shared contract object carries cross-field checks, it can no longer be extended into a response shape. In `brief.ts` the plain object `PrBriefBase` stays exported. `PrBrief` and `PrBriefResult` (`PrBriefBase.extend({ stale })`) each attach the same `.superRefine(briefCrossChecks)` on their own. Keep this split whenever a contract needs both refinements and a derived variant. Evidence: `server/src/vendor/shared/contracts/brief.ts:193`, `server/src/vendor/shared/contracts/brief.ts:230`
 
 - **2026-09-22** — dependency-cruiser 17.4.3 rejects a rule whose regex nests quantifiers, e.g. `node_modules/(\.pnpm/[^/]+/node_modules/)?drizzle-orm/`, with `has an unsafe regular expression. Bailing out.`, and rejects `enhancedResolveOptions.extensionAlias` with `must NOT have additional properties`. Neither is needed: a plain `node_modules/(pkg)/` matches pnpm-resolved paths, and TS `.js` imports resolve to `.ts` with only `tsConfig` set. Its exit code is the violation count (3 planted edges → 3, one → 1), so treat any non-zero as a failure. Evidence: `server/.dependency-cruiser.cjs:25`, `server/package.json:11`
@@ -74,6 +76,8 @@ fixed — add to the one that fits.
 - **2026-09-26** — A JSDoc block that spells out a glob such as `**/*.md` closes the comment at the `*/` inside it; `tsc` then reports a cascade of syntax errors from the middle of the doc text (first hit: `classify.ts(17,53)`) with nothing pointing at the comment. Describe glob patterns in words inside `/** … */` comments (or use `//` lines), never a literal `*/`. Evidence: `server/src/modules/smart-diff/classify.ts:15`
 
 ## Session Notes
+
+- **2026-10-08** — Eval sandbox leak: sessions edited the repo through tools outside the allow-list; `run-claude.ts` now passes `tools` → Tool & Library Notes ×1. Evidence: `evals/src/runtime/run-claude.ts:71`
 
 - **2026-10-08** — L06 evals: architecture-reviewer before/after (pasted diff → verdict, not questions), template agent and workflow cases rewritten to this repo → What Doesn't Work ×2. Evidence: `.claude/agents/architecture-reviewer.md:114`
 
