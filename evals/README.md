@@ -426,7 +426,9 @@ pnpm eval:repeat skills/onion-architecture -n 5 --label baseline
 Runs the pattern N times, then prints per-test pass rate, a per-**practice** table
 (`passed/total (pct)`), and metric stats (`turns`, `duration_ms`, `tokens_out` as mean ± stddev;
 n<5 prints an "indicative only" caveat). `--label` saves the aggregate to
-`results/repeat-<label>.json` for delta.
+`results/repeat-<label>.json` for delta. `-n` is capped at 2 to bound spend; an A/B that has
+to decide something needs more, so raise the cap with `EVAL_REPEAT_MAX=<n>` (for example
+`EVAL_REPEAT_MAX=4 pnpm eval:repeat agents/architecture-reviewer/ -n 4 --label base4`).
 
 ### `eval:delta` — version vs version (the canonical loop)
 
