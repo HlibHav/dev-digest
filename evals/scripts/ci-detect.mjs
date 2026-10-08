@@ -63,6 +63,7 @@ const skippedAgents = agentNames.filter((n) => !hasEvals("agents", n));
 const runWorkflow = changed.some(
   (f) =>
     f === "CLAUDE.md" ||
+    f === "AGENTS.md" || // CLAUDE.md is a symlink to it; git records edits here
     f === ".claude/CLAUDE.md" ||
     /^\.claude\/agents\/.+\.md$/.test(f) ||
     /^evals\/workflow\//.test(f) ||

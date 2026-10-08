@@ -1,7 +1,7 @@
 # Workflow evals — the live harness (CLAUDE.md + skills + subagents loaded from disk): routing
 # reads, subagent dispatch, skill activation and a with/without-CLAUDE.md contrast.
 #
-# Runs when CLAUDE.md, an agent definition, the workflow cases or the eval engine change
+# Runs when CLAUDE.md (git sees AGENTS.md, its symlink target), an agent definition, the workflow cases or the eval engine change
 # (scripts/ci-detect.mjs). Tool tier, so the model goes through the bundled LiteLLM proxy.
 # Activation cases are behaviour-shaped and only indicative on non-Anthropic models
 # (evals/README.md), so this job reports but does not block. Needs the OPENROUTER_API_KEY secret.
@@ -11,6 +11,7 @@ on:
   push:
     paths:
       - 'CLAUDE.md'
+      - 'AGENTS.md'
       - '.claude/agents/**'
       - 'evals/workflow/**'
       - 'evals/src/**'
@@ -18,6 +19,7 @@ on:
   pull_request:
     paths:
       - 'CLAUDE.md'
+      - 'AGENTS.md'
       - '.claude/agents/**'
       - 'evals/workflow/**'
       - 'evals/src/**'

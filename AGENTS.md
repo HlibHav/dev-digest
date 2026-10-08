@@ -74,7 +74,7 @@ suites on push and on pull requests that touch these paths (`.github/workflows/e
 |---|---|---|
 | `.claude/skills/<name>/**` or `evals/skills/<name>/**` | `pnpm exec vitest run skills/<name>/` (all: `pnpm eval:skills`) | `eval-skills` |
 | `.claude/agents/<name>.md` or `evals/agents/<name>/**` | `pnpm exec vitest run agents/<name>/` (all: `pnpm eval:agents`) | `eval-agents` |
-| `CLAUDE.md` (= `AGENTS.md`), an agent definition, `evals/workflow/**` | `pnpm eval:workflow` | `eval-workflow` |
+| `AGENTS.md` (`CLAUDE.md` is a symlink to it), an agent definition, `evals/workflow/**` | `pnpm eval:workflow` | `eval-workflow` |
 
 ## Naming conventions
 
