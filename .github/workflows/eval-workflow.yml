@@ -4,7 +4,7 @@
 # Runs when CLAUDE.md (git sees AGENTS.md, its symlink target), an agent definition, the workflow cases or the eval engine change
 # (scripts/ci-detect.mjs). Tool tier, so the model goes through the bundled LiteLLM proxy.
 # Activation cases are behaviour-shaped and only indicative on non-Anthropic models
-# (evals/README.md), so this job reports but does not block. Needs the OPENROUTER_API_KEY secret.
+# (evals/README.md), so the eval step reports but does not block. Needs the OPENROUTER_API_KEY secret.
 name: eval-workflow
 
 on:
@@ -66,7 +66,6 @@ jobs:
     needs: changes
     if: needs.changes.outputs.run_workflow == 'true'
     runs-on: ubuntu-latest
-    continue-on-error: true
     defaults:
       run:
         working-directory: evals
@@ -88,7 +87,11 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: docker compose -f proxy/docker-compose.yml up -d
       - run: pnpm proxy:wait
-      - run: pnpm exec vitest run workflow --no-file-parallelism
+      # Report-only: a failed case shows in the log and as a warning, not as a red check. Model
+      # noise (DeepSeek/Haiku variance, a provider timeout) is not a broken PR. Setup, the proxy
+      # and eval:quality still fail the job.
+      - continue-on-error: true
+        run: pnpm exec vitest run workflow --no-file-parallelism
       - if: failure()
         run: docker compose -f proxy/docker-compose.yml logs --tail 100
       - if: always()

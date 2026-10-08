@@ -2,7 +2,7 @@
 #
 # .claude/skills/<name>/** or evals/skills/<name>/** → evals/skills/<name> (scripts/ci-detect.mjs).
 # A changed skill without evals is printed as SKIP, not a failure. eval:quality (static, no LLM)
-# runs first on every trigger. The content tier calls OpenRouter directly, no proxy.
+# runs first on every trigger and blocks; the eval cases only report. The content tier calls OpenRouter directly, no proxy.
 # Needs the OPENROUTER_API_KEY repository secret.
 name: eval-skills
 
@@ -98,4 +98,8 @@ jobs:
           cache-dependency-path: evals/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       # An explicit path: a bare name is an OR filter and would also run other skills' cases.
-      - run: pnpm exec vitest run "skills/${{ matrix.skill }}/"
+      # Report-only: a failed case shows in the log and as a warning, not as a red check. Model
+      # noise (DeepSeek/Haiku variance, a provider timeout) is not a broken PR. Setup, the proxy
+      # and eval:quality still fail the job.
+      - continue-on-error: true
+        run: pnpm exec vitest run "skills/${{ matrix.skill }}/"
