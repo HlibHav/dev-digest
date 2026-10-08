@@ -53,10 +53,19 @@ const agentNames = touched(
   /^evals\/agents\/([^/]+)\//,
 );
 
+// The tool tiers (agents, workflow) run through the LiteLLM proxy and the eval workflows; a change
+// to either can break every agent run, so it re-runs every agent that has evals.
+const toolInfraChanged = changed.some(
+  (f) => /^evals\/proxy\//.test(f) || /^\.github\/workflows\/eval-(agents|workflow)\.yml$/.test(f),
+);
+if (toolInfraChanged && existsSync(join(EVALS_DIR, "agents"))) {
+  for (const n of readdirSync(join(EVALS_DIR, "agents"))) agentNames.push(n);
+}
+
 const skills = skillNames.filter((n) => hasEvals("skills", n));
 const skippedSkills = skillNames.filter((n) => !hasEvals("skills", n));
-const agents = agentNames.filter((n) => hasEvals("agents", n));
-const skippedAgents = agentNames.filter((n) => !hasEvals("agents", n));
+const agents = [...new Set(agentNames)].filter((n) => hasEvals("agents", n));
+const skippedAgents = [...new Set(agentNames)].filter((n) => !hasEvals("agents", n));
 
 // The workflow tier measures the LIVE harness, so anything that changes it re-triggers it:
 // the root or .claude CLAUDE.md, any agent definition, the workflow cases, or the engine itself.
@@ -67,7 +76,8 @@ const runWorkflow = changed.some(
     f === ".claude/CLAUDE.md" ||
     /^\.claude\/agents\/.+\.md$/.test(f) ||
     /^evals\/workflow\//.test(f) ||
-    /^evals\/src\//.test(f),
+    /^evals\/src\//.test(f) ||
+    toolInfraChanged,
 );
 
 const out = process.env.GITHUB_OUTPUT;
