@@ -67,6 +67,15 @@ No linter or formatter is configured in any package: typecheck + tests are the g
 `server/`'s import-boundary check (`pnpm lint:boundaries`, dependency-cruiser). A change in
 `reviewer-core/` must also pass `server/`'s checks.
 
+Harness changes run the evals (from `evals/`, `pnpm eval:quality` first). CI runs the same
+suites on push and on pull requests that touch these paths (`.github/workflows/eval-*.yml`):
+
+| Change | Local run | CI |
+|---|---|---|
+| `.claude/skills/<name>/**` or `evals/skills/<name>/**` | `pnpm exec vitest run skills/<name>/` (all: `pnpm eval:skills`) | `eval-skills` |
+| `.claude/agents/<name>.md` or `evals/agents/<name>/**` | `pnpm exec vitest run agents/<name>/` (all: `pnpm eval:agents`) | `eval-agents` |
+| `CLAUDE.md` (= `AGENTS.md`), an agent definition, `evals/workflow/**` | `pnpm eval:workflow` | `eval-workflow` |
+
 ## Naming conventions
 
 - **Server files:** kebab-case (`run-executor.ts`, `diff-loader.ts`). A module is
@@ -129,7 +138,9 @@ No linter or formatter is configured in any package: typecheck + tests are the g
 - Adding or changing a skill (`.claude/skills/**`) or an agent (`.claude/agents/**`) → its cases in
   `evals/skills/<name>/` or `evals/agents/<name>/` (`<name>.eval.ts`, `<name>.cases.ts`, `fixtures/`).
   Fixtures stay out of `.claude/`, so a planted violation never reads as guidance. Gate with
-  `pnpm eval:quality`; measure a change with `eval:repeat --label` + `eval:delta`, and the
-  artifact's lift with `eval:benchmark`. How-to: `evals/README.md`.
+  `pnpm eval:quality`, then run the suite the change maps to in the table under **Check**:
+  changed `.claude/skills` → `eval:skills`, changed `.claude/agents` → `eval:agents`, changed
+  `CLAUDE.md` → `eval:workflow`. Measure a change with `eval:repeat --label` (before the edit) +
+  `eval:delta`, and the artifact's lift with `eval:benchmark`. How-to: `evals/README.md`.
 - Finishing a non-trivial task → `engineering-insights` to record what was learned in the touched
   package's `INSIGHTS.md`. Don't skip it; "nothing worth recording" is a valid outcome.

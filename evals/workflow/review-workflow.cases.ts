@@ -5,9 +5,11 @@ import type { WorkflowCase } from "../src/index.js";
  * loaded via settingSources:["project"]) behaves as documented. Organized by scenario, not by a
  * single artifact, because these behaviors are cross-cutting.
  *
- * Budget: 5 Claude sessions total.
+ * Budget: 8 Claude sessions total.
  *   - 3 × trace     → 1 session each                      = 3
  *   - 1 × activation pair (positive + near-miss negative) = 2
+ *   - 1 × activation neutral negative                     = 1
+ *   - 1 × contrast (treatment + control)                  = 2
  *
  * `trace` folds several assertions into ONE session (cheaper, coarser) and stops early once its
  * evidence is in — so a dispatch-bearing trace never waits out the nested subagent's full run.
@@ -76,5 +78,30 @@ export const cases: WorkflowCase[] = [
     skill: "engineering-insights",
     shouldActivate: false,
     maxTurns: 4,
+  },
+
+  // --- activation (1 session): neutral negative ------------------------------------------------
+  // A general question with no repo task in it: no project skill should engage. dependency-checker
+  // is the one with the broadest triggers ("залежності", "пакети"), so it is the one to watch.
+  {
+    kind: "activation",
+    name: "neutral negative — a general npm question does not run the dependency audit",
+    prompt: "Коротко: чим у npm відрізняються dependencies від devDependencies?",
+    skill: "dependency-checker",
+    shouldActivate: false,
+    maxTurns: 3,
+  },
+
+  // --- contrast (2 sessions): with CLAUDE.md vs without -------------------------------------------
+  // The prompt names no path. Only CLAUDE.md's "Use when" row (model choice → docs/agent-prompts/)
+  // leads to the file, so the control (empty tmpdir, no on-disk config) has nothing to follow.
+  {
+    kind: "contrast",
+    name: "CLAUDE.md routes a model-choice question to docs/agent-prompts",
+    prompt:
+      "Яку модель цей проєкт радить брати для агента-ревʼюера? Знайди, де в документації це " +
+      "описано, і прочитай саме той файл.",
+    expectFileRead: "docs/agent-prompts/choosing-a-model.md",
+    maxTurns: 6,
   },
 ];
