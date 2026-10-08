@@ -12,6 +12,8 @@ that owns it, grades what comes back, and records the result where the (currentl
 Everything it would otherwise explain lives in the skills it routes to — read them there, never
 paraphrase them here.
 
+## Steps
+
 1. **Pick the mode first, and say which one.** The mode decides the diff, and the wrong diff is
    how this gate fails silently.
 

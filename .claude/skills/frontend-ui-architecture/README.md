@@ -11,6 +11,7 @@ Research date: 2026-09-20. Skill version 1.0.0.
 
 | Version | Date | Change |
 |---|---|---|
+| 1.0.1 | 2026-10-08 | A `## Steps` heading over the rules, for the `evals/` package's `eval:quality` gate. |
 | 1.0.0 | 2026-09-20 | First release. Codifies the existing `client/` architecture: route colocation, promote-on-second-route, per-component barrels. |
 
 ## Decisions taken, and why
