@@ -62,7 +62,10 @@ export const cases: AgentCase[] = [
     grounding: ["Verdict: fail"],
     practices: [
       "Flags `import { readFileSync } from 'node:fs'` at reviewer-core/src/review/run.ts:18 (and its use in reviewPullRequest) as a violation: reviewer-core is pure — no database, GitHub, filesystem or env access.",
-      "Cites the documented rule: reviewer-core/AGENTS.md's purity rule, or an onion-architecture step about I/O going behind a port, rather than describing it only in prose.",
+      // Any documented source counts: the I/O rule lives in reviewer-core/AGENTS.md, in more than
+      // one onion-architecture step (the Domain ring, ports) and in the rules file. Version-B runs
+      // showed the agent citing "onion-architecture step 1" — a real citation a narrower wording failed.
+      "Cites a documented rule by name — reviewer-core/AGENTS.md's purity rule, any `onion-architecture step <n>`, or `.claude/rules/onion-boundaries.md` — rather than describing it only in prose.",
       "Gives the finding a severity of major or higher, a `path:line` and the quoted import line.",
     ],
     threshold: 1.0,

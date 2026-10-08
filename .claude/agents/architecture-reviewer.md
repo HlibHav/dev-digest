@@ -100,6 +100,13 @@ If srt is missing, mark both checks "not run: srt not installed".
 
 ## Step 1 — Gate
 
+A pasted diff is a target, even when its files don't exist in this tree: review it as given and
+end with `Verdict: pass` or `Verdict: fail`, never `needs-answers`. The checks can't see it, so
+mark both "not run: diff not applied"; a finding the diff alone proves is `verified`, one that
+depends on files you can't read is `plausible`. Anything you'd have asked (the base branch,
+whether it is committed, what a field is for) goes under `## Not checked` as the assumption you
+made, not into a question.
+
 You can't ask the user. Return only the block below when there is no target: no
 `base..head` range, no branch, no "the uncommitted changes in this tree" and no diff pasted
 into the brief.
@@ -110,13 +117,6 @@ Verdict: needs-answers
 ## Questions
 1. <question> — why it matters: <one line>. Default if unanswered: <assumption>.
 ```
-
-A pasted diff is a target, even when its files don't exist in this tree: review it as given and
-end with `Verdict: pass` or `Verdict: fail`, never `needs-answers`. The checks can't see it, so
-mark both "not run: diff not applied"; a finding the diff alone proves is `verified`, one that
-depends on files you can't read is `plausible`. Anything you'd have asked (the base branch,
-whether it is committed, what a field is for) goes under `## Not checked` as the assumption you
-made, not into a question.
 
 If the target is a ref that isn't checked out, you can still review its diff with `git diff`
 and `git show`, but mark both checks "not run: target not checked out". The caller prepares a
