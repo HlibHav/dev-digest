@@ -1,0 +1,32 @@
+diff --git a/reviewer-core/src/review/run.ts b/reviewer-core/src/review/run.ts
+index 88e1b0c..88ff810 100644
+--- a/reviewer-core/src/review/run.ts
++++ b/reviewer-core/src/review/run.ts
+@@ -15,6 +15,7 @@ import {
+ } from '../prompt.js';
+ import { groundFindings, groundingSummary } from '../grounding.js';
+ import { reduceReviews, scoreFromFindings, sliceDiff } from './reduce.js';
++import { readFileSync } from 'node:fs';
+ 
+ /**
+  * reviewPullRequest — the review engine entry point.
+@@ -49,6 +50,8 @@ export interface ReviewEvent {
+ export interface ReviewInput {
+   /** Agent system prompt (trusted). */
+   systemPrompt: string;
++  /** Optional file to read the system prompt from instead (local prompt experiments). */
++  systemPromptPath?: string;
+   /** Model id understood by the injected provider (e.g. 'deepseek/deepseek-v4-flash'). */
+   model: string;
+   /** The PR's unified diff (already parsed; hunks carry new-side line numbers). */
+@@ -136,7 +139,9 @@ export async function reviewPullRequest(input: ReviewInput): Promise<ReviewOutco
+     input.onEvent?.({ kind, msg, data });
+ 
+   const promptParts = {
+-    system: input.systemPrompt,
++    system: input.systemPromptPath
++      ? readFileSync(input.systemPromptPath, 'utf8')
++      : input.systemPrompt,
+     skills: input.skills,
+     memory: input.memory,
+     specs: input.specs,
