@@ -35,7 +35,8 @@ export const cases: SkillCase[] = [
       "The report's sections appear in this order: Summary, Map, Packages, Across packages, Findings, Recommendations, Method and limits.",
       "The Summary is a table with one row per package (client, e2e, evals, mcp-server, reviewer-core, server) giving manager, prod and dev counts, installed size and install health.",
       "The Mermaid map shows all six packages and their internal links (path alias, mirrored vendor/shared copy, HTTP) and stays at roughly 25 nodes or fewer.",
-      "Sizes are taken from the JSON (e.g. client ~620 MB node_modules, next ~152 MB own size) and the report says once that they are installed disk size, not bundle size.",
+      "Sizes match the JSON's KB values, in either MB convention (client node_modules 620 or 635 MB, next own size 152 or 156 MB), not estimates.",
+      "The report says at least once that the sizes are installed disk size, not bundle size shipped to users.",
       "The Recommendations section is a table whose rows each carry a priority (P0/P1/P2), the package, the dependency, the evidence and one action, ordered P0 before P1 before P2.",
     ],
     threshold: 0.75,
@@ -64,8 +65,8 @@ export const cases: SkillCase[] = [
     practices: [
       "Treats client's postcss as declared directly but used only through @tailwindcss/postcss (client/postcss.config.mjs:4; @tailwindcss/postcss depends on postcss itself), so dropping the direct declaration is P2 hygiene, not a P0/P1 unused prod dependency.",
       "Recommends removing server's @fastify/autoload (a prod dep whose only mention is a comment in server/src/modules/index.ts:24) at P1.",
-      "Treats server's testcontainers as declared but used only through @testcontainers/postgresql (server/test/helpers/pg.ts:1), not as plainly unused.",
-      "Lists reviewer-core's tsx as a possibly unused dev dependency at P2, quoting that it appears only in reviewer-core/package.json.",
+      "Notes that server's testcontainers is not imported directly, only @testcontainers/postgresql is (server/test/helpers/pg.ts:1), and treats dropping the direct declaration as P2 hygiene, not a P0/P1 removal.",
+      "Names reviewer-core's tsx specifically (not just tsx across packages) as a possibly unused dev dependency at P2, because nothing in reviewer-core uses it.",
     ],
     threshold: 0.75,
     maxTurns: 10,
@@ -79,7 +80,7 @@ export const cases: SkillCase[] = [
     ),
     practices: [
       "Reports sizes as n/a (or not available) for client, server, reviewer-core, mcp-server and e2e, and does not invent or estimate a size for any of them.",
-      "Reports evals' real size from the JSON (about 352 MB of node_modules).",
+      "Reports evals' real size from the JSON (node_modules_kb 360064, i.e. about 352 or 360 MB).",
       "Does not install anything to get the numbers, and lists the uninstalled packages as a finding.",
       "Tells the user how to get real numbers without changing this tree, e.g. re-running the collector on a checkout where those packages are installed, or installing them in a separate step and re-running.",
     ],
@@ -127,7 +128,7 @@ export const cases: SkillCase[] = [
     ),
     practices: [
       "Gives next's own installed size from the JSON (about 152 MB, own_size_kb 155972) and says it is the package's own directory without its dependencies.",
-      "Does not present the own size, or client's whole node_modules (about 620 MB), as next's total including its dependencies.",
+      "Does not present the own size, or client's whole node_modules (about 620 MB), as next's total including its dependencies; comparing next's own size to the whole node_modules (e.g. 'about a quarter of it') is fine.",
       "Says the collector does not measure transitive weight and names a concrete way to measure it (e.g. summing the sizes of next's resolved dependency tree from the lockfile or `pnpm why`/`pnpm list --depth`).",
     ],
     threshold: 0.75,
