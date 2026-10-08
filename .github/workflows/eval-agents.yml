@@ -1,0 +1,92 @@
+# Agent evals — runs the evals of every subagent definition this change touches.
+#
+# .claude/agents/<name>.md or evals/agents/<name>/** → evals/agents/<name> (scripts/ci-detect.mjs).
+# Agents are a tool tier: they run inside the Claude Agent SDK, so the model goes through the
+# bundled LiteLLM proxy. architecture-reviewer runs `pnpm lint:boundaries` and the
+# route-adapter test, so server/ and reviewer-core/ are installed from their lockfiles.
+# Needs the OPENROUTER_API_KEY repository secret.
+name: eval-agents
+
+on:
+  push:
+    paths:
+      - '.claude/agents/**'
+      - 'evals/agents/**'
+      - '.github/workflows/eval-agents.yml'
+  pull_request:
+    paths:
+      - '.claude/agents/**'
+      - 'evals/agents/**'
+      - '.github/workflows/eval-agents.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: eval-agents-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      skills: ${{ steps.detect.outputs.skills }}
+      agents: ${{ steps.detect.outputs.agents }}
+      run_workflow: ${{ steps.detect.outputs.run_workflow }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: detect
+        working-directory: evals
+        env:
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+        run: |
+          BASE="${PR_BASE:-$PUSH_BEFORE}"
+          # A new branch pushes with before=000…0; fall back to the root commit (everything changed).
+          if [ -z "$BASE" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            BASE="$(git rev-list --max-parents=0 HEAD | tail -1)"
+          fi
+          CHANGED_FILES="$(git diff --name-only "$BASE...HEAD")"
+          export CHANGED_FILES
+          node scripts/ci-detect.mjs
+
+  agents:
+    needs: changes
+    if: needs.changes.outputs.agents != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        agent: ${{ fromJSON(needs.changes.outputs.agents) }}
+    defaults:
+      run:
+        working-directory: evals
+    env:
+      EVAL_BACKEND: openrouter
+      OPENROUTER_BASE_URL: http://localhost:4000
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      EVAL_MODEL: anthropic/claude-haiku-4.5
+      EVAL_JUDGE_MODEL: anthropic/claude-haiku-4.5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: evals/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: npm ci
+        working-directory: reviewer-core
+      - run: pnpm install --frozen-lockfile
+        working-directory: server
+      - run: docker compose -f proxy/docker-compose.yml up -d
+      - run: pnpm proxy:wait
+      - run: pnpm exec vitest run "agents/${{ matrix.agent }}/" --no-file-parallelism
+      - if: failure()
+        run: docker compose -f proxy/docker-compose.yml logs --tail 100
+      - if: always()
+        run: docker compose -f proxy/docker-compose.yml down
