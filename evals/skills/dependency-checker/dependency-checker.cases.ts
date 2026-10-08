@@ -80,8 +80,6 @@ export const cases: SkillCase[] = [
     ),
     practices: [
       "Reports sizes as n/a (or not available) for client, server, reviewer-core, mcp-server and e2e, and does not invent or estimate a size for any of them.",
-      "Reports evals' real size from the JSON (node_modules_kb 360064, i.e. about 352 or 360 MB).",
-      "Does not install anything to get the numbers, and lists the uninstalled packages as a finding.",
       "Tells the user how to get real numbers without changing this tree, e.g. re-running the collector on a checkout where those packages are installed, or installing them in a separate step and re-running.",
     ],
     threshold: 0.75,
