@@ -5,8 +5,8 @@ import type { WorkflowCase } from "../src/index.js";
  * loaded via settingSources:["project"]) behaves as documented. Organized by scenario, not by a
  * single artifact, because these behaviors are cross-cutting.
  *
- * Budget: 8 Claude sessions total.
- *   - 3 × trace     → 1 session each                      = 3
+ * Budget: 11 Claude sessions total.
+ *   - 6 × trace     → 1 session each                      = 6
  *   - 1 × activation pair (positive + near-miss negative) = 2
  *   - 1 × activation neutral negative                     = 1
  *   - 1 × contrast (treatment + control)                  = 2
@@ -53,6 +53,55 @@ export const cases: WorkflowCase[] = [
       "цього репо, де це вже досліджено, і прочитай той документ.",
     expectFilesRead: ["docs/skills-control-experiment.md"],
     maxTurns: 6,
+  },
+
+  // --- trace (1 session): root CLAUDE.md → server/AGENTS.md → its "Read when" + the onion skill --
+  // Two hops in one session: root guide → server/AGENTS.md → its "Read when" row for ../TESTING.md.
+  // The middle hop is NOT asserted: once the model opens a file under server/, Claude Code auto-loads
+  // server/CLAUDE.md as context, which never shows up as a Read. A stronger model (sonnet) relied on
+  // that and reached TESTING.md without an explicit Read of AGENTS.md, so asserting the Read would
+  // fail a model that followed the guide. The second-hop doc is the proof. A backend change also
+  // routes to onion-architecture.
+  // Status 2026-10-08: red 6/6 on claude-haiku-4-5 (stops after server/INSIGHTS.md, never reaches
+  // TESTING.md); green on every facet but the since-dropped AGENTS.md Read on sonnet. Kept as a
+  // signal that the server "Read when" row is too weak for small models, not tuned until green.
+  {
+    kind: "trace",
+    name: "server task: follows server/AGENTS.md to TESTING.md, with the onion skill",
+    prompt:
+      "Хочу додати в server нове поле у відповідь review run і тест на нього. Код поки не пиши — " +
+      "склади план за настановами цього репо: у якому шарі зʼявиться поле і як воно пройде між " +
+      "шарами, і де та якого типу (unit чи integration) буде тест.",
+    expectFilesRead: ["TESTING.md"],
+    expectSkills: ["onion-architecture"],
+    maxTurns: 15,
+  },
+
+  // --- trace (1 session): root CLAUDE.md → client/AGENTS.md → vendor/ui README + placement skill --
+  // Same shape as the server case (second-hop doc as the proof, no assert on the auto-loaded
+  // middle hop), plus a near-miss negative: a client-only task must not pull the onion skill.
+  {
+    kind: "trace",
+    name: "client task: follows client/AGENTS.md to the vendor/ui README, with the placement skill",
+    prompt:
+      "Хочу додати в client новий UI-примітив — кнопку з іконкою — і використати її на сторінці PR. " +
+      "Перш ніж створювати файли — звірся з настановами цього репо для роботи в пакеті й прочитай " +
+      "те, що вони кажуть прочитати перед такою зміною.",
+    expectFilesRead: ["client/src/vendor/ui/README.md"],
+    expectSkills: ["frontend-ui-architecture"],
+    forbidSkills: ["onion-architecture"],
+    maxTurns: 12,
+  },
+
+  // --- trace (1 session): CLAUDE.md "Use when" → the SDD cascade and the agent-chain README -------
+  {
+    kind: "trace",
+    name: "a spec-first feature routes to sdd-cascade.md and the agents README",
+    prompt:
+      "Хочу зробити нову фічу spec-first — від специфікації до тестів і реалізації. Як цей репо радить " +
+      "таку роботу вести? Знайди за настановами репо відповідні документи й прочитай їх.",
+    expectFilesRead: ["docs/sdd-cascade.md", ".claude/agents/README.md"],
+    maxTurns: 8,
   },
 
   // --- activation pair (2 sessions): positive + near-miss negative ------------------------------

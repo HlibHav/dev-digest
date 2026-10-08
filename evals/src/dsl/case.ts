@@ -64,7 +64,12 @@ export type WorkflowCase =
       prompt: string;
       expectSubagents?: string[];
       expectSkills?: string[];
-      expectFilesRead?: string[];
+      /** Each entry must be read. An array entry is any-of — e.g. a package's AGENTS.md or its
+       *  CLAUDE.md symlink, since the model may open either path. */
+      expectFilesRead?: (string | string[])[];
+      /** Skills that must NOT engage in this session (a near-miss negative folded into a trace).
+       *  Checked only up to the early stop, so it guards the turns the session actually ran. */
+      forbidSkills?: string[];
       maxTurns?: number;
     };
 
@@ -148,38 +153,37 @@ export function runWorkflowCases(cases: WorkflowCase[]): void {
         // dispatch-bearing trace doesn't pay for the nested subagent's full run.
         const subs = c.expectSubagents ?? [];
         const skls = c.expectSkills ?? [];
-        const files = c.expectFilesRead ?? [];
+        const files = (c.expectFilesRead ?? []).map((f) => (Array.isArray(f) ? f : [f]));
+        const forbidden = c.forbidSkills ?? [];
         const skillEngaged = (p: { skillsInvoked: string[]; filesRead: string[] }, skill: string) =>
           p.skillsInvoked.some((s) => s === skill || s.endsWith(`:${skill}`)) ||
           p.filesRead.some((f) => f.includes(`skills/${skill}/SKILL.md`));
+        const fileRead = (reads: string[], anyOf: string[]) => reads.some((r) => anyOf.some((f) => r.includes(f)));
         const result = await workflowTask(c.prompt, {
           maxTurns: c.maxTurns,
           stopWhen: (p) =>
             subs.every((s) => p.subagents.includes(s)) &&
             skls.every((s) => skillEngaged(p, s)) &&
-            files.every((f) => p.filesRead.some((r) => r.includes(f))),
+            files.every((anyOf) => fileRead(p.filesRead, anyOf)),
         });
         logTrace(c.name, result);
-        try {
-          for (const sub of c.expectSubagents ?? []) {
-            expect(result.subagents, `subagents: ${result.subagents.join(", ")}`).toContain(sub);
-          }
-          for (const skill of c.expectSkills ?? []) {
-            expect(
-              activated(result, skill),
-              `skill ${skill} not engaged | skills: ${result.skillsInvoked.join(", ")} | reads: ${result.filesRead.join(", ")}`,
-            ).toBe(true);
-          }
-          for (const file of c.expectFilesRead ?? []) {
-            expect(
-              result.filesRead.some((f) => f.includes(file)),
-              `${file} not read | reads: ${result.filesRead.join(", ")}`,
-            ).toBe(true);
-          }
-          expect(result.isError).toBe(false);
-        } finally {
-          record(c.name, { result });
-        }
+
+        // Every facet becomes a practice in the record, so eval:repeat / eval:delta show WHICH
+        // facet of a composite trace regressed, not just that the whole case went red.
+        const trace = `skills: ${result.skillsInvoked.join(", ") || "-"} | subagents: ${result.subagents.join(", ") || "-"} | reads: ${result.filesRead.join(", ") || "-"}`;
+        const facets: Verdict["results"] = [
+          ...subs.map((s) => ({ practice: `dispatches subagent ${s}`, passed: result.subagents.includes(s), evidence: trace })),
+          ...skls.map((s) => ({ practice: `engages skill ${s}`, passed: activated(result, s), evidence: trace })),
+          ...forbidden.map((s) => ({ practice: `does not engage skill ${s}`, passed: !activated(result, s), evidence: trace })),
+          ...files.map((anyOf) => ({ practice: `reads ${anyOf.join(" | ")}`, passed: fileRead(result.filesRead, anyOf), evidence: trace })),
+          { practice: "session ends without error", passed: !result.isError, evidence: trace },
+        ];
+        const passed = facets.filter((f) => f.passed).length;
+        const verdict: Verdict = { results: facets, passed, total: facets.length, score: passed / facets.length };
+        record(c.name, { result, verdict, threshold: 1 });
+
+        const failed = facets.filter((f) => !f.passed).map((f) => f.practice);
+        expect(failed, trace).toEqual([]);
       } else {
         // contrast: treatment (real harness) vs control (empty tmpdir, no on-disk config).
         const tools = c.tools ?? ["Read", "Grep", "Glob"];
