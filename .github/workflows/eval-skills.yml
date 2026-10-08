@@ -85,8 +85,8 @@ jobs:
     env:
       EVAL_BACKEND: openrouter
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-      EVAL_MODEL: deepseek/deepseek-chat
-      EVAL_JUDGE_MODEL: deepseek/deepseek-chat
+      EVAL_MODEL: anthropic/claude-haiku-5.5
+      EVAL_JUDGE_MODEL: anthropic/claude-haiku-5.5
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
