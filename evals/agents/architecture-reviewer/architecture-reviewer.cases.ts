@@ -17,6 +17,8 @@ ${fx("checkout-service.diff")}`;
 // the checks cannot run on it; the agent should say so and still give a pass/fail verdict.
 // reviewer-core-fs-read.diff and benign-rename.diff are made from the real files at this commit;
 // checkout-service.diff touches a module that doesn't exist here, so its findings are `plausible`.
+// The fixtures carry the new-side line column that review-bundle.sh writes into hunks/*.patch
+// (number_hunks there), since that is what the agent gets in a real review.
 const REVIEWER_CORE_PROMPT = `Audit this diff against DevDigest's documented structural contracts.
 
 ${fx("reviewer-core-fs-read.diff")}`;

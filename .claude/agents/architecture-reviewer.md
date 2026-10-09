@@ -171,6 +171,9 @@ Read each hunk against the skills' numbered steps. Look in particular for:
   mechanical list.
 - Every finding names the rule as `<skill> step <n>`, gives `path:line` from the new side of
   the diff, and quotes the line or the command output.
+- When the diff's hunk lines start with a number column (bundle hunks do), that number is the
+  line's new-side line: cite it as it stands, don't count. A removed line has no number and is
+  not citable.
 - Mark each finding `verified` when a check output or the quoted code proves it on its own,
   or `plausible` when it rests on an inference you state in one line. Drop anything weaker.
 - Zero findings is a valid result. Report it as such; don't pad the review.

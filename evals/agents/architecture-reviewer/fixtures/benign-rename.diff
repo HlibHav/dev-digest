@@ -3,17 +3,17 @@ index 30d8a9d..5093882 100644
 --- a/server/src/modules/blast/helpers.ts
 +++ b/server/src/modules/blast/helpers.ts
 @@ -28,10 +28,10 @@ export interface BlastFacadeResult {
- type FacadeCaller = BlastFacadeResult['callers'][number];
- 
- /** Rank descending, then file ascending, then line ascending (AC24). */
--function compareCallers(a: FacadeCaller, b: FacadeCaller): number {
--  if (a.rank !== b.rank) return b.rank - a.rank;
--  if (a.file !== b.file) return a.file < b.file ? -1 : 1;
--  return a.line - b.line;
-+function compareCallers(left: FacadeCaller, right: FacadeCaller): number {
-+  if (left.rank !== right.rank) return right.rank - left.rank;
-+  if (left.file !== right.file) return left.file < right.file ? -1 : 1;
-+  return left.line - right.line;
- }
- 
- /**
+   28  type FacadeCaller = BlastFacadeResult['callers'][number];
+   29  
+   30  /** Rank descending, then file ascending, then line ascending (AC24). */
+      -function compareCallers(a: FacadeCaller, b: FacadeCaller): number {
+      -  if (a.rank !== b.rank) return b.rank - a.rank;
+      -  if (a.file !== b.file) return a.file < b.file ? -1 : 1;
+      -  return a.line - b.line;
+   31 +function compareCallers(left: FacadeCaller, right: FacadeCaller): number {
+   32 +  if (left.rank !== right.rank) return right.rank - left.rank;
+   33 +  if (left.file !== right.file) return left.file < right.file ? -1 : 1;
+   34 +  return left.line - right.line;
+   35  }
+   36  
+   37  /**

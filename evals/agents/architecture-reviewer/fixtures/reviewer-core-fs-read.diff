@@ -3,30 +3,30 @@ index 88e1b0c..88ff810 100644
 --- a/reviewer-core/src/review/run.ts
 +++ b/reviewer-core/src/review/run.ts
 @@ -15,6 +15,7 @@ import {
- } from '../prompt.js';
- import { groundFindings, groundingSummary } from '../grounding.js';
- import { reduceReviews, scoreFromFindings, sliceDiff } from './reduce.js';
-+import { readFileSync } from 'node:fs';
- 
- /**
-  * reviewPullRequest — the review engine entry point.
+   15  } from '../prompt.js';
+   16  import { groundFindings, groundingSummary } from '../grounding.js';
+   17  import { reduceReviews, scoreFromFindings, sliceDiff } from './reduce.js';
+   18 +import { readFileSync } from 'node:fs';
+   19  
+   20  /**
+   21   * reviewPullRequest — the review engine entry point.
 @@ -49,6 +50,8 @@ export interface ReviewEvent {
- export interface ReviewInput {
-   /** Agent system prompt (trusted). */
-   systemPrompt: string;
-+  /** Optional file to read the system prompt from instead (local prompt experiments). */
-+  systemPromptPath?: string;
-   /** Model id understood by the injected provider (e.g. 'deepseek/deepseek-v4-flash'). */
-   model: string;
-   /** The PR's unified diff (already parsed; hunks carry new-side line numbers). */
+   50  export interface ReviewInput {
+   51    /** Agent system prompt (trusted). */
+   52    systemPrompt: string;
+   53 +  /** Optional file to read the system prompt from instead (local prompt experiments). */
+   54 +  systemPromptPath?: string;
+   55    /** Model id understood by the injected provider (e.g. 'deepseek/deepseek-v4-flash'). */
+   56    model: string;
+   57    /** The PR's unified diff (already parsed; hunks carry new-side line numbers). */
 @@ -136,7 +139,9 @@ export async function reviewPullRequest(input: ReviewInput): Promise<ReviewOutco
-     input.onEvent?.({ kind, msg, data });
- 
-   const promptParts = {
--    system: input.systemPrompt,
-+    system: input.systemPromptPath
-+      ? readFileSync(input.systemPromptPath, 'utf8')
-+      : input.systemPrompt,
-     skills: input.skills,
-     memory: input.memory,
-     specs: input.specs,
+  139      input.onEvent?.({ kind, msg, data });
+  140  
+  141    const promptParts = {
+      -    system: input.systemPrompt,
+  142 +    system: input.systemPromptPath
+  143 +      ? readFileSync(input.systemPromptPath, 'utf8')
+  144 +      : input.systemPrompt,
+  145      skills: input.skills,
+  146      memory: input.memory,
+  147      specs: input.specs,

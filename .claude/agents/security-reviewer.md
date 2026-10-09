@@ -126,6 +126,9 @@ Check, for the changed lines, at least:
 - Every finding names the rule (`security §<section>` or a rule file's `path:line`), gives
   `path:line` from the new side of the diff, quotes the line, and states the exploit path in one
   sentence: who sends what, and what they get.
+- When the diff's hunk lines start with a number column (bundle hunks do), that number is the
+  line's new-side line: cite it as it stands, don't count. A removed line has no number and is
+  not citable.
 - Mark each finding `verified` when the quoted code proves the path on its own, or `plausible`
   when it rests on an inference you state in one line. Drop anything weaker.
 - Zero findings is a valid result. Report it as such.
