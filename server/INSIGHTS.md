@@ -8,6 +8,8 @@ fixed — add to the one that fits.
 
 ## What Works
 
+- **2026-10-09** — To get haiku-4-5 from a server task to its second-hop doc (`TESTING.md`), two edits were needed together: the root "Before answering" names the package `AGENTS.md` **Read when** list as the hop after `INSIGHTS.md`, and `server/AGENTS.md` opens with the test → `../TESTING.md` and backend → `onion-architecture` pointers. A probe showed the nested `server/CLAUDE.md` does load; the model just skips a Read when row at the end of it. Server workflow case, n=8: `TESTING.md` read 0/12 → 2/8, onion skill engaged 1/12 → 5/8; either edit alone moved nothing (0/4 each). Evidence: `AGENTS.md:10`, `server/AGENTS.md:3`
+
 - **2026-09-28** — To make a route's response provably match its shared contract, declare `schema: { response: { 200: <ZodSchema> } }`: the zod serializer set in `app.ts` runs `safeParse` on the way out, strips keys outside the contract, and turns a non-conforming body into a 500 `internal_error` instead of leaking it. `GET /pulls/:id/blast` is the first route to do this; any field you want on the wire (e.g. caller `rank`) must therefore be in the contract, or it silently disappears. Evidence: `server/src/modules/blast/routes.ts:26`, `server/test/blast.it.test.ts:230`
 
 ## What Doesn't Work
@@ -56,6 +58,8 @@ fixed — add to the one that fits.
 - **2026-09-16** — `diff -rq server/src/vendor/shared client/src/vendor/shared` is not clean even on `main`: `adapters.ts`, `eval-ci.ts`, `knowledge.ts`, `productionize.ts` and `trace.ts` already differ in comments. After mirroring a contract change, diff the files you touched and ignore that pre-existing comment drift instead of "fixing" it. Evidence: `server/src/vendor/shared/contracts/trace.ts:44`, `client/src/vendor/shared/contracts/trace.ts:44`
 
 ## Tool & Library Notes
+
+- **2026-10-09** — A local workflow eval run from a `.claude/worktrees/<name>` worktree does not test the worktree: haiku drops that segment from the absolute paths it builds and Reads the main checkout, so an edit in the worktree is invisible to it. Measure in a `git clone` of the branch outside any `.claude/` path, with `evals/node_modules` symlinked from the worktree. Also, `settingSources: ["project"]` still loads `~/.claude/CLAUDE.md`, an ancestor `CLAUDE.md` and the auto-memory index; `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1` drops the memory. CI has none of these. Evidence: `evals/workflow/review-workflow.cases.ts:68`
 
 - **2026-10-08** — In the Claude Agent SDK (0.3.198) `allowedTools` only auto-approves; under `permissionMode: "bypassPermissions"` every built-in tool stays in the session (the init message listed 31, Write/Edit/Bash among them). Eval sessions with a "read-only" allow-list wrote a made-up pgvector insight into the main checkout's `server/INSIGHTS.md` (Edit) and a new `.claude/skills/engineering-insights/INSIGHTS.md` (Write). The option that restricts is `tools`. Trap: a `tools` set that holds `Skill` without `ToolSearch` dies right after a skill launch with "Prompt is too long" at ~19k tokens, so Skill brings ToolSearch along. Evidence: `evals/src/runtime/run-claude.ts:71`, `evals/src/runtime/run-claude.test.ts:14`
   - **2026-10-08** — Refined: Skill is not the trigger. Any restricted set without `ToolSearch` dies on its first tool result (`Read,Grep,Glob,Bash` failed after one Read; `Read,ToolSearch` read the file), which broke the agent tier locally. Every non-empty set now gets ToolSearch. Gemini through the LiteLLM proxy did not hit it in CI. Evidence: `evals/src/runtime/run-claude.ts:72`
