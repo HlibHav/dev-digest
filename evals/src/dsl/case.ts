@@ -134,7 +134,7 @@ export function runWorkflowCases(cases: WorkflowCase[]): void {
         try {
           expect(result.subagents, `subagents: ${result.subagents.join(", ")}`).toContain(c.expectSubagent);
         } finally {
-          record(c.name, { result });
+          record(c.name, { result, passed: result.subagents.includes(c.expectSubagent) });
         }
       } else if (c.kind === "activation") {
         const result = await workflowTask(c.prompt, { maxTurns: c.maxTurns });
@@ -145,7 +145,7 @@ export function runWorkflowCases(cases: WorkflowCase[]): void {
             `skills: ${result.skillsInvoked.join(", ")} | reads: ${result.filesRead.join(", ")}`,
           ).toBe(c.shouldActivate);
         } finally {
-          record(c.name, { result });
+          record(c.name, { result, passed: activated(result, c.skill) === c.shouldActivate });
         }
       } else if (c.kind === "trace") {
         // One session, many asserts — every provided expectation is checked against the same trace.
@@ -203,8 +203,11 @@ export function runWorkflowCases(cases: WorkflowCase[]): void {
           expect(treatmentRead, `treatment reads: ${treatment.filesRead.join(", ")}`).toBe(true);
           expect(controlRead, `control reads: ${control.filesRead.join(", ")}`).toBe(false);
         } finally {
-          record(`${c.name} [treatment]`, { result: treatment });
-          record(`${c.name} [control]`, { result: control });
+          // Each side records whether it behaved as the contrast needs: treatment reads, control doesn't.
+          const treatmentPassed = treatment.filesRead.some((f) => f.includes(c.expectFileRead));
+          const controlPassed = !control.filesRead.some((f) => f.includes(c.expectFileRead));
+          record(`${c.name} [treatment]`, { result: treatment, passed: treatmentPassed });
+          record(`${c.name} [control]`, { result: control, passed: controlPassed });
         }
       }
     });
