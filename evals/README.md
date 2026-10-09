@@ -241,6 +241,11 @@ Notes:
 - Because tool tiers cost real tokens, gate on `paths:` (only when the harness/artifacts change) and
   keep the case count small. For a stricter gate, split into a required `eval:agents`/`eval:skills`
   job and a non-blocking `eval:workflow` job (activation flakiness, above).
+- This repo's `eval-*.yml` keep the case step report-only (`continue-on-error`), which also hides
+  an outage: with an exhausted key every session dies on a 402 and the job still reads green. So
+  the step tees its output to `eval.log` and the next step runs `pnpm eval:provider-check
+  eval.log`, which fails the job on a credits or auth error and leaves failed cases and timeouts
+  alone.
 
 ## Module layout — `src/` (the engine)
 
@@ -271,7 +276,7 @@ src/
   records/
     record.ts           # record() → results/records.jsonl + full output to results/outputs/<run>/<slug>.md
     stats.ts            # pure: calcStats(), loadRecords(), aggregate(), byConfig(), computeFlags()
-    stats.test.ts       # the only non-model unit tests — the statistics math
+    stats.test.ts       # unit tests for the statistics math (no model)
     benchmark.ts        # eval:benchmark CLI (with vs without artifact)
   trend-reporter.ts     # vitest reporter: pass/fail rows → results/history.jsonl
   compare.ts            # eval:compare — run-flip view over history.jsonl
@@ -279,6 +284,8 @@ src/
   delta.ts              # eval:delta — diff two labeled repeat runs
   scaffold.ts           # eval:scaffold — list skills/agents, generate template eval files
   skill-quality.ts      # eval:quality — static SKILL.md gate (no model)
+  provider-errors.ts    # pure: findProviderErrors() — credits/auth failures in an eval log
+  provider-check.ts     # eval:provider-check — CI gate, exit 1 on a provider outage
   dsl/
     describe.ts         # describeSkill / describeAgent / describeWorkflow — labeled groups
     case.ts             # SkillCase / AgentCase / WorkflowCase types; runSkillCases / runAgentCases / runWorkflowCases

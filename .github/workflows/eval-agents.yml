@@ -91,9 +91,12 @@ jobs:
       - run: pnpm proxy:wait
       # Report-only: a failed case shows in the log and as a warning, not as a red check. Model
       # noise (DeepSeek/Haiku variance, a provider timeout) is not a broken PR. Setup, the proxy
-      # and eval:quality still fail the job.
+      # and eval:quality still fail the job, and so does a provider outage: the next step fails
+      # the job when the log shows an exhausted or rejected key (a 402 run once read green).
       - continue-on-error: true
-        run: pnpm exec vitest run "agents/${{ matrix.agent }}/" --no-file-parallelism
+        shell: bash
+        run: pnpm exec vitest run "agents/${{ matrix.agent }}/" --no-file-parallelism 2>&1 | tee eval.log
+      - run: pnpm eval:provider-check eval.log
       - if: failure()
         run: docker compose -f proxy/docker-compose.yml logs --tail 100
       - if: always()

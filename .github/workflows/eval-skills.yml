@@ -100,6 +100,9 @@ jobs:
       # An explicit path: a bare name is an OR filter and would also run other skills' cases.
       # Report-only: a failed case shows in the log and as a warning, not as a red check. Model
       # noise (DeepSeek/Haiku variance, a provider timeout) is not a broken PR. Setup, the proxy
-      # and eval:quality still fail the job.
+      # and eval:quality still fail the job, and so does a provider outage: the next step fails
+      # the job when the log shows an exhausted or rejected key (a 402 run once read green).
       - continue-on-error: true
-        run: pnpm exec vitest run "skills/${{ matrix.skill }}/"
+        shell: bash
+        run: pnpm exec vitest run "skills/${{ matrix.skill }}/" 2>&1 | tee eval.log
+      - run: pnpm eval:provider-check eval.log
