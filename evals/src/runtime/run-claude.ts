@@ -155,7 +155,9 @@ export async function runClaude(prompt: string, opts: RunOptions = {}): Promise<
     }
   } catch (err) {
     isError = true;
-    if (!resultText && textParts.length === 0) {
+    // A session that only called tools before max-turns still has a usable trace (a negative
+    // activation case needs exactly that), so rethrow only when nothing at all was collected.
+    if (!resultText && textParts.length === 0 && toolCallCount === 0) {
       throw err; // nothing usable collected — surface the failure
     }
   }
