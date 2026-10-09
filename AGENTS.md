@@ -8,8 +8,9 @@ Local-first AI PR reviewer. Course starter: Part-0 works end to end; each lesson
 ## Before answering
 
 A task that concerns a package starts with the `engineering-insights` skill: read that
-package's `INSIGHTS.md` before any other work. Don't skip it. Then its `docs/` and `specs/` —
-they are curated and may already answer it. Then read code.
+package's `INSIGHTS.md` before any other work. Don't skip it. Then the guides that package's
+`AGENTS.md` names for this kind of task (its **Read when** list), then its `docs/` and
+`specs/` — they are curated and may already answer it. Then read code.
 
 ## Stack
 

@@ -65,6 +65,10 @@ export const cases: WorkflowCase[] = [
   // Status 2026-10-08: red 6/6 on claude-haiku-4-5 (stops after server/INSIGHTS.md, never reaches
   // TESTING.md); green on every facet but the since-dropped AGENTS.md Read on sonnet. Kept as a
   // signal that the server "Read when" row is too weak for small models, not tuned until green.
+  // 2026-10-09: root "Before answering" now sends the model to the package's Read when list and
+  // server/AGENTS.md opens with the test → TESTING.md / backend → onion pointer. haiku-4-5, n=8:
+  // TESTING.md 0/12 → 2/8, onion skill 1/12 → 5/8; either edit alone did nothing. Measure in a
+  // clone outside .claude/worktrees: haiku drops that path segment and reads the main checkout.
   {
     kind: "trace",
     name: "server task: follows server/AGENTS.md to TESTING.md, with the onion skill",
