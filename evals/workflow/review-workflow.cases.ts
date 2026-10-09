@@ -84,6 +84,9 @@ export const cases: WorkflowCase[] = [
   // --- trace (1 session): root CLAUDE.md → client/AGENTS.md → vendor/ui README + placement skill --
   // Same shape as the server case (second-hop doc as the proof, no assert on the auto-loaded
   // middle hop), plus a near-miss negative: a client-only task must not pull the onion skill.
+  // 2026-10-09, haiku-4-5, n=4 each in a clean clone: README read 1/4 before the root "Read when"
+  // hop (6d0116d), 4/4 after; the skill pointer at the top of client/AGENTS.md took the skill
+  // facet from 3/4 to 4/4, so the case went 1/4 → 3/4 → 4/4.
   {
     kind: "trace",
     name: "client task: follows client/AGENTS.md to the vendor/ui README, with the placement skill",
