@@ -1,36 +1,70 @@
-# Harness evals — runs the DevDigest Claude Code evals on OpenRouter, per-PR, selectively.
+# Harness evals — one workflow, three tiers, picked by evals/scripts/ci-detect.mjs:
 #
-# On a pull request we diff against the base branch and run ONLY the suites the change touches:
-#   • a changed skill      → that skill's evals        (content tier, native OpenRouter, no proxy)
-#   • a changed agent      → that agent's evals + the workflow tier
-#   • a changed CLAUDE.md  → the workflow tier
-#   • an engine change     → the workflow tier
-# A changed artifact with no written evals is reported as SKIP, not a failure.
+#   skills    .claude/skills/<name>/** or evals/skills/<name>/** → evals/skills/<name> (content tier,
+#             OpenRouter direct)
+#   agents    .claude/agents/<name>.md or evals/agents/<name>/** → evals/agents/<name> (tool tier,
+#             LiteLLM proxy; server/ and reviewer-core/ installed for lint:boundaries)
+#   workflow  anything the live harness reads: CLAUDE.md / AGENTS.md (root or a package's),
+#             TESTING.md, .claude/rules/**, any agent, a skill the workflow cases name, the
+#             workflow cases or the eval engine (tool tier, LiteLLM proxy)
 #
-# Models are a job-level knob (not surfaced in any UI). Skills (content tier) run on a cheap
-# non-Anthropic model (DeepSeek). The tool tiers (agents/workflow) run on Claude Haiku 4.5:
-# calibration showed the cheap OSS models are too noisy on borderline scoping cases, while Haiku
-# passes the suites 4/4 and — as an Anthropic slug via OpenRouter's skin — gives reliable subagent
-# dispatch, Skill activation, and valid judge JSON. Still cheap (~$1/full tool-tier run) and the
-# suites run only when artifacts change. Override per manual run via the workflow_dispatch inputs.
-
+# A changed skill or agent without evals is a ::warning:: annotation, not a failure.
+# Report-only: a failed case shows in the log and as a warning, not as a red check. Model noise is
+# not a broken PR. Setup, typecheck, eval:quality, the detector tests and a provider outage (an
+# exhausted or rejected key; a 402 run once read green) still fail the job.
+#
+# Manual run (Actions → evals → Run workflow): pick the tier, optionally one skill or agent, and the
+# task and judge models. Models default to ../decisions/2026-10-09-eval-tool-tiers-on-haiku-5-5.md.
+# Needs the OPENROUTER_API_KEY repository secret.
 name: evals
 
 on:
   pull_request:
     paths:
-      - '.claude/**'
       - 'CLAUDE.md'
+      - 'AGENTS.md'
+      - '*/CLAUDE.md'
+      - '*/AGENTS.md'
+      - 'TESTING.md'
+      - '.claude/CLAUDE.md'
+      - '.claude/rules/**'
+      - '.claude/skills/**'
+      - '.claude/agents/**'
+      - 'evals/**'
+      - '.github/workflows/evals.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'CLAUDE.md'
+      - 'AGENTS.md'
+      - '*/CLAUDE.md'
+      - '*/AGENTS.md'
+      - 'TESTING.md'
+      - '.claude/CLAUDE.md'
+      - '.claude/rules/**'
+      - '.claude/skills/**'
+      - '.claude/agents/**'
       - 'evals/**'
       - '.github/workflows/evals.yml'
   workflow_dispatch:
     inputs:
-      skills_model:
-        description: 'OpenRouter slug for the skills (content) tier'
-        default: 'deepseek/deepseek-chat'
-      tool_model:
-        description: 'OpenRouter slug for the agents + workflow (tool) tiers'
-        default: 'anthropic/claude-haiku-4.5'
+      tier:
+        description: Which tier to run
+        type: choice
+        options: [all, skills, agents, workflow]
+        default: all
+      name:
+        description: One skill or agent name (empty = every one with evals; ignored for workflow)
+        type: string
+        default: ''
+      model:
+        description: Task model (OpenRouter slug)
+        type: string
+        default: anthropic/claude-haiku-5.5
+      judge_model:
+        description: Judge model (OpenRouter slug)
+        type: string
+        default: anthropic/claude-haiku-5.5
 
 permissions:
   contents: read
@@ -39,8 +73,32 @@ concurrency:
   group: evals-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  EVAL_BACKEND: openrouter
+  OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+  EVAL_MODEL: ${{ inputs.model || 'anthropic/claude-haiku-5.5' }}
+  EVAL_JUDGE_MODEL: ${{ inputs.judge_model || 'anthropic/claude-haiku-5.5' }}
+
 jobs:
-  # ── 1. Detect which suites this PR should run ──────────────────────────────
+  quality:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: evals
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: evals/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm eval:quality
+      - run: pnpm exec vitest run scripts/
+
   changes:
     runs-on: ubuntu-latest
     outputs:
@@ -51,25 +109,27 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
       - id: detect
         working-directory: evals
         env:
-          # workflow_dispatch has no diff — fall back to "everything changed" by diffing the root commit.
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          DISPATCH_TIER: ${{ inputs.tier }}
+          DISPATCH_NAME: ${{ inputs.name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
         run: |
-          if [ -n "$BASE_SHA" ]; then
-            RANGE="$BASE_SHA...HEAD"
-          else
-            RANGE="$(git rev-list --max-parents=0 HEAD | tail -1)...HEAD"
+          if [ -z "$DISPATCH_TIER" ]; then
+            BASE="${PR_BASE:-$PUSH_BEFORE}"
+            # A new branch pushes with before=000…0; fall back to the root commit (everything changed).
+            if [ -z "$BASE" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+              BASE="$(git rev-list --max-parents=0 HEAD | tail -1)"
+            fi
+            CHANGED_FILES="$(git diff --name-only "$BASE...HEAD")"
+            export CHANGED_FILES
           fi
-          CHANGED_FILES="$(git diff --name-only "$RANGE")"
-          export CHANGED_FILES
           node scripts/ci-detect.mjs
 
-  # ── 2. Skills — content tier, native OpenRouter, no proxy ──────────────────
   skills:
-    needs: changes
+    needs: [quality, changes]
     if: needs.changes.outputs.skills != '[]'
     runs-on: ubuntu-latest
     strategy:
@@ -79,11 +139,6 @@ jobs:
     defaults:
       run:
         working-directory: evals
-    env:
-      EVAL_BACKEND: openrouter
-      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-      EVAL_MODEL: ${{ inputs.skills_model || 'deepseek/deepseek-chat' }}
-      EVAL_JUDGE_MODEL: ${{ inputs.skills_model || 'deepseek/deepseek-chat' }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -94,28 +149,25 @@ jobs:
           cache: pnpm
           cache-dependency-path: evals/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec vitest run "skills/${{ matrix.skill }}/"
+      # An explicit path: a bare name is an OR filter and would also run other skills' cases.
+      - continue-on-error: true
+        shell: bash
+        run: pnpm exec vitest run "skills/${{ matrix.skill }}/" 2>&1 | tee eval.log
+      - run: pnpm eval:provider-check eval.log
 
-  # ── 3. Agents — tool tier, needs the LiteLLM translating proxy ─────────────
   agents:
-    needs: changes
+    needs: [quality, changes]
     if: needs.changes.outputs.agents != '[]'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      # Each matrix entry is its own runner with its own proxy container, and Haiku via OpenRouter's
-      # Anthropic skin handles concurrency fine — so agents fan out in parallel, no serial wait.
       matrix:
         agent: ${{ fromJSON(needs.changes.outputs.agents) }}
     defaults:
       run:
         working-directory: evals
     env:
-      EVAL_BACKEND: openrouter
       OPENROUTER_BASE_URL: http://localhost:4000
-      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-      EVAL_MODEL: ${{ inputs.tool_model || 'anthropic/claude-haiku-4.5' }}
-      EVAL_JUDGE_MODEL: ${{ inputs.tool_model || 'anthropic/claude-haiku-4.5' }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -126,30 +178,30 @@ jobs:
           cache: pnpm
           cache-dependency-path: evals/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+      - run: npm ci
+        working-directory: reviewer-core
+      - run: pnpm install --frozen-lockfile
+        working-directory: server
       - run: docker compose -f proxy/docker-compose.yml up -d
       - run: pnpm proxy:wait
-      - run: pnpm exec vitest run "agents/${{ matrix.agent }}/" --no-file-parallelism
+      - continue-on-error: true
+        shell: bash
+        run: pnpm exec vitest run "agents/${{ matrix.agent }}/" --no-file-parallelism 2>&1 | tee eval.log
+      - run: pnpm eval:provider-check eval.log
       - if: failure()
         run: docker compose -f proxy/docker-compose.yml logs --tail 100
       - if: always()
         run: docker compose -f proxy/docker-compose.yml down
 
-  # ── 4. Workflow — live-harness tier. Non-blocking: activation cases are ────
-  #     behaviour-shaped and only "indicative" on non-Anthropic models (README).
   workflow:
-    needs: changes
+    needs: [quality, changes]
     if: needs.changes.outputs.run_workflow == 'true'
     runs-on: ubuntu-latest
-    continue-on-error: true
     defaults:
       run:
         working-directory: evals
     env:
-      EVAL_BACKEND: openrouter
       OPENROUTER_BASE_URL: http://localhost:4000
-      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-      EVAL_MODEL: ${{ inputs.tool_model || 'anthropic/claude-haiku-4.5' }}
-      EVAL_JUDGE_MODEL: ${{ inputs.tool_model || 'anthropic/claude-haiku-4.5' }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -162,7 +214,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: docker compose -f proxy/docker-compose.yml up -d
       - run: pnpm proxy:wait
-      - run: pnpm exec vitest run workflow --no-file-parallelism
+      - continue-on-error: true
+        shell: bash
+        run: pnpm exec vitest run workflow --no-file-parallelism 2>&1 | tee eval.log
+      - run: pnpm eval:provider-check eval.log
       - if: failure()
         run: docker compose -f proxy/docker-compose.yml logs --tail 100
       - if: always()
