@@ -126,7 +126,7 @@ inside `evals/` and needs no code changes to use.
 
 | File | Role |
 |------|------|
-| `proxy/litellm.config.yaml` | LiteLLM config: a wildcard route forwarding any `EVAL_MODEL` slug to OpenRouter, in no-auth mode |
+| `proxy/litellm.config.yaml` | LiteLLM config: a wildcard route forwarding any `EVAL_MODEL` slug to OpenRouter; its master key is `OPENROUTER_API_KEY`, the token the clients already send |
 | `proxy/docker-compose.yml` | Runs `ghcr.io/berriai/litellm` on `:4000`, both wire formats on one port |
 | `scripts/litellm-proxy.sh` | `up` / `down` / `wait` wrapper (reads `OPENROUTER_API_KEY` from env, else `~/.devdigest/secrets.json`) |
 | `src/runtime/env.ts` | Points the SDK's `ANTHROPIC_BASE_URL` at `OPENROUTER_BASE_URL` (the proxy) under `EVAL_BACKEND=openrouter` |
@@ -154,8 +154,8 @@ pnpm proxy:down
 ```
 
 `EVAL_MODEL` is forwarded verbatim to OpenRouter (the wildcard route in `proxy/litellm.config.yaml`),
-so you never edit config to try a new model. The proxy runs in **no-auth** mode — do not expose the
-port publicly.
+so you never edit config to try a new model. The proxy's master key is `OPENROUTER_API_KEY` (newer LiteLLM images refuse to start
+without one), so it only answers callers that hold that key — still, do not expose the port publicly.
 
 #### Which cheap model — verified
 
@@ -181,10 +181,9 @@ workflow cases:
    model invokes the Skill tool, so it passes.)
 
 > **Isolation note.** `workflowTask` runs with `settingSources:["project"]` + `bypassPermissions`
-> against the live repo. A model that decides to `Write` can touch real files (e.g. your local
-> memory dir) even though `WORKFLOW_ALLOWED_TOOLS` is a read-only list. In CI this is harmless (the
-> checkout is disposable); locally, prefer the Anthropic path or a throwaway clone for the workflow
-> tier.
+> against the live repo. `runClaude` passes the allow-list as `tools` too, because `allowedTools`
+> alone only auto-approves: before that, sessions used `Write`/`Edit` and changed real files.
+> Reads still hit the live repo, including absolute paths outside a worktree.
 
 ### Wiring it into GitHub Actions (per-PR)
 
@@ -568,6 +567,31 @@ tokens > 125% of baseline), `missing_data` (a config has zero records for a test
 | Adding evals for one of **your** skills/agents | `pnpm eval:scaffold <name>` (or `--agent <name>`) |
 | Model / Claude Code version | `pnpm eval` (whole suite) |
 | Stats math changed | `pnpm vitest run src/records/stats.test.ts` |
+
+### CI baselines, report and budget
+
+Each model job in `.github/workflows/evals.yml` turns its records into a series
+(`pnpm eval:report --label ci`), diffs it against `baselines/<tier>-<name>.json` with `eval:delta`,
+and uploads `eval.log`, `delta.txt`, `repeat-ci.json` and the outputs as a job artifact. Node ids
+are stored relative to `evals/`, so a baseline made on a laptop matches a CI run.
+
+A baseline is a series on the CI models (`claude-haiku-5.5` task and judge, via OpenRouter; the
+tool tiers through the proxy). Recalibrate it whenever its cases, fixtures or the grader change:
+
+```bash
+EVAL_BACKEND=openrouter EVAL_MODEL=anthropic/claude-haiku-5.5 EVAL_JUDGE_MODEL=anthropic/claude-haiku-5.5 \
+  EVAL_REPEAT_MAX=3 pnpm eval:repeat agents/architecture-reviewer/ -n 3 --label agents-architecture-reviewer
+cp results/repeat-agents-architecture-reviewer.json baselines/agents-architecture-reviewer.json
+```
+
+Run the tool tiers from a `git clone` outside `.claude/`: inside a worktree the model can drop the
+`.claude/worktrees/<name>` segment and Read the main checkout, so worktree edits go unseen. Use
+`OPENROUTER_BASE_URL=http://localhost:4000` and `pnpm proxy:up`.
+
+The `budget` job reads the OpenRouter key's usage before the model jobs and after them and fails
+the run when it spent more than `EVAL_BUDGET_USD` (default `1.00`, a dispatch input). Usage is per
+key, so a concurrent run on the same key counts too. It catches an overspend after the fact; the hard
+cap is a credit limit on the CI key. Fork PRs get no secrets, so they run only the `quality` job.
 
 ## Safety
 

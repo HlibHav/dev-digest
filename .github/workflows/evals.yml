@@ -9,9 +9,13 @@
 #             workflow cases or the eval engine (tool tier, LiteLLM proxy)
 #
 # A changed skill or agent without evals is a ::warning:: annotation, not a failure.
-# Report-only: a failed case shows in the log and as a warning, not as a red check. Model noise is
-# not a broken PR. Setup, typecheck, eval:quality, the detector tests and a provider outage (an
-# exhausted or rejected key; a 402 run once read green) still fail the job.
+# Blocking: setup, typecheck, eval:quality and the unit tests (quality job), a provider outage (an
+# exhausted or rejected key; a 402 run once read green) and the budget. Report-only: the model runs.
+# Each one publishes a report and its delta against evals/baselines/<tier>-<name>.json as a job
+# artifact; a failed case is a warning, not a red check, because model noise is not a broken PR.
+# Fork PRs get no secrets, so they run the quality job only.
+# Budget: the run fails when the OpenRouter key spent more than EVAL_BUDGET_USD (eval-budget.mjs);
+# a hard cap is a credit limit on the CI key itself.
 #
 # Manual run (Actions → evals → Run workflow): pick the tier, optionally one skill or agent, and the
 # task and judge models. Models default to ../decisions/2026-10-09-eval-tool-tiers-on-haiku-5-5.md.
@@ -65,6 +69,10 @@ on:
         description: Judge model (OpenRouter slug)
         type: string
         default: anthropic/claude-haiku-5.5
+      budget_usd:
+        description: Fail the run when it spends more than this on OpenRouter (USD)
+        type: string
+        default: '1.00'
 
 permissions:
   contents: read
@@ -78,10 +86,12 @@ env:
   OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
   EVAL_MODEL: ${{ inputs.model || 'anthropic/claude-haiku-5.5' }}
   EVAL_JUDGE_MODEL: ${{ inputs.judge_model || 'anthropic/claude-haiku-5.5' }}
+  EVAL_BUDGET_USD: ${{ inputs.budget_usd || '1.00' }}
 
 jobs:
   quality:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: evals
@@ -97,14 +107,17 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm eval:quality
-      - run: pnpm exec vitest run scripts/
+      - run: pnpm exec vitest run scripts/ src/
 
   changes:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       skills: ${{ steps.detect.outputs.skills }}
       agents: ${{ steps.detect.outputs.agents }}
       run_workflow: ${{ steps.detect.outputs.run_workflow }}
+      models: ${{ steps.models.outputs.run }}
+      usage_before: ${{ steps.usage.outputs.usd }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -127,13 +140,30 @@ jobs:
             export CHANGED_FILES
           fi
           node scripts/ci-detect.mjs
+      # Model jobs need the secret, which a fork PR does not get.
+      - id: models
+        env:
+          FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+        run: |
+          if [ "$FORK" = "true" ]; then
+            echo "::warning title=Fork PR::no secrets on a fork PR, so only the quality job runs"
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+      - id: usage
+        if: steps.models.outputs.run == 'true'
+        working-directory: evals
+        run: echo "usd=$(node scripts/eval-budget.mjs usage)" >> "$GITHUB_OUTPUT"
 
   skills:
     needs: [quality, changes]
-    if: needs.changes.outputs.skills != '[]'
+    if: needs.changes.outputs.models == 'true' && needs.changes.outputs.skills != '[]'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       fail-fast: false
+      max-parallel: 2
       matrix:
         skill: ${{ fromJSON(needs.changes.outputs.skills) }}
     defaults:
@@ -153,14 +183,40 @@ jobs:
       - continue-on-error: true
         shell: bash
         run: pnpm exec vitest run "skills/${{ matrix.skill }}/" 2>&1 | tee eval.log
+      - name: Report and compare with baseline
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          pnpm eval:report --label ci || exit 0
+          B="baselines/skills-${{ matrix.skill }}.json"
+          if [ -f "$B" ]; then
+            cp "$B" results/repeat-baseline.json
+            pnpm eval:delta baseline ci 2>&1 | tee delta.txt
+          else
+            echo "::warning title=No baseline::$B is missing, so this run has no comparison (evals/README.md: recalibrate)"
+          fi
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-skills-${{ matrix.skill }}
+          path: |
+            evals/eval.log
+            evals/delta.txt
+            evals/results/repeat-ci.json
+            evals/results/outputs/
+          if-no-files-found: ignore
+          retention-days: 14
       - run: pnpm eval:provider-check eval.log
 
   agents:
     needs: [quality, changes]
-    if: needs.changes.outputs.agents != '[]'
+    if: needs.changes.outputs.models == 'true' && needs.changes.outputs.agents != '[]'
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     strategy:
       fail-fast: false
+      max-parallel: 2
       matrix:
         agent: ${{ fromJSON(needs.changes.outputs.agents) }}
     defaults:
@@ -187,6 +243,30 @@ jobs:
       - continue-on-error: true
         shell: bash
         run: pnpm exec vitest run "agents/${{ matrix.agent }}/" --no-file-parallelism 2>&1 | tee eval.log
+      - name: Report and compare with baseline
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          pnpm eval:report --label ci || exit 0
+          B="baselines/agents-${{ matrix.agent }}.json"
+          if [ -f "$B" ]; then
+            cp "$B" results/repeat-baseline.json
+            pnpm eval:delta baseline ci 2>&1 | tee delta.txt
+          else
+            echo "::warning title=No baseline::$B is missing, so this run has no comparison (evals/README.md: recalibrate)"
+          fi
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-agents-${{ matrix.agent }}
+          path: |
+            evals/eval.log
+            evals/delta.txt
+            evals/results/repeat-ci.json
+            evals/results/outputs/
+          if-no-files-found: ignore
+          retention-days: 14
       - run: pnpm eval:provider-check eval.log
       - if: failure()
         run: docker compose -f proxy/docker-compose.yml logs --tail 100
@@ -195,8 +275,9 @@ jobs:
 
   workflow:
     needs: [quality, changes]
-    if: needs.changes.outputs.run_workflow == 'true'
+    if: needs.changes.outputs.models == 'true' && needs.changes.outputs.run_workflow == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     defaults:
       run:
         working-directory: evals
@@ -217,8 +298,42 @@ jobs:
       - continue-on-error: true
         shell: bash
         run: pnpm exec vitest run workflow --no-file-parallelism 2>&1 | tee eval.log
+      - name: Report and compare with baseline
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          pnpm eval:report --label ci || exit 0
+          B="baselines/workflow.json"
+          if [ -f "$B" ]; then
+            cp "$B" results/repeat-baseline.json
+            pnpm eval:delta baseline ci 2>&1 | tee delta.txt
+          else
+            echo "::warning title=No baseline::$B is missing, so this run has no comparison (evals/README.md: recalibrate)"
+          fi
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-workflow
+          path: |
+            evals/eval.log
+            evals/delta.txt
+            evals/results/repeat-ci.json
+            evals/results/outputs/
+          if-no-files-found: ignore
+          retention-days: 14
       - run: pnpm eval:provider-check eval.log
       - if: failure()
         run: docker compose -f proxy/docker-compose.yml logs --tail 100
       - if: always()
         run: docker compose -f proxy/docker-compose.yml down
+
+  budget:
+    needs: [changes, skills, agents, workflow]
+    if: always() && needs.changes.outputs.usage_before != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - working-directory: evals
+        run: node scripts/eval-budget.mjs check "${{ needs.changes.outputs.usage_before }}" "$EVAL_BUDGET_USD"

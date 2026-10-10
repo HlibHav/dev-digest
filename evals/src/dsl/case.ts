@@ -133,7 +133,7 @@ export function runWorkflowCases(cases: WorkflowCase[]): void {
         try {
           expect(result.subagents, `subagents: ${result.subagents.join(", ")}`).toContain(c.expectSubagent);
         } finally {
-          record(c.name, { result });
+          record(c.name, { result, passed: result.subagents.includes(c.expectSubagent) });
         }
       } else if (c.kind === "activation") {
         const result = await workflowTask(c.prompt, { maxTurns: c.maxTurns });
@@ -149,7 +149,7 @@ export function runWorkflowCases(cases: WorkflowCase[]): void {
             expect(got, detail).toBe(c.shouldActivate);
           }
         } finally {
-          record(c.name, { result });
+          record(c.name, { result, passed: got === c.shouldActivate });
         }
       } else if (c.kind === "trace") {
         // One session, many asserts — every provided expectation is checked against the same trace.
@@ -169,6 +169,12 @@ export function runWorkflowCases(cases: WorkflowCase[]): void {
             files.every((f) => p.filesRead.some((r) => r.includes(f))),
         });
         logTrace(c.name, result);
+        // The record carries the case's own outcome; without it a red trace is stored as a pass.
+        const tracePassed =
+          subs.every((s) => result.subagents.includes(s)) &&
+          skls.every((s) => activated(result, s)) &&
+          files.every((f) => result.filesRead.some((r) => r.includes(f))) &&
+          !result.isError;
         try {
           for (const sub of c.expectSubagents ?? []) {
             expect(result.subagents, `subagents: ${result.subagents.join(", ")}`).toContain(sub);
@@ -187,7 +193,7 @@ export function runWorkflowCases(cases: WorkflowCase[]): void {
           }
           expect(result.isError).toBe(false);
         } finally {
-          record(c.name, { result });
+          record(c.name, { result, passed: tracePassed });
         }
       } else {
         // contrast: treatment (real harness) vs control (empty tmpdir, no on-disk config).
@@ -208,8 +214,11 @@ export function runWorkflowCases(cases: WorkflowCase[]): void {
           expect(treatmentRead, `treatment reads: ${treatment.filesRead.join(", ")}`).toBe(true);
           expect(controlRead, `control reads: ${control.filesRead.join(", ")}`).toBe(false);
         } finally {
-          record(`${c.name} [treatment]`, { result: treatment });
-          record(`${c.name} [control]`, { result: control });
+          // Each side records whether it behaved as the contrast needs: treatment reads, control doesn't.
+          const treatmentPassed = treatment.filesRead.some((f) => f.includes(c.expectFileRead));
+          const controlPassed = !control.filesRead.some((f) => f.includes(c.expectFileRead));
+          record(`${c.name} [treatment]`, { result: treatment, passed: treatmentPassed });
+          record(`${c.name} [control]`, { result: control, passed: controlPassed });
         }
       }
     });

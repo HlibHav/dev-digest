@@ -52,6 +52,20 @@ cd client        && pnpm typecheck
 cd reviewer-core && npm run typecheck
 ```
 
+## Evals
+
+Harness changes run the evals from `evals/`. CI runs them on pull requests and on push to `main`
+(`.github/workflows/evals.yml`, `evals/scripts/ci-detect.mjs` picks the jobs). `eval:quality`
+and the unit tests block; the model runs report a delta against `evals/baselines/` and do not
+block. Actions → evals → Run workflow runs a tier by hand (tier, name, models, budget).
+
+| Change | Minimum check | Local run | CI job |
+|---|---|---|---|
+| `.claude/skills/<name>/**` | `eval:quality` + that skill's eval | `pnpm eval:quality` · `pnpm exec vitest run skills/<name>/` | `quality` · `skills` |
+| `.claude/agents/<name>.md` | the agent's eval + the workflow cases (dispatch) | `pnpm exec vitest run agents/<name>/` · `pnpm eval:workflow` | `agents` · `workflow` |
+| `CLAUDE.md` (root or a package's), `.claude/rules/**` | `eval:workflow` | `pnpm eval:workflow` | `workflow` |
+| an eval case (`evals/**/*.cases.ts`, fixtures) or the grader (`evals/src/scoring/**`) | recalibrate that suite's baseline (all suites for a grader change) | `EVAL_REPEAT_MAX=3 pnpm eval:repeat <tier>/<name>/ -n 3 --label <tier>-<name>`, then `cp results/repeat-<tier>-<name>.json baselines/<tier>-<name>.json` (workflow: label and file `workflow`) | the suite's own job |
+
 ## Key Constraints
 
 - **Secrets** — stored in `~/.devdigest/secrets.json` (mode 0600). `LocalSecretsProvider` is the only place that reads `process.env`. Everywhere else uses the injected `SecretsProvider`.
