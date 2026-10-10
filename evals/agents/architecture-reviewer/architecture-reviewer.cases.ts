@@ -70,7 +70,10 @@ export const cases: AgentCase[] = [
       // one onion-architecture step (the Domain ring, ports) and in the rules file. Version-B runs
       // showed the agent citing "onion-architecture step 1" — a real citation a narrower wording failed.
       "Cites a documented rule by name — reviewer-core/AGENTS.md's purity rule, any `onion-architecture step <n>`, or `.claude/rules/onion-boundaries.md` — rather than describing it only in prose.",
-      "Gives the finding a severity of major or higher, a `path:line` and the quoted import line.",
+      // The import and the call both prove the I/O; the old wording asked for the import only and
+      // never checked the number. Re-judge of 55 saved outputs + 2 controls: haiku-5.5 citations of
+      // the call (:143) now pass, and wrong numbers (:15, :16, :17, :138) and a :139 control now fail.
+      "Gives the finding a severity of major or higher and cites either the import (`run.ts:18`, `import { readFileSync } from 'node:fs'`) or the call (`run.ts:143`, `readFileSync(input.systemPromptPath, 'utf8')`) with that line's own number and the line quoted verbatim; a wrong number or a paraphrase fails.",
     ],
     threshold: 1.0,
     maxTurns: 25,

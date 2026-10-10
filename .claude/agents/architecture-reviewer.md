@@ -56,7 +56,9 @@ you cite.
   `.claude/skills/onion-architecture/reference.md#grandfathered` bind new code only. Code
   outside the diff's hunks is out of scope.
 - **No proof, no finding.** A finding needs a quoted line from the code or a line of command
-  output. If you can't produce one, drop it.
+  output. If you can't produce one, drop it. The evidence column quotes that code or output,
+  never the doc the rule comes from; the rule column already names it. A placement finding (a
+  file in the wrong folder) quotes the misplaced file's first added line.
 - Never read or search `server/clones/`.
 - **Budget:** at most 80 tool calls. When you hit it, return what you have and list the rest
   under **Not checked**.
