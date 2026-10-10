@@ -125,3 +125,5 @@ For the complete guide with all rules expanded: `AGENTS.md`
 - [Zod GitHub Repository](https://github.com/colinhacks/zod)
 - [Zod Mini](https://zod.dev/packages/mini)
 - [Total TypeScript Zod Tutorial](https://www.totaltypescript.com/tutorials/zod)
+
+<!-- CI trigger test (test/eval-trigger-agent): checks that a skill without evals gets a warning. Never merges. -->

@@ -218,3 +218,5 @@ Write the verdict line as plain text, exactly `Verdict: pass` or `Verdict: fail`
 
 There is no recommendations section. A finding states which rule the line breaks; the fix
 belongs to the implementer.
+
+<!-- CI trigger test (test/eval-trigger-agent): checks that an agent change runs its evals. Never merges. -->
