@@ -17,6 +17,7 @@ import { gitInfo } from "./git.js";
 import { countTests, runVitestOnce } from "./run-vitest.js";
 import { RESULTS_DIR } from "./artifacts/paths.js";
 import { aggregate, loadRecords, recordCount, type NodeAggregate, type Stats } from "./records/stats.js";
+import { relativize } from "./report.js";
 
 /**
  * vitest treats a path pattern as a SUBSTRING filter, so a bare `agents/architecture-reviewer`
@@ -112,7 +113,8 @@ async function main(): Promise<void> {
     console.log(`  run ${i}/${times}  ${mark} ${passed}/${fresh.length} cases`);
   }
 
-  const records = loadRecords(startLine);
+  // Node ids relative to evals/, so a series saved here diffs against a CI run (eval:report).
+  const records = relativize(loadRecords(startLine));
   const tests = aggregate(records);
   const nodeids = Object.keys(tests).sort();
 

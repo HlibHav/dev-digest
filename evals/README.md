@@ -576,6 +576,32 @@ tokens > 125% of baseline), `missing_data` (a config has zero records for a test
 | Adding evals for one of **your** skills/agents | `pnpm eval:scaffold <name>` (or `--agent <name>`) |
 | Model / Claude Code version | `pnpm eval` (whole suite) |
 | Stats math changed | `pnpm vitest run src/records/stats.test.ts` |
+| An eval case, fixture or the grader | recalibrate the CI baseline (below) |
+
+### CI baselines, report and budget
+
+Each model job in `.github/workflows/evals.yml` turns its records into a series
+(`pnpm eval:report --label ci`), diffs it against `baselines/<tier>-<name>.json` with `eval:delta`,
+and uploads `eval.log`, `delta.txt`, `repeat-ci.json` and the outputs as a job artifact. Node ids
+are stored relative to `evals/`, so a baseline made on a laptop matches a CI run.
+
+A baseline is a series on the CI models (`claude-haiku-5.5` task and judge, via OpenRouter; the
+tool tiers through the proxy). Recalibrate it whenever its cases, fixtures or the grader change:
+
+```bash
+EVAL_BACKEND=openrouter EVAL_MODEL=anthropic/claude-haiku-5.5 EVAL_JUDGE_MODEL=anthropic/claude-haiku-5.5 \
+  EVAL_REPEAT_MAX=3 pnpm eval:repeat agents/architecture-reviewer/ -n 3 --label agents-architecture-reviewer
+cp results/repeat-agents-architecture-reviewer.json baselines/agents-architecture-reviewer.json
+```
+
+Run the tool tiers from a `git clone` outside `.claude/`: inside a worktree the model can drop the
+`.claude/worktrees/<name>` segment and Read the main checkout, so worktree edits go unseen. Use
+`OPENROUTER_BASE_URL=http://localhost:4000` and `pnpm proxy:up`.
+
+The `budget` job reads the OpenRouter key's usage before the model jobs and after them and fails
+the run when it spent more than `EVAL_BUDGET_USD` (default `1.00`, a dispatch input). Usage is per
+key, so a concurrent run on the same key counts too. It catches an overspend after the fact; the hard
+cap is a credit limit on the CI key. Fork PRs get no secrets, so they run only the `quality` job.
 
 ## Safety
 

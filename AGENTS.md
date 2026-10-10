@@ -68,16 +68,17 @@ No linter or formatter is configured in any package: typecheck + tests are the g
 `server/`'s import-boundary check (`pnpm lint:boundaries`, dependency-cruiser). A change in
 `reviewer-core/` must also pass `server/`'s checks.
 
-Harness changes run the evals (from `evals/`, `pnpm eval:quality` first). CI runs the same
-suites on pull requests and on push to `main` (`.github/workflows/evals.yml`, one job per tier,
-report-only; `evals/scripts/ci-detect.mjs` picks them). Actions → evals → Run workflow runs a
-tier by hand, with an optional skill or agent name and the task and judge models:
+Harness changes run the evals from `evals/`. CI runs them on pull requests and on push to `main`
+(`.github/workflows/evals.yml`, `evals/scripts/ci-detect.mjs` picks the jobs). `eval:quality`
+and the unit tests block; the model runs report a delta against `evals/baselines/` and do not
+block. Actions → evals → Run workflow runs a tier by hand (tier, name, models, budget).
 
-| Change | Local run | CI job |
-|---|---|---|
-| `.claude/skills/<name>/**` or `evals/skills/<name>/**` | `pnpm exec vitest run skills/<name>/` (all: `pnpm eval:skills`) | `skills` |
-| `.claude/agents/<name>.md` or `evals/agents/<name>/**` | `pnpm exec vitest run agents/<name>/` (all: `pnpm eval:agents`) | `agents` |
-| `AGENTS.md` / `CLAUDE.md` (root or a package's), `TESTING.md`, `.claude/rules/**`, an agent definition, a skill the workflow cases name, `evals/workflow/**` | `pnpm eval:workflow` | `workflow` |
+| Change | Minimum check | Local run | CI job |
+|---|---|---|---|
+| `.claude/skills/<name>/**` | `eval:quality` + that skill's eval | `pnpm eval:quality` · `pnpm exec vitest run skills/<name>/` | `quality` · `skills` |
+| `.claude/agents/<name>.md` | the agent's eval + the workflow cases (dispatch) | `pnpm exec vitest run agents/<name>/` · `pnpm eval:workflow` | `agents` · `workflow` |
+| `CLAUDE.md` / `AGENTS.md` (root or a package's), `TESTING.md`, `.claude/rules/**` | `eval:workflow` | `pnpm eval:workflow` | `workflow` |
+| an eval case (`evals/**/*.cases.ts`, fixtures) or the grader (`evals/src/scoring/**`) | recalibrate that suite's baseline (all suites for a grader change) | `EVAL_REPEAT_MAX=3 pnpm eval:repeat <tier>/<name>/ -n 3 --label <tier>-<name>`, then `cp results/repeat-<tier>-<name>.json baselines/<tier>-<name>.json` (workflow: label and file `workflow`) | the suite's own job |
 
 ## Naming conventions
 
