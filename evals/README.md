@@ -572,6 +572,7 @@ tokens > 125% of baseline), `missing_data` (a config has zero records for a test
 | `CLAUDE.md` / activation / dispatch | `pnpm eval:workflow` |
 | Any artifact's structure | `pnpm eval:quality` |
 | A `SKILL.md` edit you want to **measure** | repeat/delta loop: `--label baseline` before, `--label candidate` after, then `eval:delta` |
+| Two versions of an agent | the same loop at n=4; worked example with spread: `docs/agent-comparison.md` |
 | New skill/agent — is it **worth its tokens**? | `pnpm eval:benchmark skills/<skill> -n 5` |
 | Adding evals for one of **your** skills/agents | `pnpm eval:scaffold <name>` (or `--agent <name>`) |
 | Model / Claude Code version | `pnpm eval` (whole suite) |

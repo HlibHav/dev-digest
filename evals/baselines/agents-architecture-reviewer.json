@@ -1,0 +1,269 @@
+{
+  "label": "agents-architecture-reviewer",
+  "git_sha": "fedc040",
+  "dirty": true,
+  "times": 3,
+  "vitestArgs": [
+    "agents/architecture-reviewer/architecture-reviewer.eval.ts",
+    "--no-file-parallelism"
+  ],
+  "tests": {
+    "agents/architecture-reviewer/architecture-reviewer.eval.ts > agent:architecture-reviewer > flags both violations in the checkout diff with severity and a citable rule": {
+      "nodeid": "agents/architecture-reviewer/architecture-reviewer.eval.ts > agent:architecture-reviewer > flags both violations in the checkout diff with severity and a citable rule",
+      "label": "flags both violations in the checkout diff with severity and a citable rule",
+      "pass": {
+        "passed": 3,
+        "total": 3,
+        "rate": 1
+      },
+      "practices": {
+        "Flags server/src/modules/checkout/domain/checkout.ts:1 — the domain file imports a type from 'fastify' — as a boundary violation (imports must point inward; application/domain code imports no fastify).": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "Flags the `new PgCheckoutRepository()` in server/src/modules/checkout/service.ts — the service builds its own repository instead of receiving it as a port built in wiring.ts / the container.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "Every finding cites the rule it breaks as a skill step (e.g. `onion-architecture step 3`) or the rules file (`.claude/rules/onion-boundaries.md`), not prose alone.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "Every finding has a severity from critical / major / minor, and these boundary leaks are `major` or higher.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "Every finding gives a `path:line` and quotes the offending line verbatim, not a paraphrase.": {
+          "passed": 1,
+          "total": 3,
+          "rate": 0.3333333333333333
+        },
+        "States that the checks (`pnpm lint:boundaries`, the route-adapter test) did not run on this diff, or ran only on the unchanged tree, rather than presenting their output as a verdict on the diff.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        }
+      },
+      "metrics": {
+        "durationMs": {
+          "mean": 59204.666666666664,
+          "stddev": 13191.231645806745,
+          "min": 46388,
+          "max": 72741,
+          "n": 3
+        },
+        "inputTokens": {
+          "mean": 90.66666666666667,
+          "stddev": 15.01110699893027,
+          "min": 82,
+          "max": 108,
+          "n": 3
+        },
+        "outputTokens": {
+          "mean": 8968.666666666666,
+          "stddev": 1284.6923107629052,
+          "min": 7563,
+          "max": 10082,
+          "n": 3
+        },
+        "numTurns": {
+          "mean": 7,
+          "stddev": 0,
+          "min": 7,
+          "max": 7,
+          "n": 3
+        },
+        "toolCallCount": {
+          "mean": 6,
+          "stddev": 0,
+          "min": 6,
+          "max": 6,
+          "n": 3
+        }
+      }
+    },
+    "agents/architecture-reviewer/architecture-reviewer.eval.ts > agent:architecture-reviewer > does not fabricate an architecture finding for the out-of-scope security-shaped change": {
+      "nodeid": "agents/architecture-reviewer/architecture-reviewer.eval.ts > agent:architecture-reviewer > does not fabricate an architecture finding for the out-of-scope security-shaped change",
+      "label": "does not fabricate an architecture finding for the out-of-scope security-shaped change",
+      "pass": {
+        "passed": 3,
+        "total": 3,
+        "rate": 1
+      },
+      "practices": {
+        "Does not raise a separate finding — its own row, number or severity — for the optional `reply?: FastifyReply` parameter (no runtime bug or security finding dressed up as an architecture rule). Naming the parameter inside the fastify-import finding as where the type is used is not a separate finding, and neither is a one-line note under 'Out of scope, noticed'.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "Stays scoped to layering, import direction and composition; it does not comment on naming, style or test coverage (a one-line 'Out of scope, noticed' entry is fine).": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        }
+      },
+      "metrics": {
+        "durationMs": {
+          "mean": 47294.333333333336,
+          "stddev": 9548.029657124727,
+          "min": 36332,
+          "max": 53793,
+          "n": 3
+        },
+        "inputTokens": {
+          "mean": 64.66666666666667,
+          "stddev": 30.02221399786054,
+          "min": 30,
+          "max": 82,
+          "n": 3
+        },
+        "outputTokens": {
+          "mean": 8438.333333333334,
+          "stddev": 1311.71122330082,
+          "min": 7006,
+          "max": 9581,
+          "n": 3
+        },
+        "numTurns": {
+          "mean": 6,
+          "stddev": 1,
+          "min": 5,
+          "max": 7,
+          "n": 3
+        },
+        "toolCallCount": {
+          "mean": 5,
+          "stddev": 1,
+          "min": 4,
+          "max": 6,
+          "n": 3
+        }
+      }
+    },
+    "agents/architecture-reviewer/architecture-reviewer.eval.ts > agent:architecture-reviewer > flags filesystem I/O added to reviewer-core against its purity rule": {
+      "nodeid": "agents/architecture-reviewer/architecture-reviewer.eval.ts > agent:architecture-reviewer > flags filesystem I/O added to reviewer-core against its purity rule",
+      "label": "flags filesystem I/O added to reviewer-core against its purity rule",
+      "pass": {
+        "passed": 1,
+        "total": 3,
+        "rate": 0.3333333333333333
+      },
+      "practices": {
+        "Flags `import { readFileSync } from 'node:fs'` at reviewer-core/src/review/run.ts:18 (and its use in reviewPullRequest) as a violation: reviewer-core is pure — no database, GitHub, filesystem or env access.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "Cites a documented rule by name — reviewer-core/AGENTS.md's purity rule, any `onion-architecture step <n>`, or `.claude/rules/onion-boundaries.md` — rather than describing it only in prose.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "Gives the finding a severity of major or higher, a `path:line` and the quoted import line.": {
+          "passed": 1,
+          "total": 3,
+          "rate": 0.3333333333333333
+        }
+      },
+      "metrics": {
+        "durationMs": {
+          "mean": 54674.333333333336,
+          "stddev": 13978.151678005692,
+          "min": 45010,
+          "max": 70702,
+          "n": 3
+        },
+        "inputTokens": {
+          "mean": 108,
+          "stddev": 68.78953408767936,
+          "min": 56,
+          "max": 186,
+          "n": 3
+        },
+        "outputTokens": {
+          "mean": 9836.666666666666,
+          "stddev": 2110.806796780163,
+          "min": 7822,
+          "max": 12032,
+          "n": 3
+        },
+        "numTurns": {
+          "mean": 11,
+          "stddev": 3.4641016151377544,
+          "min": 9,
+          "max": 15,
+          "n": 3
+        },
+        "toolCallCount": {
+          "mean": 10,
+          "stddev": 3.4641016151377544,
+          "min": 8,
+          "max": 14,
+          "n": 3
+        }
+      }
+    },
+    "agents/architecture-reviewer/architecture-reviewer.eval.ts > agent:architecture-reviewer > a benign rename passes with no findings": {
+      "nodeid": "agents/architecture-reviewer/architecture-reviewer.eval.ts > agent:architecture-reviewer > a benign rename passes with no findings",
+      "label": "a benign rename passes with no findings",
+      "pass": {
+        "passed": 3,
+        "total": 3,
+        "rate": 1
+      },
+      "practices": {
+        "Reports zero findings for the local-variable rename in server/src/modules/blast/helpers.ts (an `info`-level note at most); it does not invent a critical, major or minor finding.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "Gives a final verdict of pass, not needs-answers or inconclusive.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        }
+      },
+      "metrics": {
+        "durationMs": {
+          "mean": 15962.333333333334,
+          "stddev": 515.6319747003024,
+          "min": 15558,
+          "max": 16543,
+          "n": 3
+        },
+        "inputTokens": {
+          "mean": 30,
+          "stddev": 0,
+          "min": 30,
+          "max": 30,
+          "n": 3
+        },
+        "outputTokens": {
+          "mean": 2895,
+          "stddev": 28.21347195933177,
+          "min": 2865,
+          "max": 2921,
+          "n": 3
+        },
+        "numTurns": {
+          "mean": 3.6666666666666665,
+          "stddev": 0.5773502691896258,
+          "min": 3,
+          "max": 4,
+          "n": 3
+        },
+        "toolCallCount": {
+          "mean": 2.6666666666666665,
+          "stddev": 0.5773502691896258,
+          "min": 2,
+          "max": 3,
+          "n": 3
+        }
+      }
+    }
+  }
+}

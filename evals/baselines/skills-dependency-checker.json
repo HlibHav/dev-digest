@@ -1,0 +1,468 @@
+{
+  "label": "skills-dependency-checker",
+  "git_sha": "fedc040",
+  "dirty": true,
+  "times": 3,
+  "vitestArgs": [
+    "skills/dependency-checker/dependency-checker.eval.ts",
+    "--no-file-parallelism"
+  ],
+  "tests": {
+    "skills/dependency-checker/dependency-checker.eval.ts > skill:dependency-checker > full report follows the template: sections in order, Mermaid map, tables": {
+      "nodeid": "skills/dependency-checker/dependency-checker.eval.ts > skill:dependency-checker > full report follows the template: sections in order, Mermaid map, tables",
+      "label": "full report follows the template: sections in order, Mermaid map, tables",
+      "pass": {
+        "passed": 3,
+        "total": 3,
+        "rate": 1
+      },
+      "practices": {
+        "The report's sections appear in this order: Summary, Map, Packages, Across packages, Findings, Recommendations, Method and limits.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "The Summary is a table with one row per package (client, e2e, evals, mcp-server, reviewer-core, server) giving manager, prod and dev counts, installed size and install health.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "The Mermaid map shows all six packages and their internal links (path alias, mirrored vendor/shared copy, HTTP) and stays at roughly 25 nodes or fewer.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "Sizes match the JSON's KB values, in either MB convention (client node_modules 620 or 635 MB, next own size 152 or 156 MB), not estimates.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "The report says at least once that the sizes are installed disk size, not bundle size shipped to users.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "The Recommendations section is a table whose rows each carry a priority (P0/P1/P2), the package, the dependency, the evidence and one action, ordered P0 before P1 before P2.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        }
+      },
+      "metrics": {
+        "durationMs": {
+          "mean": 69527,
+          "stddev": 11013.394889860256,
+          "min": 59161,
+          "max": 81090,
+          "n": 3
+        },
+        "inputTokens": {
+          "mean": 14011,
+          "stddev": 0,
+          "min": 14011,
+          "max": 14011,
+          "n": 3
+        },
+        "outputTokens": {
+          "mean": 16911.666666666668,
+          "stddev": 2504.1314528860767,
+          "min": 14489,
+          "max": 19490,
+          "n": 3
+        },
+        "numTurns": {
+          "mean": 1,
+          "stddev": 0,
+          "min": 1,
+          "max": 1,
+          "n": 3
+        },
+        "toolCallCount": {
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0,
+          "n": 3
+        }
+      }
+    },
+    "skills/dependency-checker/dependency-checker.eval.ts > skill:dependency-checker > stale installs are P0 and the fix stays a recommendation, not an action": {
+      "nodeid": "skills/dependency-checker/dependency-checker.eval.ts > skill:dependency-checker > stale installs are P0 and the fix stays a recommendation, not an action",
+      "label": "stale installs are P0 and the fix stays a recommendation, not an action",
+      "pass": {
+        "passed": 3,
+        "total": 3,
+        "rate": 1
+      },
+      "practices": {
+        "Calls out that client's @dnd-kit/core, @dnd-kit/sortable and @dnd-kit/utilities are declared and imported (SkillsTab.tsx / SkillRow.tsx) but missing from the install, and ranks this P0.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "Calls out that server's fflate is imported in server/src/modules/skills/import.ts but missing from the install, and ranks this P0.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "Does not claim to have run an install, update or package.json edit; it states the skill is read-only and gives the install as an action for the user to run.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        }
+      },
+      "metrics": {
+        "durationMs": {
+          "mean": 60286,
+          "stddev": 3251.4690525976102,
+          "min": 56880,
+          "max": 63357,
+          "n": 3
+        },
+        "inputTokens": {
+          "mean": 14002,
+          "stddev": 0,
+          "min": 14002,
+          "max": 14002,
+          "n": 3
+        },
+        "outputTokens": {
+          "mean": 14550.333333333334,
+          "stddev": 779.0984105575709,
+          "min": 13672,
+          "max": 15158,
+          "n": 3
+        },
+        "numTurns": {
+          "mean": 1,
+          "stddev": 0,
+          "min": 1,
+          "max": 1,
+          "n": 3
+        },
+        "toolCallCount": {
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0,
+          "n": 3
+        }
+      }
+    },
+    "skills/dependency-checker/dependency-checker.eval.ts > skill:dependency-checker > possibly-unused flags are checked against grep evidence before any removal advice": {
+      "nodeid": "skills/dependency-checker/dependency-checker.eval.ts > skill:dependency-checker > possibly-unused flags are checked against grep evidence before any removal advice",
+      "label": "possibly-unused flags are checked against grep evidence before any removal advice",
+      "pass": {
+        "passed": 3,
+        "total": 3,
+        "rate": 1
+      },
+      "practices": {
+        "Treats client's postcss as declared directly but used only through @tailwindcss/postcss (client/postcss.config.mjs:4; @tailwindcss/postcss depends on postcss itself), so dropping the direct declaration is P2 hygiene, not a P0/P1 unused prod dependency.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "Recommends removing server's @fastify/autoload (a prod dep whose only mention is a comment in server/src/modules/index.ts:24) at P1.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "Notes that server's testcontainers is not imported directly, only @testcontainers/postgresql is (server/test/helpers/pg.ts:1), and treats dropping the direct declaration as P2 hygiene, not a P0/P1 removal.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "Names reviewer-core's tsx specifically (not just tsx across packages) as a possibly unused dev dependency at P2, because nothing in reviewer-core uses it.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        }
+      },
+      "metrics": {
+        "durationMs": {
+          "mean": 44536,
+          "stddev": 11405.004690924068,
+          "min": 31554,
+          "max": 52944,
+          "n": 3
+        },
+        "inputTokens": {
+          "mean": 13992,
+          "stddev": 0,
+          "min": 13992,
+          "max": 13992,
+          "n": 3
+        },
+        "outputTokens": {
+          "mean": 10754.333333333334,
+          "stddev": 2451.2872808655725,
+          "min": 7947,
+          "max": 12471,
+          "n": 3
+        },
+        "numTurns": {
+          "mean": 1,
+          "stddev": 0,
+          "min": 1,
+          "max": 1,
+          "n": 3
+        },
+        "toolCallCount": {
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0,
+          "n": 3
+        }
+      }
+    },
+    "skills/dependency-checker/dependency-checker.eval.ts > skill:dependency-checker > gap: packages without node_modules get n/a sizes and a way to get real numbers": {
+      "nodeid": "skills/dependency-checker/dependency-checker.eval.ts > skill:dependency-checker > gap: packages without node_modules get n/a sizes and a way to get real numbers",
+      "label": "gap: packages without node_modules get n/a sizes and a way to get real numbers",
+      "pass": {
+        "passed": 3,
+        "total": 3,
+        "rate": 1
+      },
+      "practices": {
+        "Reports sizes as n/a (or not available) for client, server, reviewer-core, mcp-server and e2e, and does not invent or estimate a size for any of them.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "Tells the user how to get real numbers without changing this tree, e.g. re-running the collector on a checkout where those packages are installed, or installing them in a separate step and re-running.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        }
+      },
+      "metrics": {
+        "durationMs": {
+          "mean": 25061.333333333332,
+          "stddev": 3388.5861850236793,
+          "min": 21174,
+          "max": 27391,
+          "n": 3
+        },
+        "inputTokens": {
+          "mean": 12200,
+          "stddev": 0,
+          "min": 12200,
+          "max": 12200,
+          "n": 3
+        },
+        "outputTokens": {
+          "mean": 5804.333333333333,
+          "stddev": 778.5790475817682,
+          "min": 4927,
+          "max": 6413,
+          "n": 3
+        },
+        "numTurns": {
+          "mean": 1,
+          "stddev": 0,
+          "min": 1,
+          "max": 1,
+          "n": 3
+        },
+        "toolCallCount": {
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0,
+          "n": 3
+        }
+      }
+    },
+    "skills/dependency-checker/dependency-checker.eval.ts > skill:dependency-checker > gap: a dep flagged unused only because the package is not installed is not removed": {
+      "nodeid": "skills/dependency-checker/dependency-checker.eval.ts > skill:dependency-checker > gap: a dep flagged unused only because the package is not installed is not removed",
+      "label": "gap: a dep flagged unused only because the package is not installed is not removed",
+      "pass": {
+        "passed": 3,
+        "total": 3,
+        "rate": 1
+      },
+      "practices": {
+        "Does not recommend removing client's react-dom; it explains react-dom is required alongside react/next (a peer they need) even though no file imports it directly.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "Notes that client is not installed, so peer and config references could not be checked and the 'possibly unused' list is less reliable than on an installed tree.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "Treats client's postcss as used through @tailwindcss/postcss (client/postcss.config.mjs:4), not as plainly unused; any removal of the direct declaration is P2 hygiene.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        }
+      },
+      "metrics": {
+        "durationMs": {
+          "mean": 31196.333333333332,
+          "stddev": 6885.562746307184,
+          "min": 23912,
+          "max": 37598,
+          "n": 3
+        },
+        "inputTokens": {
+          "mean": 13210,
+          "stddev": 0,
+          "min": 13210,
+          "max": 13210,
+          "n": 3
+        },
+        "outputTokens": {
+          "mean": 6935,
+          "stddev": 1544.0165154557124,
+          "min": 5306,
+          "max": 8377,
+          "n": 3
+        },
+        "numTurns": {
+          "mean": 1,
+          "stddev": 0,
+          "min": 1,
+          "max": 1,
+          "n": 3
+        },
+        "toolCallCount": {
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0,
+          "n": 3
+        }
+      }
+    },
+    "skills/dependency-checker/dependency-checker.eval.ts > skill:dependency-checker > gap: zod 3 vs 4 across shared code with type-only imports is graded below P0": {
+      "nodeid": "skills/dependency-checker/dependency-checker.eval.ts > skill:dependency-checker > gap: zod 3 vs 4 across shared code with type-only imports is graded below P0",
+      "label": "gap: zod 3 vs 4 across shared code with type-only imports is graded below P0",
+      "pass": {
+        "passed": 3,
+        "total": 3,
+        "rate": 1
+      },
+      "practices": {
+        "Identifies the split: mcp-server on zod ^4.6.5 while client, server and reviewer-core are on zod ^3.24.1, and mcp-server reads the shared contract code (@devdigest/shared), whose schemas are built with zod 3.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "Uses the grep evidence that every mcp-server import of @devdigest/shared is `import type`, and concludes the two zod majors do not meet at runtime today.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "Ranks the split P1 (plan it), not P0, and names what would make it P0: mcp-server parsing the shared zod-3 schemas at runtime.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        }
+      },
+      "metrics": {
+        "durationMs": {
+          "mean": 69738.66666666667,
+          "stddev": 6461.687189375027,
+          "min": 62286,
+          "max": 73776,
+          "n": 3
+        },
+        "inputTokens": {
+          "mean": 14003,
+          "stddev": 0,
+          "min": 14003,
+          "max": 14003,
+          "n": 3
+        },
+        "outputTokens": {
+          "mean": 16395,
+          "stddev": 1620.6020486226716,
+          "min": 14540,
+          "max": 17536,
+          "n": 3
+        },
+        "numTurns": {
+          "mean": 1,
+          "stddev": 0,
+          "min": 1,
+          "max": 1,
+          "n": 3
+        },
+        "toolCallCount": {
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0,
+          "n": 3
+        }
+      }
+    },
+    "skills/dependency-checker/dependency-checker.eval.ts > skill:dependency-checker > gap: own installed size is not presented as a dependency's total weight": {
+      "nodeid": "skills/dependency-checker/dependency-checker.eval.ts > skill:dependency-checker > gap: own installed size is not presented as a dependency's total weight",
+      "label": "gap: own installed size is not presented as a dependency's total weight",
+      "pass": {
+        "passed": 3,
+        "total": 3,
+        "rate": 1
+      },
+      "practices": {
+        "Gives next's own installed size from the JSON (about 152 MB, own_size_kb 155972) and says it is the package's own directory without its dependencies.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "Does not present the own size, or client's whole node_modules (about 620 MB), as next's total including its dependencies; comparing next's own size to the whole node_modules (e.g. 'about a quarter of it') is fine.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "Says the collector does not measure transitive weight and names a concrete way to measure it (e.g. summing the sizes of next's resolved dependency tree from the lockfile or `pnpm why`/`pnpm list --depth`).": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        }
+      },
+      "metrics": {
+        "durationMs": {
+          "mean": 8732.333333333334,
+          "stddev": 1266.7313579971617,
+          "min": 7954,
+          "max": 10194,
+          "n": 3
+        },
+        "inputTokens": {
+          "mean": 12985,
+          "stddev": 0,
+          "min": 12985,
+          "max": 12985,
+          "n": 3
+        },
+        "outputTokens": {
+          "mean": 1548,
+          "stddev": 308.4088195885455,
+          "min": 1302,
+          "max": 1894,
+          "n": 3
+        },
+        "numTurns": {
+          "mean": 1,
+          "stddev": 0,
+          "min": 1,
+          "max": 1,
+          "n": 3
+        },
+        "toolCallCount": {
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0,
+          "n": 3
+        }
+      }
+    }
+  }
+}
