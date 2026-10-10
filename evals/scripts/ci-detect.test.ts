@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -6,6 +6,13 @@ import { spawnSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 
 const SCRIPT = join(dirname(fileURLToPath(import.meta.url)), "ci-detect.mjs");
+const EVALS_DIR = join(dirname(fileURLToPath(import.meta.url)), "..");
+
+/** Suites under evals/<tier>/ that have a *.eval.ts — read from disk so the test fits any tree. */
+const withEvals = (tier: string) =>
+  readdirSync(join(EVALS_DIR, tier))
+    .filter((n) => existsSync(join(EVALS_DIR, tier, n)) && readdirSync(join(EVALS_DIR, tier, n)).some((f) => f.endsWith(".eval.ts")))
+    .sort();
 
 /** Run the detector with the given env; return its step outputs, stdout and exit code. */
 function detect(env: Record<string, string>) {
@@ -76,14 +83,14 @@ describe("ci-detect: pull request / push diff", () => {
 describe("ci-detect: workflow_dispatch", () => {
   it("tier=all runs every suite that has evals", () => {
     const { out } = detect({ DISPATCH_TIER: "all" });
-    expect(JSON.parse(out.skills)).toEqual(["dependency-checker", "onion-architecture"]);
-    expect(JSON.parse(out.agents)).toEqual(["architecture-reviewer"]);
+    expect(JSON.parse(out.skills)).toEqual(withEvals("skills"));
+    expect(JSON.parse(out.agents)).toEqual(withEvals("agents"));
     expect(out.run_workflow).toBe("true");
   });
 
   it("tier=skills with a name runs only that skill", () => {
-    const { out } = detect({ DISPATCH_TIER: "skills", DISPATCH_NAME: "onion-architecture" });
-    expect(JSON.parse(out.skills)).toEqual(["onion-architecture"]);
+    const { out } = detect({ DISPATCH_TIER: "skills", DISPATCH_NAME: "dependency-checker" });
+    expect(JSON.parse(out.skills)).toEqual(["dependency-checker"]);
     expect(JSON.parse(out.agents)).toEqual([]);
     expect(out.run_workflow).toBe("false");
   });
