@@ -28,7 +28,26 @@
       "cost": "Cost"
     },
     "pass": "pass",
-    "fail": "fail"
+    "fail": "fail",
+    "subtitle": "Regression harness across all reviewer agents · pick an agent to see its runs",
+    "agents": "Agents",
+    "recentAll": "Recent eval runs · all agents",
+    "runAllAgents": "Run all agents",
+    "runAllResult": "{started} started · {skipped} skipped",
+    "skip": {
+      "disabled": "disabled",
+      "noCases": "no cases",
+      "tooManyCases": "too many cases",
+      "alreadyRunning": "already running"
+    },
+    "emptyTitle": "No eval cases yet",
+    "emptyBody": "Turn an accepted or dismissed finding into an eval case, or create one on an agent's Evals tab.",
+    "lastRun": "Last {label} · {date} · {passed}/{executed} pass",
+    "allAgents": "All agents",
+    "runEvalAgent": "Run eval",
+    "switchAgent": "Switch agent",
+    "regression": "{metrics} dropped on {label}",
+    "regressionItem": "{metric} −{points} pts"
   },
   "caseEditor": {
     "newCase": "New eval case",
@@ -55,7 +74,15 @@
     "invalidJson": "invalid JSON",
     "lastRunPassed": "Last run passed",
     "lastRunFailed": "Last run failed",
-    "resultSummary": "recall {recall}% · precision {precision}% · citation {citation}% · {duration}s"
+    "resultSummary": "recall {recall}% · precision {precision}% · citation {citation}% · {duration}s",
+    "findingSkeleton": "Finding skeleton",
+    "runOnSave": "Run on save",
+    "neverMatched": "This expectation can never be matched",
+    "nameRequired": "Name is required",
+    "diffRequired": "Diff is required",
+    "cancel": "Cancel",
+    "lastRunErrored": "Last run errored",
+    "lastRunSummary": "matched {matched} of {expected} · {duration}s · {cost}"
   },
   "evalsTab": {
     "metricsTitle": "Eval metrics",
@@ -71,7 +98,24 @@
     "run": "Run",
     "running": "Running…",
     "edit": "Edit",
-    "delete": "Delete"
+    "delete": "Delete",
+    "passing": "passing {passed} / {total}",
+    "matched": "matched {matched} of {expected} expected",
+    "chip": {
+      "mustFind": "must find",
+      "mustNotFlag": "must NOT flag",
+      "expectClean": "expect clean",
+      "mixed": "{count} expectations"
+    },
+    "runAll": "Run all evals",
+    "newEvalCase": "New eval case",
+    "viewDashboard": "View full dashboard",
+    "createdFrom": "Created from PR #{number}",
+    "reveal": "Reveal",
+    "hide": "Hide",
+    "masked": "•••• credential hidden",
+    "runCase": "Run case",
+    "deleteConfirm": "Delete eval case \"{name}\"?"
   },
   "page": {
     "crumbSkillsLab": "Skills Lab",
@@ -80,5 +124,68 @@
     "crumbEvals": "Evals",
     "crumbNewCase": "New case",
     "crumbEvalCase": "Eval case"
+  },
+  "finding": {
+    "turnInto": "Turn into eval case",
+    "hintUndecided": "Accept or dismiss first",
+    "hintNoAgent": "This finding's review has no agent",
+    "created": "Eval case added to {agent}",
+    "openCase": "Open in Evals"
+  },
+  "metric": {
+    "recall": "Recall",
+    "precision": "Precision",
+    "citation": "Citation accuracy",
+    "passed": "Passed",
+    "cost": "Cost",
+    "none": "—",
+    "neverRun": "never run",
+    "runLabel": "run #{n} · agent v{v}",
+    "up": "up",
+    "down": "down",
+    "partialCost": "partial"
+  },
+  "status": {
+    "running": "Running {done}/{total}",
+    "done": "done",
+    "partial": "partial",
+    "failed": "failed",
+    "passed": "passed",
+    "errored": "errored",
+    "neverRun": "never run"
+  },
+  "history": {
+    "title": "Recent runs",
+    "ranAt": "Ran at",
+    "run": "Run",
+    "status": "Status",
+    "pass": "{passed}/{executed}",
+    "errored": "{count} errored",
+    "select": "Select {label}",
+    "compare": "Compare",
+    "selected": "{count} selected"
+  },
+  "compare": {
+    "title": "Compare runs · {base} → {head}",
+    "promptDiff": "System prompt diff",
+    "configChanges": "Configuration changes",
+    "noConfigChanges": "No model, provider or skill changes",
+    "caseSetChanged": "case set changed: +{added} / −{removed}",
+    "old": "{label} (old)",
+    "new": "{label} (new)",
+    "close": "Close",
+    "kind": {
+      "model": "Model",
+      "provider": "Provider",
+      "strategy": "Strategy",
+      "skill_added": "Skill added",
+      "skill_removed": "Skill removed",
+      "skill_version": "Skill version"
+    }
+  },
+  "trend": {
+    "title": "Metric trend",
+    "tooltip": "{label} · {cost}",
+    "textAlt": "Trend points"
   }
 }
