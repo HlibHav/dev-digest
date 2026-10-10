@@ -7,79 +7,88 @@ const REVIEW_PROMPT = `Audit this diff against DevDigest's documented structural
 
 ${fx("checkout-service.diff")}`;
 
-// A second real diff whose violations map onto DevDigest-SPECIFIC rule names
-// (`reviewer-core-zero-io`, `reviewer-core-ground-findings-gate`) that a competent model will
-// describe in prose but will not spontaneously name unless the agent forces a citation. This is
-// the discriminating case for the strict-vs-lite A/B: both variants should FIND both problems,
-// but only the strict variant (which keeps the "cite the exact documented rule per finding" hard
-// rule) should reliably emit the identifier. The checkout diff's textbook violations don't
-// discriminate — the model volunteers `inward-only-dependencies`/`di-discipline` either way.
+// Cases follow THIS repo's architecture-reviewer output contract (.claude/agents/architecture-reviewer.md,
+// "Output — the Architecture Review"): a `Verdict: pass | fail` line, severity critical/major/minor,
+// each finding's rule cited as `<skill> step <n>` or the rules file, a `path:line` and a quoted line,
+// marked verified or plausible. They replace the course template's cases, which expected rule ids
+// (`inward-only-dependencies`, `reviewer-core-zero-io`) that no doc in this repo defines.
+//
+// Every diff is pasted, not applied to any branch — the way a caller hands the agent a patch. So
+// the checks cannot run on it; the agent should say so and still give a pass/fail verdict.
+// reviewer-core-fs-read.diff and benign-rename.diff are made from the real files at this commit;
+// checkout-service.diff touches a module that doesn't exist here, so its findings are `plausible`.
+// The fixtures carry the new-side line column that review-bundle.sh writes into hunks/*.patch
+// (number_hunks there), since that is what the agent gets in a real review.
 const REVIEWER_CORE_PROMPT = `Audit this diff against DevDigest's documented structural contracts.
 
-${fx("reviewer-core-gate.diff")}`;
+${fx("reviewer-core-fs-read.diff")}`;
 
-// A diff that violates NO documented rule (a pure local-variable rename inside a domain file, no
-// new imports, no cross-layer edges). A grounded reviewer should report zero violations. This
-// surfaces the COST of relaxing the citation rule: freed from "every finding must name a
-// documented contract", the lite variant is more prone to fabricating a judgment/best-practice
-// finding where the strict variant stays silent.
 const BENIGN_PROMPT = `Audit this diff against DevDigest's documented structural contracts.
 
-${fx("benign-refactor.diff")}`;
+${fx("benign-rename.diff")}`;
 
-// Shared across the strict (architecture-reviewer) and relaxed (architecture-reviewer-lite)
-// variants so the two agents are graded on the exact same task — the only thing that should
-// move between the two runs is whether "cites the specific documented rule" keeps passing.
 export const cases: AgentCase[] = [
   {
     name: "flags both violations in the checkout diff with severity and a citable rule",
     kind: "quality",
     prompt: REVIEW_PROMPT,
+    grounding: ["Verdict: fail"],
     practices: [
-      "flags the domain file (checkout.ts) importing a type from 'fastify' as a violation of the inward-only dependency rule between Domain and Presentation layers",
-      "flags the `new PgCheckoutRepository()` call inside service.ts as a violation of DI discipline (concrete adapters/repositories must be constructed only in the composition root / container)",
-      "names the specific documented rule identifier for EVERY finding (e.g. `inward-only-dependencies`, `di-discipline`) rather than describing the problem only in prose",
-      "assigns a severity (critical/high/medium/low/info) to each finding",
-      "quotes the offending line verbatim as evidence for each finding, not a paraphrase",
-      "ends with an explicit PASS/FAIL gate verdict based on whether any critical or high findings exist",
+      "Flags server/src/modules/checkout/domain/checkout.ts:1 — the domain file imports a type from 'fastify' — as a boundary violation (imports must point inward; application/domain code imports no fastify).",
+      "Flags the `new PgCheckoutRepository()` in server/src/modules/checkout/service.ts — the service builds its own repository instead of receiving it as a port built in wiring.ts / the container.",
+      "Every finding cites the rule it breaks as a skill step (e.g. `onion-architecture step 3`) or the rules file (`.claude/rules/onion-boundaries.md`), not prose alone.",
+      // The old wording ("every finding … and these boundary leaks are major") failed an extra minor
+      // placement finding in some runs and passed it in others, and passed a review that dropped the
+      // repository leak. Re-judge of 63 saved outputs + 2 controls: only those two kinds flip.
+      "Gives the fastify import in domain/checkout.ts and the `new PgCheckoutRepository()` in service.ts each a severity of `major` or higher. Every other finding carries one of critical / major / minor; a `minor` placement or overlapping finding does not fail this.",
+      "Every finding gives a `path:line` and quotes the offending line verbatim, not a paraphrase.",
+      "States that the checks (`pnpm lint:boundaries`, the route-adapter test) did not run on this diff, or ran only on the unchanged tree, rather than presenting their output as a verdict on the diff.",
     ],
-    threshold: 1.0,
+    threshold: 0.8,
     maxTurns: 25,
   },
   {
     name: "does not fabricate an architecture finding for the out-of-scope security-shaped change",
     kind: "quality",
     prompt: REVIEW_PROMPT,
+    // A pasted diff is a target: the review must reach a verdict, not stop at needs-answers.
+    grounding: ["Verdict: fail"],
     practices: [
-      "does not invent an architecture-contract violation for the optional `reply?: FastifyReply` parameter beyond the inward-only-dependencies import issue itself (no runtime bug/security finding fabricated as an architecture rule)",
-      "stays scoped to structural/layering/DI findings and does not comment on naming, style, or test coverage",
+      // A separate row for the parameter is the duplicate this case catches; naming it inside the
+      // import finding is not. Re-judge of 46 saved outputs + 2 controls: only the inline mentions flip.
+      "Does not raise a separate finding — its own row, number or severity — for the optional `reply?: FastifyReply` parameter (no runtime bug or security finding dressed up as an architecture rule). Naming the parameter inside the fastify-import finding as where the type is used is not a separate finding, and neither is a one-line note under 'Out of scope, noticed'.",
+      "Stays scoped to layering, import direction and composition; it does not comment on naming, style or test coverage (a one-line 'Out of scope, noticed' entry is fine).",
     ],
     threshold: 1.0,
     maxTurns: 25,
   },
   {
-    name: "cites the DevDigest-specific rule identifier for reviewer-core violations",
+    name: "flags filesystem I/O added to reviewer-core against its purity rule",
     kind: "quality",
     prompt: REVIEWER_CORE_PROMPT,
+    grounding: ["Verdict: fail"],
     practices: [
-      "flags the `import { readFileSync } from 'node:fs'` added to reviewer-core/src/pipeline/run.ts as a violation (reviewer-core must do no I/O except the injected LLMProvider)",
-      "flags that runPipeline now returns `deduped` directly, skipping the mandatory `groundFindings()` gate before emitting findings",
-      "names the exact documented rule identifier `reviewer-core-zero-io` for the fs-import finding rather than only describing it in prose",
-      "names the exact documented rule identifier `reviewer-core-ground-findings-gate` for the skipped-gate finding rather than only describing it in prose",
-      "quotes the offending line verbatim as evidence for each finding, not a paraphrase",
-      "ends with an explicit PASS/FAIL gate verdict based on whether any critical or high findings exist",
+      "Flags `import { readFileSync } from 'node:fs'` at reviewer-core/src/review/run.ts:18 (and its use in reviewPullRequest) as a violation: reviewer-core is pure — no database, GitHub, filesystem or env access.",
+      // Any documented source counts: the I/O rule lives in reviewer-core/AGENTS.md, in more than
+      // one onion-architecture step (the Domain ring, ports) and in the rules file. Version-B runs
+      // showed the agent citing "onion-architecture step 1" — a real citation a narrower wording failed.
+      "Cites a documented rule by name — reviewer-core/AGENTS.md's purity rule, any `onion-architecture step <n>`, or `.claude/rules/onion-boundaries.md` — rather than describing it only in prose.",
+      // The import and the call both prove the I/O; the old wording asked for the import only and
+      // never checked the number. Re-judge of 55 saved outputs + 2 controls: haiku-5.5 citations of
+      // the call (:143) now pass, and wrong numbers (:15, :16, :17, :138) and a :139 control now fail.
+      "Gives the finding a severity of major or higher and cites either the import (`run.ts:18`, `import { readFileSync } from 'node:fs'`) or the call (`run.ts:143`, `readFileSync(input.systemPromptPath, 'utf8')`) with that line's own number and the line quoted verbatim; a wrong number or a paraphrase fails.",
     ],
     threshold: 1.0,
     maxTurns: 25,
   },
   {
-    name: "does not fabricate a documented-rule violation for a benign rename",
+    name: "a benign rename passes with no findings",
     kind: "quality",
     prompt: BENIGN_PROMPT,
+    grounding: ["Verdict: pass"],
     practices: [
-      "reports no violations for the benign rename (or records only `info`-level, non-blocking observations) — it does not invent a critical/high/medium finding",
-      "does not fabricate a documented-rule violation where the diff violates none of the checked rules",
-      "the final gate verdict is PASS",
+      "Reports zero findings for the local-variable rename in server/src/modules/blast/helpers.ts (an `info`-level note at most); it does not invent a critical, major or minor finding.",
+      "Gives a final verdict of pass, not needs-answers or inconclusive.",
     ],
     threshold: 1.0,
     maxTurns: 25,

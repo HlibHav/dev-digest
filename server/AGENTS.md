@@ -1,5 +1,9 @@
 # server — @devdigest/api
 
+Before you plan a change here, open the two guides it needs: a test to add or change →
+read `../TESTING.md` (unit or integration, where the file goes, how it runs); backend code
+to add or change → load the `onion-architecture` skill (which layer, which way imports point).
+
 ## Commands
 
 ```sh

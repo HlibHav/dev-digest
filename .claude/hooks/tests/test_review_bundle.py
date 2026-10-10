@@ -84,6 +84,39 @@ class ReviewBundle(unittest.TestCase):
         head = git(self.repo, "rev-parse", "feat").strip()
         self.assertIn(f"# head: {head}", (self.out / "index.txt").read_text())
 
+    def test_hunk_lines_carry_their_new_side_line_number(self) -> None:
+        # Reviewers cite path:line from this column instead of counting from the @@ header.
+        git(self.repo, "checkout", "-q", "main")
+        write(self.repo, "server/src/b.ts", "".join(f"line{i}\n" for i in range(1, 9)))
+        git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-qm", "b")
+        git(self.repo, "checkout", "-q", "feat")
+        git(self.repo, "merge", "-q", "main")
+        lines = [f"line{i}\n" for i in range(1, 9)]
+        del lines[1]  # line2 removed
+        lines[3:3] = ["added-a\n", "added-b\n"]  # after line4 (now at index 2)
+        write(self.repo, "server/src/b.ts", "".join(lines))
+        git(self.repo, "commit", "-qam", "edit b")
+        self.run_bundle()
+        hunk = (self.out / "hunks/server/src/b.ts.patch").read_text().splitlines()
+        body = hunk[hunk.index(next(l for l in hunk if l.startswith("@@"))) + 1 :]
+        self.assertEqual(
+            body,
+            [
+                "    1  line1",
+                "      -line2",
+                "    2  line3",
+                "    3  line4",
+                "    4 +added-a",
+                "    5 +added-b",
+                "    6  line5",
+                "    7  line6",
+                "    8  line7",
+            ],
+        )
+        self.assertIn("+++ b/server/src/b.ts", hunk)
+        self.assertIn("\n+added-a\n", (self.out / "diff.patch").read_text())
+
     def test_rejects_a_bad_range_or_ref(self) -> None:
         self.assertEqual(self.run_bundle("main..feat").returncode, 2)
         self.assertEqual(self.run_bundle("main...nope").returncode, 2)

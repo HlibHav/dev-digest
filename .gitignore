@@ -27,3 +27,6 @@ test-results/
 # Python bytecode from the .claude hooks
 __pycache__/
 *.pyc
+
+# legacy local skill-eval results (cases now live in the evals/ package)
+.skill-evals/

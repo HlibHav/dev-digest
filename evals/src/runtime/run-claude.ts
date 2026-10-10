@@ -45,8 +45,8 @@ export interface RunOptions {
   stopWhen?: (partial: Pick<Result, "subagents" | "filesRead" | "skillsInvoked" | "toolsUsed">) => boolean;
 }
 
-/** Run one headless Claude turn-loop and extract what it ACTUALLY did (not its prose). */
-export async function runClaude(prompt: string, opts: RunOptions = {}): Promise<Result> {
+/** The SDK options for one eval session; exported so the tool sandbox is unit-tested. */
+export function buildOptions(opts: RunOptions): Options {
   const allowedTools = opts.allowedTools ?? [];
   // With no tools, a subagent/skill prompt that says "read files" will loop on denied tool
   // calls until max-turns. For these content-only evals the input is already in the prompt,
@@ -59,17 +59,28 @@ export async function runClaude(prompt: string, opts: RunOptions = {}): Promise<
     systemPrompt = (systemPrompt ?? "") + directive;
   }
 
-  const options: Options = {
+  return {
     model: opts.model ?? EVAL_MODEL,
     maxTurns: opts.maxTurns ?? MAX_TURNS,
-    permissionMode: "bypassPermissions", // safe: evals only read/plan and tools are allow-listed
+    permissionMode: "bypassPermissions", // safe only because `tools` below is the whole tool set
     systemPrompt,
+    // `allowedTools` only auto-approves; `tools` is what removes every other built-in tool.
+    // Without it, bypassPermissions leaves Write/Edit/Bash open and a session can edit the repo.
+    // A restricted set without ToolSearch fails with "Prompt is too long" on the first tool
+    // result (CLI, SDK 0.3.198), so every non-empty set brings ToolSearch along; it only loads
+    // tool schemas, it runs nothing.
+    tools: allowedTools.length > 0 ? [...allowedTools, "ToolSearch"] : [],
     allowedTools,
     cwd: opts.cwd ?? REPO_ROOT,
     // Default: do NOT load on-disk config — isolates the injected artifact. workflowTask overrides.
     settingSources: opts.settingSources ?? [],
     env: subscriptionEnv(),
   };
+}
+
+/** Run one headless Claude turn-loop and extract what it ACTUALLY did (not its prose). */
+export async function runClaude(prompt: string, opts: RunOptions = {}): Promise<Result> {
+  const options = buildOptions(opts);
 
   const textParts: string[] = [];
   const tools: string[] = [];
@@ -144,7 +155,9 @@ export async function runClaude(prompt: string, opts: RunOptions = {}): Promise<
     }
   } catch (err) {
     isError = true;
-    if (!resultText && textParts.length === 0) {
+    // A session that only called tools before max-turns still has a usable trace (a negative
+    // activation case needs exactly that), so rethrow only when nothing at all was collected.
+    if (!resultText && textParts.length === 0 && toolCallCount === 0) {
       throw err; // nothing usable collected — surface the failure
     }
   }

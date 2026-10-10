@@ -1,0 +1,328 @@
+diff --git a/server/src/adapters/slack/webhook.ts b/server/src/adapters/slack/webhook.ts
+new file mode 100644
+index 0000000..0431c83
+--- /dev/null
++++ b/server/src/adapters/slack/webhook.ts
+@@ -0,0 +1,34 @@
++import { ConfigError, ExternalServiceError } from '../../platform/errors.js';
++
++export interface SlackMessage {
++  text: string;
++}
++
++/**
++ * Slack incoming-webhook client. One POST per message; Slack answers `200 ok`
++ * on success and a plain-text error otherwise.
++ */
++export class SlackWebhookClient {
++  constructor(
++    private readonly webhookUrl: string | undefined = process.env.SLACK_WEBHOOK_URL,
++    private readonly timeoutMs = 10_000,
++  ) {}
++
++  get configured(): boolean {
++    return Boolean(this.webhookUrl);
++  }
++
++  async post(message: SlackMessage): Promise<void> {
++    if (!this.webhookUrl) throw new ConfigError('SLACK_WEBHOOK_URL is not set');
++    const res = await fetch(this.webhookUrl, {
++      method: 'POST',
++      headers: { 'content-type': 'application/json' },
++      body: JSON.stringify(message),
++      signal: AbortSignal.timeout(this.timeoutMs),
++    });
++    if (!res.ok) {
++      const detail = await res.text().catch(() => '');
++      throw new ExternalServiceError(`Slack webhook returned ${res.status}`, { detail });
++    }
++  }
++}
+diff --git a/server/src/modules/index.ts b/server/src/modules/index.ts
+index 5fbe565..5b688d9 100644
+--- a/server/src/modules/index.ts
++++ b/server/src/modules/index.ts
+@@ -14,6 +14,7 @@ import blast from './blast/routes.js';
+ import projectContext from './project-context/routes.js';
+ import onboarding from './onboarding/routes.js';
+ import brief from './brief/routes.js';
++import notify from './notify/routes.js';
+ 
+ /**
+  * Module registry. Each feature module is a Fastify plugin in
+@@ -44,4 +45,5 @@ export const modules: Record<string, FastifyPluginAsync> = {
+   projectContext,
+   onboarding,
+   brief,
++  notify,
+ };
+diff --git a/server/src/modules/notify/helpers.ts b/server/src/modules/notify/helpers.ts
+new file mode 100644
+index 0000000..d933de3
+--- /dev/null
++++ b/server/src/modules/notify/helpers.ts
+@@ -0,0 +1,31 @@
++export const SEVERITIES = ['critical', 'high', 'medium', 'low', 'info'] as const;
++export type Severity = (typeof SEVERITIES)[number];
++
++export interface ReviewDigest {
++  reviewId: string;
++  repoFullName: string;
++  prNumber: number;
++  prTitle: string;
++  verdict: string | null;
++  score: number | null;
++  summary: string | null;
++  counts: Partial<Record<Severity, number>>;
++}
++
++const MAX_SUMMARY_CHARS = 600;
++
++/** One Slack mrkdwn message for a finished review. */
++export function formatDigest(d: ReviewDigest): string {
++  const header = `*${d.repoFullName}#${d.prNumber}* ${d.prTitle}`;
++  const verdict = d.verdict ? `Verdict: *${d.verdict}*` : 'Verdict: n/a';
++  const score = d.score === null ? '' : ` · score ${d.score}/100`;
++  const counts = SEVERITIES.filter((s) => (d.counts[s] ?? 0) > 0)
++    .map((s) => `${s} ${d.counts[s]}`)
++    .join(' · ');
++  const summary = d.summary ? truncate(d.summary.trim(), MAX_SUMMARY_CHARS) : '';
++  return [header, `${verdict}${score}`, counts || 'No findings', summary].filter(Boolean).join('\n');
++}
++
++function truncate(text: string, max: number): string {
++  return text.length <= max ? text : `${text.slice(0, max - 1)}…`;
++}
+diff --git a/server/src/modules/notify/repository.ts b/server/src/modules/notify/repository.ts
+new file mode 100644
+index 0000000..a2b1ed1
+--- /dev/null
++++ b/server/src/modules/notify/repository.ts
+@@ -0,0 +1,41 @@
++import { and, eq, sql } from 'drizzle-orm';
++import type { Db } from '../../db/client.js';
++import * as t from '../../db/schema.js';
++import { SEVERITIES, type ReviewDigest, type Severity } from './helpers.js';
++
++export class NotifyRepository {
++  constructor(private db: Db) {}
++
++  async loadDigest(workspaceId: string, reviewId: string): Promise<ReviewDigest | null> {
++    const [row] = await this.db
++      .select({
++        reviewId: t.reviews.id,
++        verdict: t.reviews.verdict,
++        score: t.reviews.score,
++        summary: t.reviews.summary,
++        prNumber: t.pullRequests.number,
++        prTitle: t.pullRequests.title,
++        repoFullName: t.repos.fullName,
++      })
++      .from(t.reviews)
++      .innerJoin(t.pullRequests, eq(t.pullRequests.id, t.reviews.prId))
++      .innerJoin(t.repos, eq(t.repos.id, t.pullRequests.repoId))
++      .where(and(eq(t.reviews.workspaceId, workspaceId), eq(t.reviews.id, reviewId)))
++      .limit(1);
++    if (!row) return null;
++
++    const counts = await this.db
++      .select({ severity: t.findings.severity, n: sql<number>`count(*)::int` })
++      .from(t.findings)
++      .where(eq(t.findings.reviewId, reviewId))
++      .groupBy(t.findings.severity);
++
++    const bySeverity: Partial<Record<Severity, number>> = {};
++    for (const c of counts) {
++      if ((SEVERITIES as readonly string[]).includes(c.severity)) {
++        bySeverity[c.severity as Severity] = c.n;
++      }
++    }
++    return { ...row, counts: bySeverity };
++  }
++}
+diff --git a/server/src/modules/notify/routes.ts b/server/src/modules/notify/routes.ts
+new file mode 100644
+index 0000000..f148849
+--- /dev/null
++++ b/server/src/modules/notify/routes.ts
+@@ -0,0 +1,55 @@
++/**
++ * Notify HTTP module.
++ *
++ *   POST /reviews/:id/notify            → post the review summary to Slack
++ *   GET  /pulls/:id/notifiable-reviews  → the PR's reviews, newest first, for the picker
++ */
++import type { FastifyInstance } from 'fastify';
++import type { ZodTypeProvider } from 'fastify-type-provider-zod';
++import { and, desc, eq } from 'drizzle-orm';
++import * as t from '../../db/schema.js';
++import { getContext } from '../_shared/context.js';
++import { IdParams } from '../_shared/schemas.js';
++import { NotifyRepository } from './repository.js';
++import { NotifyService } from './service.js';
++
++const PICKER_LIMIT = 20;
++
++export default async function notifyRoutes(appBase: FastifyInstance) {
++  const app = appBase.withTypeProvider<ZodTypeProvider>();
++  const { container } = app;
++
++  const repo = new NotifyRepository(container.db);
++  const service = new NotifyService({
++    notifier: container.slack,
++    loadDigest: (workspaceId, reviewId) => repo.loadDigest(workspaceId, reviewId),
++  });
++
++  app.post('/reviews/:id/notify', { schema: { params: IdParams } }, async (req) => {
++    const { workspaceId } = await getContext(container, req);
++    return service.notifyReview(workspaceId, req.params.id);
++  });
++
++  app.get('/pulls/:id/notifiable-reviews', { schema: { params: IdParams } }, async (req) => {
++    const { workspaceId } = await getContext(container, req);
++    const rows = await container.db
++      .select({
++        id: t.reviews.id,
++        kind: t.reviews.kind,
++        verdict: t.reviews.verdict,
++        createdAt: t.reviews.createdAt,
++      })
++      .from(t.reviews)
++      .where(and(eq(t.reviews.workspaceId, workspaceId), eq(t.reviews.prId, req.params.id)))
++      .orderBy(desc(t.reviews.createdAt))
++      .limit(PICKER_LIMIT);
++    return {
++      items: rows.map((r) => ({
++        id: r.id,
++        kind: r.kind,
++        verdict: r.verdict,
++        created_at: r.createdAt.toISOString(),
++      })),
++    };
++  });
++}
+diff --git a/server/src/modules/notify/service.ts b/server/src/modules/notify/service.ts
+new file mode 100644
+index 0000000..2b67a51
+--- /dev/null
++++ b/server/src/modules/notify/service.ts
+@@ -0,0 +1,30 @@
++import { NotFoundError } from '../../platform/errors.js';
++import { formatDigest, type ReviewDigest } from './helpers.js';
++
++export interface ReviewNotifier {
++  readonly configured: boolean;
++  post(message: { text: string }): Promise<void>;
++}
++
++export interface NotifyPorts {
++  notifier: ReviewNotifier;
++  loadDigest(workspaceId: string, reviewId: string): Promise<ReviewDigest | null>;
++}
++
++export interface NotifyResult {
++  sent: boolean;
++  reason?: 'not_configured';
++}
++
++/** Posts a finished review's summary to the team's Slack channel. */
++export class NotifyService {
++  constructor(private ports: NotifyPorts) {}
++
++  async notifyReview(workspaceId: string, reviewId: string): Promise<NotifyResult> {
++    if (!this.ports.notifier.configured) return { sent: false, reason: 'not_configured' };
++    const digest = await this.ports.loadDigest(workspaceId, reviewId);
++    if (!digest) throw new NotFoundError('Review not found');
++    await this.ports.notifier.post({ text: formatDigest(digest) });
++    return { sent: true };
++  }
++}
+diff --git a/server/src/platform/container.ts b/server/src/platform/container.ts
+index 0a46e69..3a50996 100644
+--- a/server/src/platform/container.ts
++++ b/server/src/platform/container.ts
+@@ -23,6 +23,7 @@ import { RipgrepCodeIndex } from '../adapters/codeindex/ripgrep.js';
+ import { OpenAIProvider } from '../adapters/llm/openai.js';
+ import { AnthropicProvider } from '../adapters/llm/anthropic.js';
+ import { OpenAIEmbedder } from '../adapters/embedder/openai.js';
++import { SlackWebhookClient } from '../adapters/slack/webhook.js';
+ import { OpenRouterProvider } from '@devdigest/reviewer-core';
+ import { estimateCost } from '../adapters/llm/pricing.js';
+ import { PriceBook } from './price-book.js';
+@@ -74,6 +75,7 @@ export class Container {
+   private _embedder?: Embedder;
+   private _repoDocs?: RepoDocs;
+   private _cloneScanner?: CloneScanner;
++  private _slack?: SlackWebhookClient;
+   private llmCache = new Map<string, LLMProvider>();
+ 
+   // Shared repositories for cross-cutting entities (agents, reviews/pulls,
+@@ -117,6 +119,11 @@ export class Container {
+     return this._cloneScanner;
+   }
+ 
++  /** Slack incoming webhook for review notifications. */
++  get slack(): SlackWebhookClient {
++    return (this._slack ??= new SlackWebhookClient());
++  }
++
+   get agentsRepo(): AgentsRepository {
+     return (this._agentsRepo ??= new AgentsRepository(this.db));
+   }
+diff --git a/server/test/notify-service.test.ts b/server/test/notify-service.test.ts
+new file mode 100644
+index 0000000..66cf23e
+--- /dev/null
++++ b/server/test/notify-service.test.ts
+@@ -0,0 +1,51 @@
++import { describe, it, expect, vi } from 'vitest';
++import { NotifyService, type ReviewNotifier } from '../src/modules/notify/service.js';
++import { formatDigest, type ReviewDigest } from '../src/modules/notify/helpers.js';
++import { NotFoundError } from '../src/platform/errors.js';
++
++const DIGEST: ReviewDigest = {
++  reviewId: 'r-1',
++  repoFullName: 'acme/payments-api',
++  prNumber: 42,
++  prTitle: 'Add idempotency keys',
++  verdict: 'request_changes',
++  score: 61,
++  summary: 'Retries can double-charge when the key is missing.',
++  counts: { high: 2, low: 1 },
++};
++
++function notifier(configured = true): ReviewNotifier & { post: ReturnType<typeof vi.fn> } {
++  return { configured, post: vi.fn(async () => {}) };
++}
++
++describe('NotifyService', () => {
++  it('posts the formatted digest', async () => {
++    const n = notifier();
++    const svc = new NotifyService({ notifier: n, loadDigest: async () => DIGEST });
++    await expect(svc.notifyReview('ws', 'r-1')).resolves.toEqual({ sent: true });
++    expect(n.post).toHaveBeenCalledWith({ text: formatDigest(DIGEST) });
++  });
++
++  it('does nothing when Slack is not configured', async () => {
++    const n = notifier(false);
++    const load = vi.fn(async () => DIGEST);
++    const svc = new NotifyService({ notifier: n, loadDigest: load });
++    await expect(svc.notifyReview('ws', 'r-1')).resolves.toEqual({ sent: false, reason: 'not_configured' });
++    expect(load).not.toHaveBeenCalled();
++    expect(n.post).not.toHaveBeenCalled();
++  });
++
++  it('throws NotFoundError for an unknown review', async () => {
++    const svc = new NotifyService({ notifier: notifier(), loadDigest: async () => null });
++    await expect(svc.notifyReview('ws', 'nope')).rejects.toBeInstanceOf(NotFoundError);
++  });
++});
++
++describe('formatDigest', () => {
++  it('lists only non-zero severities in order', () => {
++    expect(formatDigest(DIGEST)).toContain('high 2 · low 1');
++  });
++  it('says so when there are no findings', () => {
++    expect(formatDigest({ ...DIGEST, counts: {} })).toContain('No findings');
++  });
++});

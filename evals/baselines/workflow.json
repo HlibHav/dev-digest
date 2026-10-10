@@ -1,0 +1,568 @@
+{
+  "label": "workflow",
+  "git_sha": "fedc040",
+  "dirty": true,
+  "times": 3,
+  "vitestArgs": [
+    "workflow/review-workflow.eval.ts",
+    "--no-file-parallelism"
+  ],
+  "tests": {
+    "workflow/review-workflow.eval.ts > workflow:review > API-route plan pulls the architecture-reviewer subagent": {
+      "nodeid": "workflow/review-workflow.eval.ts > workflow:review > API-route plan pulls the architecture-reviewer subagent",
+      "label": "API-route plan pulls the architecture-reviewer subagent",
+      "pass": {
+        "passed": 3,
+        "total": 3,
+        "rate": 1
+      },
+      "practices": {
+        "dispatches subagent architecture-reviewer": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "session ends without error": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        }
+      },
+      "metrics": {
+        "durationMs": {
+          "mean": 13589,
+          "stddev": 2134.308553138463,
+          "min": 11128,
+          "max": 14933,
+          "n": 3
+        },
+        "inputTokens": {
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0,
+          "n": 3
+        },
+        "outputTokens": {
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0,
+          "n": 3
+        },
+        "numTurns": {
+          "mean": 2,
+          "stddev": 0,
+          "min": 2,
+          "max": 2,
+          "n": 3
+        },
+        "toolCallCount": {
+          "mean": 1,
+          "stddev": 0,
+          "min": 1,
+          "max": 1,
+          "n": 3
+        }
+      }
+    },
+    "workflow/review-workflow.eval.ts > workflow:review > a reviewer-core task starts from reviewer-core/INSIGHTS.md": {
+      "nodeid": "workflow/review-workflow.eval.ts > workflow:review > a reviewer-core task starts from reviewer-core/INSIGHTS.md",
+      "label": "a reviewer-core task starts from reviewer-core/INSIGHTS.md",
+      "pass": {
+        "passed": 3,
+        "total": 3,
+        "rate": 1
+      },
+      "practices": {
+        "reads reviewer-core/INSIGHTS.md": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "session ends without error": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        }
+      },
+      "metrics": {
+        "durationMs": {
+          "mean": 11488,
+          "stddev": 526.5557900165945,
+          "min": 11052,
+          "max": 12073,
+          "n": 3
+        },
+        "inputTokens": {
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0,
+          "n": 3
+        },
+        "outputTokens": {
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0,
+          "n": 3
+        },
+        "numTurns": {
+          "mean": 5.666666666666667,
+          "stddev": 0.5773502691896258,
+          "min": 5,
+          "max": 6,
+          "n": 3
+        },
+        "toolCallCount": {
+          "mean": 2.6666666666666665,
+          "stddev": 0.5773502691896258,
+          "min": 2,
+          "max": 3,
+          "n": 3
+        }
+      }
+    },
+    "workflow/review-workflow.eval.ts > workflow:review > CLAUDE.md routes 'does a skill change a review' to the control experiment": {
+      "nodeid": "workflow/review-workflow.eval.ts > workflow:review > CLAUDE.md routes 'does a skill change a review' to the control experiment",
+      "label": "CLAUDE.md routes 'does a skill change a review' to the control experiment",
+      "pass": {
+        "passed": 3,
+        "total": 3,
+        "rate": 1
+      },
+      "practices": {
+        "reads docs/skills-control-experiment.md": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "session ends without error": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        }
+      },
+      "metrics": {
+        "durationMs": {
+          "mean": 7576,
+          "stddev": 901.4305297692108,
+          "min": 6807,
+          "max": 8568,
+          "n": 3
+        },
+        "inputTokens": {
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0,
+          "n": 3
+        },
+        "outputTokens": {
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0,
+          "n": 3
+        },
+        "numTurns": {
+          "mean": 3,
+          "stddev": 1,
+          "min": 2,
+          "max": 4,
+          "n": 3
+        },
+        "toolCallCount": {
+          "mean": 1.3333333333333333,
+          "stddev": 0.5773502691896257,
+          "min": 1,
+          "max": 2,
+          "n": 3
+        }
+      }
+    },
+    "workflow/review-workflow.eval.ts > workflow:review > server task: follows server/AGENTS.md to TESTING.md, with the onion skill": {
+      "nodeid": "workflow/review-workflow.eval.ts > workflow:review > server task: follows server/AGENTS.md to TESTING.md, with the onion skill",
+      "label": "server task: follows server/AGENTS.md to TESTING.md, with the onion skill",
+      "pass": {
+        "passed": 3,
+        "total": 3,
+        "rate": 1
+      },
+      "practices": {
+        "engages skill onion-architecture": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "reads TESTING.md": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "session ends without error": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        }
+      },
+      "metrics": {
+        "durationMs": {
+          "mean": 16476,
+          "stddev": 3069.229870830792,
+          "min": 13504,
+          "max": 19634,
+          "n": 3
+        },
+        "inputTokens": {
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0,
+          "n": 3
+        },
+        "outputTokens": {
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0,
+          "n": 3
+        },
+        "numTurns": {
+          "mean": 10.666666666666666,
+          "stddev": 1.5275252316519468,
+          "min": 9,
+          "max": 12,
+          "n": 3
+        },
+        "toolCallCount": {
+          "mean": 6,
+          "stddev": 1,
+          "min": 5,
+          "max": 7,
+          "n": 3
+        }
+      }
+    },
+    "workflow/review-workflow.eval.ts > workflow:review > client task: follows client/AGENTS.md to the vendor/ui README, with the placement skill": {
+      "nodeid": "workflow/review-workflow.eval.ts > workflow:review > client task: follows client/AGENTS.md to the vendor/ui README, with the placement skill",
+      "label": "client task: follows client/AGENTS.md to the vendor/ui README, with the placement skill",
+      "pass": {
+        "passed": 3,
+        "total": 3,
+        "rate": 1
+      },
+      "practices": {
+        "engages skill frontend-ui-architecture": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "does not engage skill onion-architecture": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "reads client/src/vendor/ui/README.md": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "session ends without error": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        }
+      },
+      "metrics": {
+        "durationMs": {
+          "mean": 18890,
+          "stddev": 5548.114364358399,
+          "min": 14886,
+          "max": 25223,
+          "n": 3
+        },
+        "inputTokens": {
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0,
+          "n": 3
+        },
+        "outputTokens": {
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0,
+          "n": 3
+        },
+        "numTurns": {
+          "mean": 12.333333333333334,
+          "stddev": 5.131601439446884,
+          "min": 8,
+          "max": 18,
+          "n": 3
+        },
+        "toolCallCount": {
+          "mean": 6.333333333333333,
+          "stddev": 2.516611478423583,
+          "min": 4,
+          "max": 9,
+          "n": 3
+        }
+      }
+    },
+    "workflow/review-workflow.eval.ts > workflow:review > a spec-first feature routes to sdd-cascade.md and the agents README": {
+      "nodeid": "workflow/review-workflow.eval.ts > workflow:review > a spec-first feature routes to sdd-cascade.md and the agents README",
+      "label": "a spec-first feature routes to sdd-cascade.md and the agents README",
+      "pass": {
+        "passed": 3,
+        "total": 3,
+        "rate": 1
+      },
+      "practices": {
+        "reads docs/sdd-cascade.md": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "reads .claude/agents/README.md": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "session ends without error": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        }
+      },
+      "metrics": {
+        "durationMs": {
+          "mean": 9734.333333333334,
+          "stddev": 1930.8739817329697,
+          "min": 7586,
+          "max": 11325,
+          "n": 3
+        },
+        "inputTokens": {
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0,
+          "n": 3
+        },
+        "outputTokens": {
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0,
+          "n": 3
+        },
+        "numTurns": {
+          "mean": 5.333333333333333,
+          "stddev": 1.5275252316519465,
+          "min": 4,
+          "max": 7,
+          "n": 3
+        },
+        "toolCallCount": {
+          "mean": 3,
+          "stddev": 1,
+          "min": 2,
+          "max": 4,
+          "n": 3
+        }
+      }
+    },
+    "workflow/review-workflow.eval.ts > workflow:review > engineering-insights activates on a genuine discovery": {
+      "nodeid": "workflow/review-workflow.eval.ts > workflow:review > engineering-insights activates on a genuine discovery",
+      "label": "engineering-insights activates on a genuine discovery",
+      "pass": {
+        "passed": 3,
+        "total": 3,
+        "rate": 1
+      },
+      "practices": {},
+      "metrics": {
+        "durationMs": {
+          "mean": 21480.666666666668,
+          "stddev": 3265.3202497355956,
+          "min": 18128,
+          "max": 24651,
+          "n": 3
+        },
+        "inputTokens": {
+          "mean": 7675,
+          "stddev": 0,
+          "min": 7675,
+          "max": 7675,
+          "n": 3
+        },
+        "outputTokens": {
+          "mean": 2990.6666666666665,
+          "stddev": 419.2187177754988,
+          "min": 2525,
+          "max": 3338,
+          "n": 3
+        },
+        "numTurns": {
+          "mean": 5,
+          "stddev": 0,
+          "min": 5,
+          "max": 5,
+          "n": 3
+        },
+        "toolCallCount": {
+          "mean": 5.666666666666667,
+          "stddev": 0.5773502691896258,
+          "min": 5,
+          "max": 6,
+          "n": 3
+        }
+      }
+    },
+    "workflow/review-workflow.eval.ts > workflow:review > near-miss negative — a general pgvector question with no repo task does not engage the skill": {
+      "nodeid": "workflow/review-workflow.eval.ts > workflow:review > near-miss negative — a general pgvector question with no repo task does not engage the skill",
+      "label": "near-miss negative — a general pgvector question with no repo task does not engage the skill",
+      "pass": {
+        "passed": 3,
+        "total": 3,
+        "rate": 1
+      },
+      "practices": {},
+      "metrics": {
+        "durationMs": {
+          "mean": 22185.333333333332,
+          "stddev": 1844.2788111707334,
+          "min": 20061,
+          "max": 23377,
+          "n": 3
+        },
+        "inputTokens": {
+          "mean": 5956,
+          "stddev": 0,
+          "min": 5956,
+          "max": 5956,
+          "n": 3
+        },
+        "outputTokens": {
+          "mean": 4335.666666666667,
+          "stddev": 247.97244470572397,
+          "min": 4070,
+          "max": 4561,
+          "n": 3
+        },
+        "numTurns": {
+          "mean": 1,
+          "stddev": 0,
+          "min": 1,
+          "max": 1,
+          "n": 3
+        },
+        "toolCallCount": {
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0,
+          "n": 3
+        }
+      }
+    },
+    "workflow/review-workflow.eval.ts > workflow:review > neutral negative — a general npm question does not run the dependency audit": {
+      "nodeid": "workflow/review-workflow.eval.ts > workflow:review > neutral negative — a general npm question does not run the dependency audit",
+      "label": "neutral negative — a general npm question does not run the dependency audit",
+      "pass": {
+        "passed": 3,
+        "total": 3,
+        "rate": 1
+      },
+      "practices": {},
+      "metrics": {
+        "durationMs": {
+          "mean": 5017,
+          "stddev": 1076.9907149089076,
+          "min": 4362,
+          "max": 6260,
+          "n": 3
+        },
+        "inputTokens": {
+          "mean": 5956,
+          "stddev": 0,
+          "min": 5956,
+          "max": 5956,
+          "n": 3
+        },
+        "outputTokens": {
+          "mean": 754.6666666666666,
+          "stddev": 209.34739867820983,
+          "min": 612,
+          "max": 995,
+          "n": 3
+        },
+        "numTurns": {
+          "mean": 1,
+          "stddev": 0,
+          "min": 1,
+          "max": 1,
+          "n": 3
+        },
+        "toolCallCount": {
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0,
+          "n": 3
+        }
+      }
+    },
+    "workflow/review-workflow.eval.ts > workflow:review > CLAUDE.md routes a model-choice question to docs/agent-prompts": {
+      "nodeid": "workflow/review-workflow.eval.ts > workflow:review > CLAUDE.md routes a model-choice question to docs/agent-prompts",
+      "label": "CLAUDE.md routes a model-choice question to docs/agent-prompts [control]",
+      "pass": {
+        "passed": 6,
+        "total": 6,
+        "rate": 1
+      },
+      "practices": {},
+      "metrics": {
+        "durationMs": {
+          "mean": 33031.166666666664,
+          "stddev": 33153.20958469431,
+          "min": 11904,
+          "max": 93648,
+          "n": 6
+        },
+        "inputTokens": {
+          "mean": 90.66666666666667,
+          "stddev": 39.14417794087221,
+          "min": 56,
+          "max": 134,
+          "n": 6
+        },
+        "outputTokens": {
+          "mean": 1929.3333333333333,
+          "stddev": 248.6086616887406,
+          "min": 1618,
+          "max": 2240,
+          "n": 6
+        },
+        "numTurns": {
+          "mean": 6.166666666666667,
+          "stddev": 2.7868739954771304,
+          "min": 4,
+          "max": 11,
+          "n": 6
+        },
+        "toolCallCount": {
+          "mean": 7.333333333333333,
+          "stddev": 4.844240566555986,
+          "min": 3,
+          "max": 13,
+          "n": 6
+        }
+      }
+    }
+  }
+}

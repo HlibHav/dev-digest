@@ -12,7 +12,8 @@ Wired only from agent frontmatter (`.claude/agents/*.md`), never from `settings.
 
 Profiles:
 
-  architecture .. read-only git + `lint:boundaries` + the route-adapter-calls test
+  architecture .. read-only git + `lint:boundaries` + the route-adapter-calls test +
+                  onion-architecture's cross-module import scan
   verify ........ read-only git + the Check-table commands + targeted vitest runs
   test .......... same as verify
   security ...... read-only git + `diff` + `gh pr view`; nothing that executes repo code, not even
@@ -100,6 +101,10 @@ PACKAGES = ("server", "client", "reviewer-core", "e2e", "mcp-server")
 
 # Every command that executes repo code must be prefixed with this, verbatim, from the repo root.
 WRAPPER = ".claude/sandbox/run-tests.sh"
+# onion-architecture's cross-module import scan; it can come from the diff under review, so it
+# runs only through WRAPPER like the lint.
+CROSS_MODULE_SCRIPT = ".claude/skills/onion-architecture/scripts/cross-module-imports.py"
+GIT_REF = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/-]*")
 
 
 class Refused(Exception):
@@ -275,6 +280,14 @@ def code_run_allowed(words: list[str], profile: str) -> bool:
     if words[:2] == ["pnpm", "--dir"] and pkg_dir(d, ("server",)) and tail in (
         ["lint:boundaries"],
         ["exec", "vitest", "run", "test/route-adapter-calls.test.ts"],
+    ):
+        return True
+    if (
+        words[:2] == ["python3", CROSS_MODULE_SCRIPT]
+        and len(words) == 4
+        and words[2] == "."
+        and GIT_REF.fullmatch(words[3])
+        and ".." not in words[3]
     ):
         return True
     if profile == "architecture":
