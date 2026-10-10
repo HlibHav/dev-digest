@@ -51,7 +51,9 @@ export const cases: AgentCase[] = [
     // A pasted diff is a target: the review must reach a verdict, not stop at needs-answers.
     grounding: ["Verdict: fail"],
     practices: [
-      "Does not raise a finding for the optional `reply?: FastifyReply` parameter beyond the fastify import itself (no runtime bug or security finding dressed up as an architecture rule); a one-line note under 'Out of scope, noticed' is not a finding.",
+      // A separate row for the parameter is the duplicate this case catches; naming it inside the
+      // import finding is not. Re-judge of 46 saved outputs + 2 controls: only the inline mentions flip.
+      "Does not raise a separate finding — its own row, number or severity — for the optional `reply?: FastifyReply` parameter (no runtime bug or security finding dressed up as an architecture rule). Naming the parameter inside the fastify-import finding as where the type is used is not a separate finding, and neither is a one-line note under 'Out of scope, noticed'.",
       "Stays scoped to layering, import direction and composition; it does not comment on naming, style or test coverage (a one-line 'Out of scope, noticed' entry is fine).",
     ],
     threshold: 1.0,
