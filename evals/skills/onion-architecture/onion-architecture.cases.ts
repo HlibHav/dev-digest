@@ -58,7 +58,10 @@ export const cases: SkillCase[] = [
       "Flags labels/routes.ts:21 — the GET /pulls/:id/labels/suggestions handler reads container.secrets itself and passes the token into the service.",
       "Flags labels/service.ts:67-68 — the service calls the GitHub REST API with global fetch: new I/O outside an adapter, with no port in vendor/shared/adapters.ts and no double (GitHubClient should grow the method instead).",
       "Flags labels/helpers.ts:3 — application code imports the PullRow type from src/db/rows.",
-      "Does NOT flag as a violation any of: labels/wiring.ts:23 `llm: (provider) => container.llm(provider)`, :12 container.reviewRepo, :4 the import of settings/feature-models, or :26-28 the job registered in wiring.ts reading container.secrets.",
+      // A fix that routes the job's token through the new port mentions wiring.ts without flagging
+      // it; the old wording failed that. Re-judge of 16 saved outputs + 2 controls: fix-narrative
+      // mentions pass, a listed violation against wiring.ts still fails.
+      "Does NOT raise a finding — a listed violation of its own — against any of: labels/wiring.ts:23 `llm: (provider) => container.llm(provider)`, :12 container.reviewRepo, :4 the import of settings/feature-models, or :26-28 the job registered in wiring.ts reading container.secrets. A fix that also moves the job's token behind the new port, or a note that wiring makes the same read, is not a finding.",
     ],
     threshold: 0.75,
     maxTurns: 10,

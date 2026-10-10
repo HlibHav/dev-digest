@@ -40,10 +40,10 @@
       },
       "metrics": {
         "durationMs": {
-          "mean": 14100.666666666666,
-          "stddev": 3010.657292574718,
-          "min": 12042,
-          "max": 17556,
+          "mean": 13972.666666666666,
+          "stddev": 1779.5708284115397,
+          "min": 11948,
+          "max": 15289,
           "n": 3
         },
         "inputTokens": {
@@ -54,10 +54,10 @@
           "n": 3
         },
         "outputTokens": {
-          "mean": 2772.6666666666665,
-          "stddev": 593.8773723028462,
-          "min": 2358,
-          "max": 3453,
+          "mean": 2727,
+          "stddev": 327.7483790959156,
+          "min": 2417,
+          "max": 3070,
           "n": 3
         },
         "numTurns": {
@@ -108,10 +108,10 @@
       },
       "metrics": {
         "durationMs": {
-          "mean": 14133.333333333334,
-          "stddev": 2183.6495445316614,
-          "min": 11612,
-          "max": 15416,
+          "mean": 12629.333333333334,
+          "stddev": 761.2951683370474,
+          "min": 12089,
+          "max": 13500,
           "n": 3
         },
         "inputTokens": {
@@ -122,10 +122,10 @@
           "n": 3
         },
         "outputTokens": {
-          "mean": 2881.6666666666665,
-          "stddev": 386.49752047501335,
-          "min": 2452,
-          "max": 3201,
+          "mean": 2541.6666666666665,
+          "stddev": 134.098222707586,
+          "min": 2388,
+          "max": 2635,
           "n": 3
         },
         "numTurns": {
@@ -164,9 +164,9 @@
           "rate": 1
         },
         "Flags reindex/entity.ts + mapper.ts as an unneeded layer for a simple read.": {
-          "passed": 2,
+          "passed": 3,
           "total": 3,
-          "rate": 0.6666666666666666
+          "rate": 1
         },
         "Flags reindex/routes.ts:19-25 — the route file builds the repository, service and scheduler and starts the timer itself; that belongs in reindex/wiring.ts.": {
           "passed": 3,
@@ -176,10 +176,10 @@
       },
       "metrics": {
         "durationMs": {
-          "mean": 18852.333333333332,
-          "stddev": 2254.9989652621425,
-          "min": 16352,
-          "max": 20732,
+          "mean": 21057.333333333332,
+          "stddev": 3168.7496482577058,
+          "min": 18505,
+          "max": 24604,
           "n": 3
         },
         "inputTokens": {
@@ -190,10 +190,10 @@
           "n": 3
         },
         "outputTokens": {
-          "mean": 3873,
-          "stddev": 333.54609876297457,
-          "min": 3509,
-          "max": 4164,
+          "mean": 4307.333333333333,
+          "stddev": 766.045255408147,
+          "min": 3672,
+          "max": 5158,
           "n": 3
         },
         "numTurns": {
@@ -236,7 +236,7 @@
           "total": 3,
           "rate": 1
         },
-        "Does NOT flag as a violation any of: labels/wiring.ts:23 `llm: (provider) => container.llm(provider)`, :12 container.reviewRepo, :4 the import of settings/feature-models, or :26-28 the job registered in wiring.ts reading container.secrets.": {
+        "Does NOT raise a finding — a listed violation of its own — against any of: labels/wiring.ts:23 `llm: (provider) => container.llm(provider)`, :12 container.reviewRepo, :4 the import of settings/feature-models, or :26-28 the job registered in wiring.ts reading container.secrets. A fix that also moves the job's token behind the new port, or a note that wiring makes the same read, is not a finding.": {
           "passed": 3,
           "total": 3,
           "rate": 1
@@ -244,10 +244,10 @@
       },
       "metrics": {
         "durationMs": {
-          "mean": 13698.333333333334,
-          "stddev": 1103.0658789634158,
-          "min": 12650,
-          "max": 14849,
+          "mean": 13299.333333333334,
+          "stddev": 511.64571075435913,
+          "min": 12862,
+          "max": 13862,
           "n": 3
         },
         "inputTokens": {
@@ -258,10 +258,10 @@
           "n": 3
         },
         "outputTokens": {
-          "mean": 2747.3333333333335,
-          "stddev": 283.6799840195521,
-          "min": 2563,
-          "max": 3074,
+          "mean": 2756.6666666666665,
+          "stddev": 42.782395133200914,
+          "min": 2717,
+          "max": 2802,
           "n": 3
         },
         "numTurns": {
@@ -300,9 +300,9 @@
           "rate": 1
         },
         "Flags digest/routes.ts:14 — routes.ts imports the SkillRow type from skills/repository.ts (another module's data access, type-only).": {
-          "passed": 3,
+          "passed": 2,
           "total": 3,
-          "rate": 1
+          "rate": 0.6666666666666666
         },
         "Flags digest/routes.ts:57 — the POST /digests handler calls container.github() / currentLogin itself.": {
           "passed": 3,
@@ -310,9 +310,9 @@
           "rate": 1
         },
         "Flags digest/service.ts:4 — the service imports FastifyBaseLogger from fastify (application code imports no fastify).": {
-          "passed": 1,
+          "passed": 2,
           "total": 3,
-          "rate": 0.3333333333333333
+          "rate": 0.6666666666666666
         },
         "Flags digest/service.ts:1,93-95 — the service writes Markdown files to the home directory with node:fs: new I/O outside an adapter, with no port or double.": {
           "passed": 3,
@@ -332,10 +332,10 @@
       },
       "metrics": {
         "durationMs": {
-          "mean": 14982.666666666666,
-          "stddev": 1701.7439094450533,
-          "min": 13466,
-          "max": 16823,
+          "mean": 16003.333333333334,
+          "stddev": 849.7978190918903,
+          "min": 15249,
+          "max": 16924,
           "n": 3
         },
         "inputTokens": {
@@ -346,10 +346,10 @@
           "n": 3
         },
         "outputTokens": {
-          "mean": 3121.6666666666665,
-          "stddev": 380.47645568856603,
-          "min": 2762,
-          "max": 3520,
+          "mean": 3236.6666666666665,
+          "stddev": 64.01041581909412,
+          "min": 3172,
+          "max": 3300,
           "n": 3
         },
         "numTurns": {
