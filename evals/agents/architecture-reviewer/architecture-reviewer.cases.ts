@@ -37,7 +37,10 @@ export const cases: AgentCase[] = [
       "Flags server/src/modules/checkout/domain/checkout.ts:1 — the domain file imports a type from 'fastify' — as a boundary violation (imports must point inward; application/domain code imports no fastify).",
       "Flags the `new PgCheckoutRepository()` in server/src/modules/checkout/service.ts — the service builds its own repository instead of receiving it as a port built in wiring.ts / the container.",
       "Every finding cites the rule it breaks as a skill step (e.g. `onion-architecture step 3`) or the rules file (`.claude/rules/onion-boundaries.md`), not prose alone.",
-      "Every finding has a severity from critical / major / minor, and these boundary leaks are `major` or higher.",
+      // The old wording ("every finding … and these boundary leaks are major") failed an extra minor
+      // placement finding in some runs and passed it in others, and passed a review that dropped the
+      // repository leak. Re-judge of 63 saved outputs + 2 controls: only those two kinds flip.
+      "Gives the fastify import in domain/checkout.ts and the `new PgCheckoutRepository()` in service.ts each a severity of `major` or higher. Every other finding carries one of critical / major / minor; a `minor` placement or overlapping finding does not fail this.",
       "Every finding gives a `path:line` and quotes the offending line verbatim, not a paraphrase.",
       "States that the checks (`pnpm lint:boundaries`, the route-adapter test) did not run on this diff, or ran only on the unchanged tree, rather than presenting their output as a verdict on the diff.",
     ],

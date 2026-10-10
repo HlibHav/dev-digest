@@ -1,5 +1,5 @@
 {
-  "label": "ar-evidence-b",
+  "label": "agents-architecture-reviewer",
   "git_sha": "fedc040",
   "dirty": true,
   "times": 4,
@@ -32,10 +32,10 @@
           "total": 4,
           "rate": 1
         },
-        "Every finding has a severity from critical / major / minor, and these boundary leaks are `major` or higher.": {
-          "passed": 2,
+        "Gives the fastify import in domain/checkout.ts and the `new PgCheckoutRepository()` in service.ts each a severity of `major` or higher. Every other finding carries one of critical / major / minor; a `minor` placement or overlapping finding does not fail this.": {
+          "passed": 4,
           "total": 4,
-          "rate": 0.5
+          "rate": 1
         },
         "Every finding gives a `path:line` and quotes the offending line verbatim, not a paraphrase.": {
           "passed": 4,
@@ -50,38 +50,38 @@
       },
       "metrics": {
         "durationMs": {
-          "mean": 48410.5,
-          "stddev": 21783.711430026488,
-          "min": 27861,
-          "max": 75979,
+          "mean": 57731,
+          "stddev": 20328.627892703433,
+          "min": 33133,
+          "max": 82459,
           "n": 4
         },
         "inputTokens": {
-          "mean": 82,
-          "stddev": 47.4692883171144,
-          "min": 30,
-          "max": 134,
+          "mean": 101.5,
+          "stddev": 44.40345331915826,
+          "min": 56,
+          "max": 160,
           "n": 4
         },
         "outputTokens": {
-          "mean": 8765,
-          "stddev": 4302.001317216596,
-          "min": 5190,
-          "max": 14719,
+          "mean": 10538.5,
+          "stddev": 3601.0311023372183,
+          "min": 6295,
+          "max": 14737,
           "n": 4
         },
         "numTurns": {
-          "mean": 7.75,
-          "stddev": 3.774917217635375,
-          "min": 5,
-          "max": 13,
+          "mean": 10.75,
+          "stddev": 4.425306015783918,
+          "min": 6,
+          "max": 15,
           "n": 4
         },
         "toolCallCount": {
-          "mean": 6.75,
-          "stddev": 3.774917217635375,
-          "min": 4,
-          "max": 12,
+          "mean": 9.75,
+          "stddev": 4.425306015783918,
+          "min": 5,
+          "max": 14,
           "n": 4
         }
       }
@@ -90,15 +90,15 @@
       "nodeid": "agents/architecture-reviewer/architecture-reviewer.eval.ts > agent:architecture-reviewer > does not fabricate an architecture finding for the out-of-scope security-shaped change",
       "label": "does not fabricate an architecture finding for the out-of-scope security-shaped change",
       "pass": {
-        "passed": 4,
+        "passed": 3,
         "total": 4,
-        "rate": 1
+        "rate": 0.75
       },
       "practices": {
         "Does not raise a separate finding — its own row, number or severity — for the optional `reply?: FastifyReply` parameter (no runtime bug or security finding dressed up as an architecture rule). Naming the parameter inside the fastify-import finding as where the type is used is not a separate finding, and neither is a one-line note under 'Out of scope, noticed'.": {
-          "passed": 4,
+          "passed": 3,
           "total": 4,
-          "rate": 1
+          "rate": 0.75
         },
         "Stays scoped to layering, import direction and composition; it does not comment on naming, style or test coverage (a one-line 'Out of scope, noticed' entry is fine).": {
           "passed": 4,
@@ -108,38 +108,38 @@
       },
       "metrics": {
         "durationMs": {
-          "mean": 79601.25,
-          "stddev": 29080.960694527726,
-          "min": 46975,
-          "max": 116421,
+          "mean": 49336.25,
+          "stddev": 10712.447195513576,
+          "min": 39293,
+          "max": 64447,
           "n": 4
         },
         "inputTokens": {
-          "mean": 114.5,
-          "stddev": 24.89310480166479,
+          "mean": 88.5,
+          "stddev": 13,
           "min": 82,
-          "max": 134,
+          "max": 108,
           "n": 4
         },
         "outputTokens": {
-          "mean": 14036.5,
-          "stddev": 4822.0496679316775,
-          "min": 8860,
-          "max": 20248,
+          "mean": 8843,
+          "stddev": 1589.956183882646,
+          "min": 7508,
+          "max": 11038,
           "n": 4
         },
         "numTurns": {
-          "mean": 9.25,
-          "stddev": 1.707825127659933,
+          "mean": 8,
+          "stddev": 0.816496580927726,
           "min": 7,
-          "max": 11,
+          "max": 9,
           "n": 4
         },
         "toolCallCount": {
-          "mean": 8.25,
-          "stddev": 1.707825127659933,
+          "mean": 7,
+          "stddev": 0.816496580927726,
           "min": 6,
-          "max": 10,
+          "max": 8,
           "n": 4
         }
       }
@@ -171,38 +171,38 @@
       },
       "metrics": {
         "durationMs": {
-          "mean": 42659,
-          "stddev": 7138.6158322184565,
-          "min": 32352,
-          "max": 48804,
+          "mean": 52374.75,
+          "stddev": 17074.88579512808,
+          "min": 31762,
+          "max": 73577,
           "n": 4
         },
         "inputTokens": {
-          "mean": 82,
-          "stddev": 21.228911104120876,
+          "mean": 108,
+          "stddev": 56.166419386201454,
           "min": 56,
-          "max": 108,
+          "max": 186,
           "n": 4
         },
         "outputTokens": {
-          "mean": 8163.25,
-          "stddev": 1385.7350335952876,
-          "min": 6224,
-          "max": 9515,
+          "mean": 9633.25,
+          "stddev": 3045.0039272005324,
+          "min": 5985,
+          "max": 13438,
           "n": 4
         },
         "numTurns": {
-          "mean": 9.5,
-          "stddev": 2.0816659994661326,
+          "mean": 11,
+          "stddev": 3.6514837167011076,
           "min": 7,
-          "max": 12,
+          "max": 15,
           "n": 4
         },
         "toolCallCount": {
-          "mean": 8.5,
-          "stddev": 2.0816659994661326,
+          "mean": 10,
+          "stddev": 3.6514837167011076,
           "min": 6,
-          "max": 11,
+          "max": 14,
           "n": 4
         }
       }
@@ -229,37 +229,37 @@
       },
       "metrics": {
         "durationMs": {
-          "mean": 26784,
-          "stddev": 11802.534445335601,
-          "min": 17357,
-          "max": 43912,
+          "mean": 23841,
+          "stddev": 8585.432429412045,
+          "min": 15848,
+          "max": 35832,
           "n": 4
         },
         "inputTokens": {
-          "mean": 501,
-          "stddev": 470.00851056124503,
-          "min": 56,
-          "max": 920,
+          "mean": 272,
+          "stddev": 415.9326868617084,
+          "min": 30,
+          "max": 894,
           "n": 4
         },
         "outputTokens": {
-          "mean": 4329.5,
-          "stddev": 1734.8630109223802,
-          "min": 3031,
-          "max": 6887,
+          "mean": 3828.75,
+          "stddev": 793.1974848674193,
+          "min": 2808,
+          "max": 4695,
           "n": 4
         },
         "numTurns": {
-          "mean": 5.25,
-          "stddev": 1.8929694486000912,
-          "min": 4,
+          "mean": 4.75,
+          "stddev": 2.362907813126304,
+          "min": 3,
           "max": 8,
           "n": 4
         },
         "toolCallCount": {
-          "mean": 4.25,
-          "stddev": 1.8929694486000912,
-          "min": 3,
+          "mean": 3.75,
+          "stddev": 2.362907813126304,
+          "min": 2,
           "max": 7,
           "n": 4
         }
