@@ -20,6 +20,7 @@ import {
 import type { FindingRecord, FindingActionKind } from "@devdigest/shared";
 import { SEV_COLOR, SEV_COLOR_FALLBACK } from "./constants";
 import { lineLabel } from "./helpers";
+import { TurnIntoEvalButton } from "./_components/TurnIntoEvalButton";
 import { githubBlobUrl } from "../../../../../../../lib/github-urls";
 import { s } from "./styles";
 
@@ -31,6 +32,7 @@ export function FindingCard({
   pending,
   repoFullName,
   headSha,
+  evalAgent,
 }: {
   f: FindingRecord;
   focused?: boolean;
@@ -39,6 +41,8 @@ export function FindingCard({
   pending?: boolean;
   repoFullName?: string | null;
   headSha?: string | null;
+  /** The agent behind this finding's review; when set, the card offers "Turn into eval case". */
+  evalAgent?: { id: string | null; name: string | null };
 }) {
   const t = useTranslations("prReview");
   const [expanded, setExpanded] = React.useState(defaultExpanded ?? false);
@@ -109,6 +113,7 @@ export function FindingCard({
             >
               {t("finding.dismiss")}
             </Button>
+            {evalAgent ? <TurnIntoEvalButton finding={f} agent={evalAgent} /> : null}
           </div>
         </div>
       )}

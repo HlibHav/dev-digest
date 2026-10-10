@@ -11,6 +11,9 @@ vi.mock("../../../../../lib/hooks/agents", () => ({
   useProviderModels: () => ({ data: [{ id: "gpt-4.1", provider: "openai" }] }),
 }));
 
+// The Evals tab has its own test; here it only has to be reachable from the editor.
+vi.mock("./_components/EvalsTab", () => ({ EvalsTab: () => <div data-testid="evals-tab" /> }));
+
 import { AgentEditor } from "./AgentEditor";
 
 afterEach(cleanup);
@@ -45,5 +48,11 @@ describe("A2 Agent Editor (smoke)", () => {
     expect(screen.getByText("Config")).toBeInTheDocument();
     expect(screen.getByText("Configuration")).toBeInTheDocument();
     expect(screen.getByText("Save agent")).toBeInTheDocument();
+  });
+
+  it("lists the Evals tab and renders it for tab=evals", () => {
+    renderWithIntl(<AgentEditor agent={AGENT} tab="evals" onTab={() => {}} />);
+    expect(screen.getByRole("button", { name: "Evals" })).toBeInTheDocument();
+    expect(screen.getByTestId("evals-tab")).toBeInTheDocument();
   });
 });
