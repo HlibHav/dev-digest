@@ -37,9 +37,9 @@ export function deltaView(delta: number | null, unit: "pts" | "usd"): { text: st
   return { text: `${sign}${body}`, direction: delta > 0 ? "up" : "down" };
 }
 
-/** Compare needs exactly two runs, neither of them failed (AC-49). */
+/** Compare needs exactly two runs, both done or partial: the server rejects running and failed ones (AC-49). */
 export function compareEnabled(selected: readonly EvalSuiteRunSummary[]): boolean {
-  return selected.length === 2 && selected.every((r) => r.status !== "failed");
+  return selected.length === 2 && selected.every((r) => r.status === "done" || r.status === "partial");
 }
 
 /** ISO timestamp → `2026-10-09 10:00` (UTC), so the table reads the same on every machine. */

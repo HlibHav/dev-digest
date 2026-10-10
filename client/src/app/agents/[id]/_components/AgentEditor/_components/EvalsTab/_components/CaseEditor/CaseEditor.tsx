@@ -6,6 +6,7 @@
 
 import React from "react";
 import { useTranslations } from "next-intl";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button, Modal, Tabs, TextInput, Toggle } from "@devdigest/ui";
 import type { EvalCaseView, EvalCaseWrite } from "@devdigest/shared";
 import { DiffViewer } from "@/components/diff-viewer";
@@ -36,6 +37,16 @@ export function CaseEditor({ agentId, case: kase, onClose }: { agentId: string; 
   const update = useUpdateEvalCase(agentId);
   const startRun = useStartCaseRun();
   const run = useCaseRun(caseRunId);
+  const qc = useQueryClient();
+
+  // The run just finished: refresh the case list once so the row shows the new result.
+  const runStatus = run.data?.status;
+  const refreshedRun = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    if (!caseRunId || !runStatus || runStatus === "running" || refreshedRun.current === caseRunId) return;
+    refreshedRun.current = caseRunId;
+    void qc.invalidateQueries({ queryKey: ["eval-cases", agentId] });
+  }, [caseRunId, runStatus, qc, agentId]);
 
   const check = validateExpectedOutput(expectedText);
   const warnings = check.ok ? unmatchableExpectations(diff, check.value) : [];

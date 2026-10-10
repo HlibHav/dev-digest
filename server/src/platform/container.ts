@@ -8,6 +8,7 @@ import type {
   LLMProvider,
   RepoDocs,
   CloneScanner,
+  UnifiedDiff,
 } from '@devdigest/shared';
 import type { AppConfig } from './config.js';
 import type { Db } from '../db/client.js';
@@ -17,6 +18,7 @@ import { LocalSecretsProvider } from '../adapters/secrets/local.js';
 import { LocalNoAuthProvider } from '../adapters/auth/local.js';
 import { OctokitGitHubClient } from '../adapters/github/octokit.js';
 import { SimpleGitClient } from '../adapters/git/simple-git.js';
+import { parseUnifiedDiff } from '../adapters/git/diff-parser.js';
 import { FsRepoDocs } from '../adapters/docs/fs-repo-docs.js';
 import { FsCloneScanner } from '../adapters/clone-scan/fs-clone-scanner.js';
 import { RipgrepCodeIndex } from '../adapters/codeindex/ripgrep.js';
@@ -101,6 +103,11 @@ export class Container {
     if (this.overrides.git) return this.overrides.git;
     this._git ??= new SimpleGitClient(this.config.cloneDir);
     return this._git;
+  }
+
+  /** Parse raw unified-diff text. Pure, so modules reach it here instead of importing the adapter. */
+  parseDiff(raw: string): UnifiedDiff {
+    return parseUnifiedDiff(raw);
   }
 
   /** Project-context docs inside a clone (list / read). */

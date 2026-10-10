@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
-import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent, waitFor, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import evalMessages from "../../../../../../../../../../messages/en/eval.json";
@@ -34,8 +34,7 @@ const DIFF = [
 ].join("\n");
 const VALID = '[{"type":"must_find","file":"src/config.ts","start_line":11,"end_line":11}]';
 
-function renderEditor(onClose = vi.fn()) {
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+function renderEditor(onClose = vi.fn(), qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })) {
   render(
     <QueryClientProvider client={qc}>
       <NextIntlClientProvider locale="en" messages={{ eval: evalMessages, shell, prReview }}>
@@ -105,9 +104,17 @@ describe("CaseEditor", () => {
 
   it("AC-40 typing a diff renders the preview", () => {
     renderEditor();
-    type("Diff", DIFF);
+    type(
+      "Diff",
+      ["--- a/src/config.ts", "+++ b/src/config.ts", "@@ -10,6 +10,7 @@", " first", " second", "+  added(true)"].join("\n"),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Preview" }));
     expect(screen.getByText("src/config.ts")).toBeInTheDocument();
+    // The added line renders as an addition (+ sign) at its new-side line number (10, 11, then 12).
+    const row = screen.getByText("added(true)").parentElement as HTMLElement;
+    expect(within(row).getByText("12")).toBeInTheDocument();
+    expect(within(row).getByText("+")).toBeInTheDocument();
+    expect(screen.getByText("second").parentElement).not.toHaveTextContent("+");
   });
 
   it("Preview masks credentials until Reveal; the stored diff stays as typed", () => {
@@ -159,5 +166,22 @@ describe("CaseEditor", () => {
     fireEvent.click(saveButton());
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(post).toHaveBeenCalledTimes(1);
+  });
+
+  it("CR-8 refreshes the case list once when the Run on save run finishes", async () => {
+    post.mockImplementation(async (path: string) =>
+      path === "/agents/a1/eval-cases" ? { id: "c1" } : { case_run_id: "cr1", status: "running" },
+    );
+    get.mockResolvedValue({ id: "cr1", status: "passed", matched_must_find: 1, must_find_total: 1, duration_ms: 1000, cost_usd: 0.01 });
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    const spy = vi.spyOn(qc, "invalidateQueries");
+    renderEditor(vi.fn(), qc);
+    type("Name", "leak");
+    type("Diff", DIFF);
+    fireEvent.click(screen.getByRole("switch"));
+    fireEvent.click(saveButton());
+    await screen.findByText("Last run passed");
+    const casesCalls = () => spy.mock.calls.filter((c) => JSON.stringify(c[0]?.queryKey) === '["eval-cases","a1"]').length;
+    await waitFor(() => expect(casesCalls()).toBeGreaterThanOrEqual(2)); // one after save, one after the run ends
   });
 });

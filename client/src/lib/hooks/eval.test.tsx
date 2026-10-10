@@ -13,7 +13,7 @@ vi.mock("@/lib/api", async (importOriginal) => {
   };
 });
 
-import { useSuiteRun, useCaseRun } from "./eval";
+import { useSuiteRun, useCaseRun, useEvalWorkspaceDashboard, useAgentEvalDashboard, useEvalCases } from "./eval";
 
 function wrapperWith(qc: QueryClient) {
   return function Wrapper({ children }: { children: React.ReactNode }) {
@@ -87,5 +87,60 @@ describe("useCaseRun", () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(6000); });
     expect(getMock).toHaveBeenCalledTimes(2);
     expect(result.current.data?.status).toBe("errored");
+  });
+});
+
+describe("CR-3 / CR-6 refresh", () => {
+  it("invalidates once when the first fetch is already terminal, including the workspace dashboard", async () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidate = vi.spyOn(qc, "invalidateQueries");
+    getMock.mockResolvedValue(suite("failed"));
+    renderHook(() => useSuiteRun("s1"), { wrapper: wrapperWith(qc) });
+    await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
+    const keys = invalidate.mock.calls.map(([f]) => JSON.stringify((f as { queryKey: unknown }).queryKey));
+    expect(keys.sort()).toEqual(
+      [
+        JSON.stringify(["eval-cases", "a1"]),
+        JSON.stringify(["eval-dashboard", "a1"]),
+        JSON.stringify(["eval-history", "a1"]),
+        JSON.stringify(["eval-workspace-dashboard"]),
+      ].sort(),
+    );
+  });
+
+  it("polls the workspace dashboard only while a run is running", async () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const running = { agents: [], recent_runs: [{ status: "running" }] };
+    const idle = { agents: [], recent_runs: [{ status: "done" }] };
+    getMock.mockResolvedValueOnce(running).mockResolvedValue(idle);
+    renderHook(() => useEvalWorkspaceDashboard(), { wrapper: wrapperWith(qc) });
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(1500); });
+    expect(getMock).toHaveBeenCalledTimes(2);
+    await act(async () => { await vi.advanceTimersByTimeAsync(6000); });
+    expect(getMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("polls the agent dashboard while a history entry is running", async () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    getMock
+      .mockResolvedValueOnce({ latest: { status: "done" }, history: [{ status: "running" }, { status: "done" }] })
+      .mockResolvedValue({ latest: { status: "done" }, history: [{ status: "done" }] });
+    renderHook(() => useAgentEvalDashboard("a1"), { wrapper: wrapperWith(qc) });
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(1500); });
+    expect(getMock).toHaveBeenCalledTimes(2);
+    await act(async () => { await vi.advanceTimersByTimeAsync(6000); });
+    expect(getMock).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("SR-2 path encoding", () => {
+  it("encodes the id segment", async () => {
+    const qc = new QueryClient();
+    getMock.mockResolvedValue([]);
+    renderHook(() => useEvalCases("a/../b"), { wrapper: wrapperWith(qc) });
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    expect(getMock).toHaveBeenCalledWith("/agents/a%2F..%2Fb/eval-cases");
   });
 });

@@ -23,11 +23,13 @@ import { api } from "../api";
 /** Poll cadence while a run is `running`. */
 export const EVAL_POLL_MS = 1500;
 
+const seg = (id: string | null | undefined) => encodeURIComponent(id ?? "");
+
 // ---- Cases ----
 export function useEvalCases(agentId: string | null | undefined) {
   return useQuery({
     queryKey: ["eval-cases", agentId],
-    queryFn: () => api.get<EvalCaseView[]>(`/agents/${agentId}/eval-cases`),
+    queryFn: () => api.get<EvalCaseView[]>(`/agents/${seg(agentId)}/eval-cases`),
     enabled: !!agentId,
   });
 }
@@ -35,7 +37,7 @@ export function useEvalCases(agentId: string | null | undefined) {
 export function useCreateEvalCase(agentId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: EvalCaseWrite) => api.post<EvalCaseView>(`/agents/${agentId}/eval-cases`, body),
+    mutationFn: (body: EvalCaseWrite) => api.post<EvalCaseView>(`/agents/${seg(agentId)}/eval-cases`, body),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["eval-cases", agentId] }),
   });
 }
@@ -44,7 +46,7 @@ export function useUpdateEvalCase(agentId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, body }: { id: string; body: EvalCaseWrite }) =>
-      api.put<EvalCaseView>(`/eval-cases/${id}`, body),
+      api.put<EvalCaseView>(`/eval-cases/${seg(id)}`, body),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["eval-cases", agentId] }),
   });
 }
@@ -52,7 +54,7 @@ export function useUpdateEvalCase(agentId: string) {
 export function useDeleteEvalCase(agentId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api.del<{ ok: true }>(`/eval-cases/${id}`),
+    mutationFn: (id: string) => api.del<{ ok: true }>(`/eval-cases/${seg(id)}`),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["eval-cases", agentId] });
       void qc.invalidateQueries({ queryKey: ["eval-dashboard", agentId] });
@@ -65,7 +67,7 @@ export function useCreateCaseFromFinding() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ findingId }: { findingId: string }) =>
-      api.post<EvalCaseCreated>(`/findings/${findingId}/eval-case`),
+      api.post<EvalCaseCreated>(`/findings/${seg(findingId)}/eval-case`),
     onSuccess: (created) => {
       void qc.invalidateQueries({ queryKey: ["eval-cases", created.agent.id] });
       void qc.invalidateQueries({ queryKey: ["eval-dashboard", created.agent.id] });
@@ -76,14 +78,14 @@ export function useCreateCaseFromFinding() {
 // ---- Case runs ----
 export function useStartCaseRun() {
   return useMutation({
-    mutationFn: (caseId: string) => api.post<EvalCaseRunAccepted>(`/eval-cases/${caseId}/run`),
+    mutationFn: (caseId: string) => api.post<EvalCaseRunAccepted>(`/eval-cases/${seg(caseId)}/run`),
   });
 }
 
 export function useCaseRun(caseRunId: string | null | undefined) {
   return useQuery({
     queryKey: ["eval-case-run", caseRunId],
-    queryFn: () => api.get<EvalCaseResult>(`/eval-case-runs/${caseRunId}`),
+    queryFn: () => api.get<EvalCaseResult>(`/eval-case-runs/${seg(caseRunId)}`),
     enabled: !!caseRunId,
     refetchInterval: (q) => (q.state.data?.status === "running" ? EVAL_POLL_MS : false),
   });
@@ -92,35 +94,32 @@ export function useCaseRun(caseRunId: string | null | undefined) {
 // ---- Suite runs ----
 export function useStartSuiteRun() {
   return useMutation({
-    mutationFn: (agentId: string) => api.post<EvalSuiteRunAccepted>(`/agents/${agentId}/eval-runs`),
+    mutationFn: (agentId: string) => api.post<EvalSuiteRunAccepted>(`/agents/${seg(agentId)}/eval-runs`),
   });
 }
 
-/** Polls while `running`; on the edge into a terminal status the agent's dashboard,
-    cases and history are refetched once. */
+/** Polls while `running`; on reaching a terminal status (even on the first fetch) the agent's
+    dashboard, cases and history and the workspace dashboard are refetched once. */
 export function useSuiteRun(suiteRunId: string | null | undefined) {
   const qc = useQueryClient();
   const query = useQuery({
     queryKey: ["eval-suite-run", suiteRunId],
-    queryFn: () => api.get<EvalSuiteRunDetail>(`/eval-suite-runs/${suiteRunId}`),
+    queryFn: () => api.get<EvalSuiteRunDetail>(`/eval-suite-runs/${seg(suiteRunId)}`),
     enabled: !!suiteRunId,
     refetchInterval: (q) => (q.state.data?.status === "running" ? EVAL_POLL_MS : false),
   });
 
   const status = query.data?.status;
   const agentId = query.data?.agent_id;
-  const sawRunning = useRef<string | null>(null);
+  const refreshed = useRef<string | null>(null);
   useEffect(() => {
-    if (!suiteRunId || !status || !agentId) return;
-    if (status === "running") {
-      sawRunning.current = suiteRunId;
-      return;
-    }
-    if (sawRunning.current !== suiteRunId) return; // only the running → terminal edge
-    sawRunning.current = null;
+    if (!suiteRunId || !status || !agentId || status === "running") return;
+    if (refreshed.current === suiteRunId) return; // once per suite run
+    refreshed.current = suiteRunId;
     void qc.invalidateQueries({ queryKey: ["eval-dashboard", agentId] });
     void qc.invalidateQueries({ queryKey: ["eval-cases", agentId] });
     void qc.invalidateQueries({ queryKey: ["eval-history", agentId] });
+    void qc.invalidateQueries({ queryKey: ["eval-workspace-dashboard"] });
   }, [suiteRunId, status, agentId, qc]);
 
   return query;
@@ -138,7 +137,7 @@ export function useRunAllAgents() {
 export function useEvalHistory(agentId: string | null | undefined) {
   return useQuery({
     queryKey: ["eval-history", agentId],
-    queryFn: () => api.get<EvalSuiteRunSummary[]>(`/agents/${agentId}/eval-suite-runs`),
+    queryFn: () => api.get<EvalSuiteRunSummary[]>(`/agents/${seg(agentId)}/eval-suite-runs`),
     enabled: !!agentId,
   });
 }
@@ -148,7 +147,7 @@ export function useEvalCompare(baseId: string | null | undefined, headId: string
     queryKey: ["eval-compare", baseId, headId],
     queryFn: () =>
       api.get<EvalCompare>(
-        `/eval-suite-runs/compare?base=${encodeURIComponent(baseId ?? "")}&head=${encodeURIComponent(headId ?? "")}`,
+        `/eval-suite-runs/compare?base=${seg(baseId)}&head=${seg(headId)}`,
       ),
     enabled: !!baseId && !!headId,
   });
@@ -157,8 +156,9 @@ export function useEvalCompare(baseId: string | null | undefined, headId: string
 export function useAgentEvalDashboard(agentId: string | null | undefined) {
   return useQuery({
     queryKey: ["eval-dashboard", agentId],
-    queryFn: () => api.get<EvalAgentDashboard>(`/agents/${agentId}/eval-dashboard`),
+    queryFn: () => api.get<EvalAgentDashboard>(`/agents/${seg(agentId)}/eval-dashboard`),
     enabled: !!agentId,
+    refetchInterval: (q) => (q.state.data?.history.some((r) => r.status === "running") ? EVAL_POLL_MS : false),
   });
 }
 
@@ -166,5 +166,7 @@ export function useEvalWorkspaceDashboard() {
   return useQuery({
     queryKey: ["eval-workspace-dashboard"],
     queryFn: () => api.get<EvalWorkspaceDashboard>("/eval/dashboard"),
+    refetchInterval: (q) =>
+      q.state.data?.recent_runs.some((r) => r.status === "running") ? EVAL_POLL_MS : false,
   });
 }

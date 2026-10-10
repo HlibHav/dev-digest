@@ -1,0 +1,120 @@
+# Implementation Report: Eval Pipeline, lane 7 (Eval Dashboard pages)
+Status: done
+Mode: lane 7
+
+## Steps
+| id | BE/UI | status | files touched | note |
+|---|---|---|---|---|
+| 20 | UI | done | `client/src/app/eval/page.tsx`; `_components/EvalDashboardView/{EvalDashboardView.tsx,.test.tsx,helpers.ts,styles.ts,index.ts}`; `_components/AgentRow/{AgentRow.tsx,styles.ts,index.ts}`; `_components/RecentRuns/{RecentRuns.tsx,styles.ts,index.ts}` | AC-53 and AC-54 green |
+| 21 | UI | done | `client/src/app/eval/[agentId]/page.tsx`; `.../_components/AgentEvalDashboardView/{AgentEvalDashboardView.tsx,.test.tsx,styles.ts,index.ts}`; `.../AgentEvalDashboardView/_components/RegressionBanner/{RegressionBanner.tsx,.test.tsx,helpers.ts,styles.ts,index.ts}`; `.../_components/AgentSwitcher/{AgentSwitcher.tsx,index.ts}` | AC-29 (dashboard unit) and AC-56 (render) green |
+
+## Skills applied
+- preloaded: onion-architecture, frontend-ui-architecture
+- invoked through Skill: react-testing-library, react-best-practices, next-best-practices (all named by step 20 and step 21)
+- named by the plan but not invoked: `security` and `zod` (client row of the plan's skill list, not named by steps 20 and 21). Nothing here parses input or builds URLs from user data beyond the route param, and case or model text renders only as React text.
+
+## Self-review (code writing)
+- frontend-ui-architecture:
+  - Routes are thin: `page.tsx` only wires a named view.
+  - Subcomponents are colocated. `RegressionBanner` and `AgentSwitcher` sit in the view's own `_components/`.
+  - Helpers have no React import.
+  - No `export *`.
+  - Data goes through `@/lib/hooks/eval` and `@/lib/hooks/agents`, with no fetch in components.
+  - I found no issues.
+- react-best-practices: values are derived during render (running state, resume id, sorted rows), there is no useEffect, and list keys are stable ids. Without the guard, a recall trend with fewer than 2 non-null points would hit a divide-by-zero in the vendored `Sparkline`, so `AgentRow` renders "—" instead of a chart.
+- next-best-practices: the dynamic page awaits `params` as a Promise, per Next 15.
+
+## Tests
+| command | package | exit code | passed / failed |
+|---|---|---|---|
+| `pnpm exec vitest run src/app/eval/_components` before the code existed (red) | client | non-zero | the suite failed to load: `EvalDashboardView` module missing |
+| `pnpm exec vitest run 'src/app/eval/[agentId]'` before the code existed (red) | client | non-zero | 2 files failed to load: `AgentEvalDashboardView` and `RegressionBanner` modules missing |
+| `pnpm exec vitest run src/app/eval` (green) | client | 0 | 10 passed, 0 failed (3 files: 4 + 4 + 2 tests) |
+| `pnpm typecheck` | client | not captured | filtered for errors: none in `src/app/eval` or elsewhere. Only the grep output was read, so the exit code is unverified. |
+
+## Deviations from plan
+- Tests use `fireEvent` instead of `userEvent` because `@testing-library/user-event` is not installed in client, and I added no dependency. Step 20 and step 21.
+- The red-first rows name `RegressionBanner` and `AgentSwitcher` under `AgentEvalDashboardView/_components/`. I used that path, which differs from the step text's `.../_components/`. Step 21.
+- Tests mock `@/lib/hooks/eval`, `@/lib/hooks/agents`, `next/navigation`, and `@/components/app-shell`. The AC-29 test also mocks `TrendChart`. The mock sits in the view test only, and the chart has its own tests.
+- No i18n keys were missing. I used the existing `eval.dashboard.*`, `eval.page.*`, `metric`, `status` and `history` keys. The empty state shows the `emptyTitle` and `emptyBody` keys, which already mention the Evals tab.
+- Not delivered: the empty state has no CTA button. The spec (AC-53) only requires pointing to findings and the Evals tab, which the body text does.
+
+## Not done / blocked
+- None.
+
+## Insight candidates
+- client: `@testing-library/user-event` is not installed, so client tests use `fireEvent`. For a vitest file that mocks `@/lib/hooks/eval`, wrap `useRunAllAgents` and `useStartSuiteRun` so the test supplies `mutate`. The view reads `data` straight off the mock.
+
+## Handoff to reviewers
+- Surfaces and files touched: everything is under `client/src/app/eval/**`, listed in Steps. No shared, hook, i18n or vendor files were edited.
+- architecture-reviewer: placement is routes → `_components`. `AgentRow`, `RecentRuns` and `EvalDashboardView/helpers.ts` are colocated. `AgentRow` and `RecentRuns` import a helper from the sibling `EvalDashboardView/helpers.ts`, which is a sibling import within one route. The `@/components/eval/*` imports go downhill.
+- plan-verifier: red-first tests are in the paths listed above. AC-29's other half is `EvalsTab.test.tsx` (L6, not mine). Nothing here is committed. The pages were not exercised in a browser.
+- security-reviewer: model and case text are rendered as React text only. No links, Markdown or HTML are built from API data. The only user-controlled URL part is the agent id, used in `router.replace('/eval/<id>')` and `Link href`.
+- main session: run the client package gate on the combined tree. No typecheck errors were seen outside owned paths.
+
+---
+
+# Implementation Report (fix): Eval Pipeline lane 7
+Status: done
+Mode: fix (lane 7)
+
+## Skills applied
+- Preloaded: onion-architecture, frontend-ui-architecture.
+- Invoked through Skill: react-testing-library, react-best-practices, next-best-practices, and now security and zod. Nothing the plan names is left uninvoked.
+
+## Self-review against security and zod
+- Route param: `[agentId]/page.tsx` fed the raw param into the view. The view passes it to `useAgentEvalDashboard`, where it is interpolated into the API path `/agents/${agentId}/eval-dashboard`. A param containing `/`, `?` or `..` could change that path. The hook is not in my owned paths, so I fixed it at the page boundary. The page now runs `z.string().regex(/^[A-Za-z0-9_-]{1,64}$/).safeParse(...)` and calls `notFound()` on failure (zod: parse at the boundary, safeParse). I did not run a test for the `notFound()` branch.
+- Links: `AgentRow` now builds its `Link href` with `encodeURIComponent(row.agent_id)`. The `AgentSwitcher` `router.replace` in `AgentEvalDashboardView` does the same. Both ids come from server data, so this is defence in depth.
+- I found no other issues:
+  - There is no `dangerouslySetInnerHTML`, and no href built from API text.
+  - Model and case text renders only as React text.
+  - No `JSON.parse` or other client-side parsing exists in the lane. Contract parsing stays on the server.
+  - No secrets or env values are involved.
+
+## Tests
+| command | package | exit code | result |
+|---|---|---|---|
+| `pnpm exec vitest run src/app/eval` | client | 0 | 3 files, 10 passed, 0 failed |
+| `pnpm typecheck` | client | 0 | no errors |
+
+## Deviations from plan
+- I used a zod regex check in the page rather than adding a shared schema, to keep the change inside `client/src/app/eval/**`. I added no dependency.
+- My earlier deviations still stand: tests use `fireEvent` because `user-event` is not installed, and the banner and switcher paths follow the red-first row.
+
+## Not done / blocked
+- None. The hooks in `client/src/lib/hooks/eval.ts` (L5) still interpolate ids into API paths unencoded. The security-reviewer may want `encodeURIComponent` there, but that file is outside my lane.
+
+## Insight candidates
+- client: a dynamic route param feeds API paths through hooks, so validate it at the page with zod before passing it on.
+
+## Handoff to reviewers
+- Files changed in this fix: `client/src/app/eval/[agentId]/page.tsx`, `client/src/app/eval/_components/AgentRow/AgentRow.tsx`, `client/src/app/eval/[agentId]/_components/AgentEvalDashboardView/AgentEvalDashboardView.tsx`.
+- main session: run the client package gate on the combined tree.
+
+---
+
+# Implementation Report (fix round 1): lane 7, CR-1
+Status: done
+Mode: fix
+
+## Change
+- `client/src/app/eval/[agentId]/_components/AgentEvalDashboardView/AgentEvalDashboardView.tsx`:
+  - Resume now looks for a running suite in `data.history` (`history.find(status === "running")`), not in `latest`. `latest` is the last completed run.
+  - `useSuiteRun` polls that id. Until its first response arrives, "Running k/N" comes from the history row's `cases_done` and `cases_total`.
+  - Run eval is always rendered and is disabled while a suite is running, when there are no cases, and while the start request is pending.
+  - A run started here still takes precedence over a resumed one for the same agent.
+- I did not touch the hooks.
+
+## Tests
+- Red first: the new test "CR-1 a dashboard whose history[0] is running shows Running k/N and a disabled Run eval" failed, and "AC-29 Running k/N then metrics" failed too. I had changed AC-29 to expect a disabled button, where it previously expected the button to be absent.
+- After the fix, `pnpm exec vitest run src/app/eval`: exit 0, 11 passed, 0 failed.
+- `pnpm exec tsc --noEmit`: exit 0.
+- The CR-1 test asserts the status text through `role="status"`. `RunHistoryTable` also prints "Running 1/3", so a bare `getByText` finds two matches.
+
+## Deviations
+- I edited AC-29's assertion from "Run eval absent" to "Run eval disabled" to match the new behaviour the finding asks for.
+
+## Handoff
+- Files changed: `AgentEvalDashboardView.tsx` and `AgentEvalDashboardView.test.tsx` (same folder).
+- The fix assumes the server puts a running suite in the dashboard `history` with `status: "running"`, `cases_done` and `cases_total`, as the coordinator described. I did not check the server code.
+- main session: run the client package gate.

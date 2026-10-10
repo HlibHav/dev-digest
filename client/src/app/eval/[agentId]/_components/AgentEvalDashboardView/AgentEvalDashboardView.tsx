@@ -27,11 +27,13 @@ export function AgentEvalDashboardView({ agentId }: { agentId: string }) {
   const [started, setStarted] = useState<{ agentId: string; runId: string } | null>(null);
   const [compare, setCompare] = useState<{ base: string; head: string } | null>(null);
 
-  // A run started here, or one still running when the page loaded.
-  const resumeId = data?.latest?.status === "running" ? data.latest.id : null;
-  const runId = started?.agentId === agentId ? started.runId : resumeId;
+  // A run started here, or one still running when the page loaded: `latest` is the
+  // latest completed run, so a live suite is found in the history.
+  const resumed = data?.history.find((r) => r.status === "running") ?? null;
+  const runId = started?.agentId === agentId ? started.runId : (resumed?.id ?? null);
   const { data: suite } = useSuiteRun(runId);
-  const running = suite?.status === "running" ? suite : null;
+  const live = suite ?? (resumed?.id === runId ? resumed : undefined);
+  const running = live?.status === "running" ? live : null;
 
   const name = data?.agent.name ?? "";
   const crumb = [
@@ -80,11 +82,16 @@ export function AgentEvalDashboardView({ agentId }: { agentId: string }) {
             <span style={s.running} role="status">
               {t("status.running", { done: running.cases_done, total: running.cases_total })}
             </span>
-          ) : (
-            <Button kind="primary" size="sm" icon="Play" disabled={data.cases_total === 0 || start.isPending} onClick={onRun}>
-              {t("dashboard.runEvalAgent")}
-            </Button>
-          )}
+          ) : null}
+          <Button
+            kind="primary"
+            size="sm"
+            icon="Play"
+            disabled={data.cases_total === 0 || start.isPending || running !== null}
+            onClick={onRun}
+          >
+            {t("dashboard.runEvalAgent")}
+          </Button>
         </div>
 
         <RegressionBanner alert={data.alert} />

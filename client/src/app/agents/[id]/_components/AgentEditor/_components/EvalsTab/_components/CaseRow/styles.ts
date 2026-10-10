@@ -22,5 +22,6 @@ export const s = {
     color: "var(--text-secondary)",
     whiteSpace: "nowrap",
   } satisfies CSSProperties,
+  error: { fontSize: 12, color: "var(--crit)" } satisfies CSSProperties,
   actions: { display: "flex", gap: 4 } satisfies CSSProperties,
 } as const;

@@ -71,7 +71,7 @@ export function scoreCase(
   };
 }
 
-function ratio(num: number, den: number): number | null {
+export function ratio(num: number, den: number): number | null {
   return den === 0 ? null : num / den;
 }
 

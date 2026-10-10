@@ -127,7 +127,10 @@ describe("EvalsTab", () => {
       dash: () =>
         finished
           ? dashboard(run({}), 3)
-          : dashboard(run({ status: "running", cases_done: 0, recall: null, precision: null, citation_accuracy: null }), 3),
+          : (() => {
+              const live = run({ status: "running", cases_done: 0, recall: null, precision: null, citation_accuracy: null });
+              return { ...dashboard(null, 3), history: [live] };
+            })(),
       suite: () => {
         polls++;
         if (polls === 1) return { ...run({ status: "running", cases_done: 1 }), snapshot: {}, case_results: [] };
@@ -136,10 +139,23 @@ describe("EvalsTab", () => {
       },
     });
     renderTab();
-    expect(await screen.findByText("Running 1/3")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Running 1/3"));
     expect(await screen.findByText("82%", {}, { timeout: 5000 })).toBeInTheDocument();
-    expect(screen.queryByText(/^Running \d\/3$/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
     expect(screen.getByText("3/3")).toBeInTheDocument();
+  });
+
+  it("CR-1 resumes a suite that is running after a reload from the history, with Run all disabled", async () => {
+    const running = run({ id: "s1", status: "running", cases_done: 1 });
+    mockApi({
+      cases: [kase("c1", "one", result("passed"))],
+      dash: () => ({ ...dashboard(run({ id: "s0" }), 3), history: [running, run({ id: "s0" })] }),
+      suite: () => ({ ...running, snapshot: {}, case_results: [] }),
+    });
+    renderTab();
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Running 1/3"));
+    expect(screen.getByRole("button", { name: "Run all evals" })).toBeDisabled();
+    expect(get).toHaveBeenCalledWith("/eval-suite-runs/s1");
   });
 
   it("counts passing cases across passed, failed, errored and never-run rows", async () => {

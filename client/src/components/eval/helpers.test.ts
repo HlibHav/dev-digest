@@ -30,11 +30,11 @@ describe("eval helpers", () => {
     expect(deltaView(-0.02, "usd")).toEqual({ text: "−$0.02", direction: "down" });
   });
 
-  it("AC-49 compareEnabled only for exactly two non-failed runs", () => {
+  it("AC-49 compareEnabled only for exactly two done or partial runs", () => {
     expect(compareEnabled([])).toBe(false);
     expect(compareEnabled([run("done")])).toBe(false);
     expect(compareEnabled([run("done"), run("partial")])).toBe(true);
-    expect(compareEnabled([run("done"), run("running")])).toBe(true);
+    expect(compareEnabled([run("done"), run("running")])).toBe(false);
     expect(compareEnabled([run("done"), run("failed")])).toBe(false);
     expect(compareEnabled([run("done"), run("done"), run("done")])).toBe(false);
   });

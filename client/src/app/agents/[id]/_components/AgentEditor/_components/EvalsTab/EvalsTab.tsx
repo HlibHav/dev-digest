@@ -42,10 +42,12 @@ export function EvalsTab({ agent }: { agent: Agent }) {
 
   const dash = dashboard.data;
   const latest = dash?.latest ?? null;
-  const activeSuiteId = startedId ?? (latest?.status === "running" ? latest.id : null);
+  // `latest` is the latest completed run; a suite still running (e.g. after a reload) is in `history`.
+  const runningInHistory = dash?.history.find((r) => r.status === "running") ?? null;
+  const activeSuiteId = startedId ?? runningInHistory?.id ?? null;
   const suite = useSuiteRun(activeSuiteId);
-  const progress = suite.data ?? latest;
-  const running = suite.data ? suite.data.status === "running" : latest?.status === "running";
+  const progress = suite.data ?? runningInHistory;
+  const running = suite.data ? suite.data.status === "running" : runningInHistory !== null;
 
   const list = cases.data ?? [];
   const active: Editing = editing === undefined ? paramCase : editing;

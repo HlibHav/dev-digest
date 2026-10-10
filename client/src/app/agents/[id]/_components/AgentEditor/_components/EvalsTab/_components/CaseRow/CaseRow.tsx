@@ -29,7 +29,10 @@ export function CaseRow({
   const run = useCaseRun(runId);
 
   const polledStatus = run.data?.status;
-  const running = start.isPending || (runId !== null && polledStatus !== "passed" && polledStatus !== "failed" && polledStatus !== "errored");
+  // Running means the server said so (or the first poll is still in flight); an error ends it.
+  const polling = runId !== null && !run.isError && (polledStatus === undefined || polledStatus === "running");
+  const running = start.isPending || polling;
+  const error = start.error ?? run.error;
   const last = kase.last_result;
   const status = running ? "running" : (last?.status ?? "neverRun");
 
@@ -64,6 +67,11 @@ export function CaseRow({
             </Link>
           ) : null}
         </span>
+        {error ? (
+          <span role="alert" style={s.error}>
+            {error.message}
+          </span>
+        ) : null}
       </div>
       <span style={s.chip}>
         {chip === "mixed" ? t("evalsTab.chip.mixed", { count: kase.expected_output.length }) : t(`evalsTab.chip.${chip}`)}
@@ -73,7 +81,9 @@ export function CaseRow({
           icon="Play"
           label={t("evalsTab.runCase")}
           onClick={() => {
-            if (!running) start.mutate(kase.id, { onSuccess: (a) => setRunId(a.case_run_id) });
+            if (running) return;
+            setRunId(null);
+            start.mutate(kase.id, { onSuccess: (a) => setRunId(a.case_run_id) });
           }}
         />
         <IconBtn icon="Edit" label={t("evalsTab.edit")} onClick={onEdit} />

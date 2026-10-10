@@ -3,7 +3,7 @@
  * database, no network, no Docker.
  */
 import { describe, it, expect } from 'vitest';
-import type { EvalAgentSnapshot, EvalScoredCase, Finding } from '@devdigest/shared';
+import { EvalCaseView, type EvalAgentSnapshot, type EvalScoredCase, type Finding } from '@devdigest/shared';
 import { AppError, NotFoundError, ValidationError } from '../src/platform/errors.js';
 import { EvalService, type EvalPorts, type FindingContext } from '../src/modules/eval/service.js';
 import { MAX_DIFF_BYTES, MSG } from '../src/modules/eval/constants.js';
@@ -30,6 +30,7 @@ class FakeStore implements EvalStore {
   suiteInsertResult: 'already_running' | null = null;
   failFinishCaseRunAfter: number | null = null;
   finishCaseRunCalls = 0;
+  failFinishCaseRunOnCall: number | null = null;
   progressReturns = true;
   progressCalls = 0;
   reapReason: string | null = null;
@@ -86,6 +87,7 @@ class FakeStore implements EvalStore {
     snapshot: EvalAgentSnapshot;
   }) {
     if (this.suiteInsertResult) return this.suiteInsertResult;
+    if (this.suites.some((x) => x.agentId === input.agentId && x.status === 'running')) return 'already_running';
     const run: SuiteRunRecord = {
       id: this.id('suite'),
       workspaceId: input.workspaceId,
@@ -169,6 +171,7 @@ class FakeStore implements EvalStore {
   }
   async finishCaseRun(id: string, f: CaseRunFinish) {
     this.finishCaseRunCalls += 1;
+    if (this.failFinishCaseRunOnCall === this.finishCaseRunCalls) throw new Error('db blip');
     if (this.failFinishCaseRunAfter !== null && this.finishCaseRunCalls > this.failFinishCaseRunAfter) {
       throw new Error('db down');
     }
@@ -392,6 +395,19 @@ describe('EvalService cases', () => {
     expect(h.store.insertCaseCalls).toBe(0);
   });
 
+  it('normalizes a full-file (start_line 0) or reversed finding range so the case parses', async () => {
+    const h = harness();
+    h.state.finding = ctx({ start_line: 0, end_line: 0 });
+    const a = await h.svc.createFromFinding(WS, 'f-1');
+    expect(a.body.case.expected_output[0]).toMatchObject({ start_line: 1, end_line: 1 });
+    expect(EvalCaseView.safeParse(a.body.case).success).toBe(true);
+    h.store.cases = [];
+    h.state.finding = ctx({ start_line: 9, end_line: 4 });
+    const b = await h.svc.createFromFinding(WS, 'f-1');
+    expect(b.body.case.expected_output[0]).toMatchObject({ start_line: 4, end_line: 9 });
+    expect(EvalCaseView.safeParse(b.body.case).success).toBe(true);
+  });
+
   it('second call returns created:false and the same id', async () => {
     const h = harness();
     const first = await h.svc.createFromFinding(WS, 'f-1');
@@ -511,6 +527,18 @@ describe('EvalService runs', () => {
     const suite = h.store.suites[0]!;
     expect(suite.status).toBe('failed');
     expect(suite.error).toBe(MSG.suiteFailed);
+  });
+
+  it('a case run left running by a throwing finishCaseRun is closed as errored', async () => {
+    const h = harness();
+    addCase(h);
+    addCase(h);
+    h.store.failFinishCaseRunOnCall = 2;
+    await h.svc.startSuite(WS, AGENT_ID);
+    await h.drain();
+    expect(h.store.suites[0]!.status).toBe('failed');
+    expect(h.store.caseRuns.map((r) => r.status)).toEqual(['passed', 'errored']);
+    expect(h.store.caseRuns[1]!.error).toBe(MSG.suiteFailed);
   });
 
   it('suite stops when its row is gone (updateSuiteProgress false) and logs once', async () => {
@@ -682,6 +710,7 @@ describe('EvalService reads', () => {
     expect(d.alert).toEqual({ run_number: 3, agent_version: 1, drops: [{ metric: 'recall', points: 30 }] });
     expect(d.trend.map((t) => t.run_number)).toEqual([1, 2, 3]);
     expect(d.history.map((s) => s.run_number)).toEqual([5, 4, 3, 2, 1]);
+    expect(d.history[0]).toMatchObject({ status: 'running', cases_done: 1, cases_total: 1 });
 
     const empty = await harness().svc.agentDashboard(WS, AGENT_ID);
     expect(empty.latest).toBeNull();

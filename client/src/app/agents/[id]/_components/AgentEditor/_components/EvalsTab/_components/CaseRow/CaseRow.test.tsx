@@ -1,10 +1,23 @@
-import { describe, it, expect, afterEach } from "vitest";
-import { render, screen, cleanup, fireEvent } from "@testing-library/react";
+import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
+import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { EvalCaseView } from "@devdigest/shared";
 import evalMessages from "../../../../../../../../../../messages/en/eval.json";
+const get = vi.fn();
+const post = vi.fn();
+vi.mock("@/lib/api", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/api")>("@/lib/api");
+  return { ...actual, api: { ...actual.api, get: (...a: unknown[]) => get(...a), post: (...a: unknown[]) => post(...a) } };
+});
+
+import { ApiError } from "@/lib/api";
 import { CaseRow } from "./CaseRow";
+
+beforeEach(() => {
+  get.mockReset();
+  post.mockReset();
+});
 
 afterEach(cleanup);
 
@@ -25,7 +38,7 @@ const KASE: EvalCaseView = {
 } as EvalCaseView;
 
 function renderRow(kase: EvalCaseView) {
-  const qc = new QueryClient();
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   render(
     <QueryClientProvider client={qc}>
       <NextIntlClientProvider locale="en" messages={{ eval: evalMessages }}>
@@ -55,5 +68,25 @@ describe("CaseRow", () => {
     renderRow({ ...KASE, source: null, last_result: null, input_meta: { title: "", body: "" } });
     expect(screen.getByText("never run")).toBeInTheDocument();
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
+
+  it("CR-7 shows the reason when starting a run is refused and lets the user retry", async () => {
+    post.mockRejectedValue(new ApiError("Too many requests", 429));
+    renderRow(KASE);
+    fireEvent.click(screen.getByRole("button", { name: "Run case" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Too many requests");
+    fireEvent.click(screen.getByRole("button", { name: "Run case" }));
+    await waitFor(() => expect(post).toHaveBeenCalledTimes(2));
+  });
+
+  it("CR-7 recovers when polling the case run fails: reason shown, Play usable again", async () => {
+    post.mockResolvedValue({ case_run_id: "cr1", status: "running" });
+    get.mockRejectedValue(new ApiError("Case run not found", 404));
+    renderRow(KASE);
+    fireEvent.click(screen.getByRole("button", { name: "Run case" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Case run not found");
+    expect(screen.queryByText("Running…")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Run case" }));
+    await waitFor(() => expect(post).toHaveBeenCalledTimes(2));
   });
 });

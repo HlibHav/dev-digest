@@ -1,6 +1,5 @@
 import type { FastifyBaseLogger } from 'fastify';
 import { isSkillUntrusted, type FindingCategory, type Severity } from '@devdigest/shared';
-import { parseUnifiedDiff } from '../../adapters/index.js';
 import type { Container } from '../../platform/container.js';
 import { runEvalCase } from './case-runner.js';
 import { redactSecrets } from './helpers.js';
@@ -79,7 +78,7 @@ export function buildEvalService(
     },
     runCase: (input) =>
       runEvalCase(
-        { llm: async (provider) => container.llm(provider), parseDiff: parseUnifiedDiff, nowMs: Date.now },
+        { llm: async (provider) => container.llm(provider), parseDiff: (raw) => container.parseDiff(raw), nowMs: Date.now },
         input,
       ),
     background: (task) => {

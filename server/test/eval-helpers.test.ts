@@ -38,6 +38,16 @@ describe('eval helpers', () => {
     expect(prDescription({ title: ' ', body: '\n' })).toBeUndefined();
   });
 
+  it('redactSecrets masks github, google, xai keys and key=value pairs', () => {
+    const out = redactSecrets(
+      'ghp_abcdefghijklmnop1234 github_pat_11AAA_bbbCCC AIzaSyA1234567890abcdefghij xai-abc123XYZ url?api_key=hunter2&x=1 token=abc.def',
+    );
+    for (const raw of ['ghp_abcdefghijklmnop1234', 'github_pat_11AAA', 'AIzaSyA1234', 'xai-abc123', 'hunter2', 'abc.def']) {
+      expect(out).not.toContain(raw);
+    }
+    expect(out).toContain('x=1');
+  });
+
   it('redactSecrets masks sk- keys and Bearer tokens and leaves other text alone', () => {
     const out = redactSecrets('key sk-abc123DEF456 and Authorization: Bearer xyz.789 failed');
     expect(out).not.toContain('abc123DEF456');

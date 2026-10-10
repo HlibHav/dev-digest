@@ -29,8 +29,8 @@ import {
   RECALL_TREND_POINTS,
   RECENT_RUNS_LIMIT,
 } from './constants.js';
-import { buildCaseDiff, caseNameFromFinding, diffBytes, redactSecrets } from './helpers.js';
-import { aggregateSuite, regressionDrops, scoreCase, suiteCost, type CaseScore } from './scoring.js';
+import { buildCaseDiff, caseNameFromFinding, diffBytes, normalizeRange, redactSecrets } from './helpers.js';
+import { aggregateSuite, ratio, regressionDrops, scoreCase, suiteCost, type CaseScore } from './scoring.js';
 import type {
   CaseRunFinish,
   CaseRunRecord,
@@ -77,10 +77,6 @@ const EMPTY_SNAPSHOT: EvalAgentSnapshot = {
   strategy: 'auto',
   skills: [],
 };
-
-function ratio(num: number, den: number): number | null {
-  return den === 0 ? null : num / den;
-}
 
 /** Per-case metrics from one case's score; null when the denominator is zero. */
 function caseMetrics(s: CaseScore) {
@@ -218,11 +214,12 @@ export class EvalService {
     const inputDiff = buildCaseDiff(finding.file, patch);
     if (diffBytes(inputDiff) > MAX_DIFF_BYTES) throw new ValidationError(MSG.diffTooLarge);
 
+    const range = normalizeRange(finding.start_line, finding.end_line);
     const expectation: EvalExpectation = {
       type: finding.accepted ? 'must_find' : 'must_not_flag',
       file: finding.file,
-      start_line: finding.start_line,
-      end_line: finding.end_line,
+      start_line: range.start,
+      end_line: range.end,
       severity: finding.severity,
       category: finding.category,
       title: finding.title,
@@ -291,16 +288,24 @@ export class EvalService {
   // ---- runs ----
 
   async startSuite(workspaceId: string, agentId: string): Promise<EvalSuiteRunAccepted> {
-    const p = this.ports;
     const agent = await this.requireAgent(workspaceId, agentId);
-    const cases = await p.store.listCases(workspaceId, agentId);
+    const cases = await this.ports.store.listCases(workspaceId, agentId);
+    return this.startSuiteFor(workspaceId, agent, cases);
+  }
+
+  private async startSuiteFor(
+    workspaceId: string,
+    agent: EvalAgent,
+    cases: readonly EvalCaseRecord[],
+  ): Promise<EvalSuiteRunAccepted> {
+    const p = this.ports;
     if (cases.length === 0) throw new ValidationError(MSG.noCases);
     if (cases.length > MAX_CASES_PER_SUITE) throw new ValidationError(MSG.tooManyCases(cases.length));
-    const skills = await p.resolveSkills(workspaceId, agentId);
+    const skills = await p.resolveSkills(workspaceId, agent.id);
 
     const inserted = await p.store.insertSuite({
       workspaceId,
-      agentId,
+      agentId: agent.id,
       agentVersion: agent.version,
       casesTotal: cases.length,
       snapshot: {
@@ -332,11 +337,10 @@ export class EvalService {
       if (!agent.enabled) out.skipped.push({ agent_id: agent.id, reason: 'disabled' });
       else if (count === 0) out.skipped.push({ agent_id: agent.id, reason: 'no cases' });
       else if (count > MAX_CASES_PER_SUITE) out.skipped.push({ agent_id: agent.id, reason: 'too many cases' });
-      else if (await p.store.hasRunningSuite(agent.id)) {
-        out.skipped.push({ agent_id: agent.id, reason: 'already running' });
-      } else {
+      else {
         try {
-          const accepted = await this.startSuite(workspaceId, agent.id);
+          const cases = await p.store.listCases(workspaceId, agent.id);
+          const accepted = await this.startSuiteFor(workspaceId, agent, cases);
           out.started.push({ agent_id: agent.id, suite_run_id: accepted.suite_run_id });
         } catch (err) {
           if (err instanceof AppError && err.code === 'suite_running') {
@@ -578,7 +582,15 @@ export class EvalService {
       for (const evalCase of cases) {
         const caseRun = await p.store.insertCaseRun(evalCase.id, run.id);
         if (caseRun) {
-          const outcome = await this.runOne(evalCase, agent, skills, caseRun.id);
+          let outcome: CaseOutcome;
+          try {
+            outcome = await this.runOne(evalCase, agent, skills, caseRun.id);
+          } catch (err) {
+            await p.store
+              .finishCaseRun(caseRun.id, this.erroredFinish(MSG.suiteFailed))
+              .catch((e: unknown) => this.logError(e, 'eval: could not close case run', { caseRunId: caseRun.id }));
+            throw err;
+          }
           scored.push({ case_id: evalCase.id, case_name: evalCase.name, status: outcome.status });
           costs.push(outcome.costUsd);
           if (outcome.status === 'errored') errored += 1;

@@ -118,7 +118,7 @@ describe("AgentEvalDashboardView", () => {
     const { rerender } = render(view());
     fireEvent.click(screen.getByRole("button", { name: "Run eval" }));
     expect(screen.getByText("Running 1/3")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Run eval" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Run eval" })).toBeDisabled();
 
     suiteRunMock.mockImplementation(() => ({
       data: { id: "s3", agent_id: "a1", status: "done", cases_done: 3, cases_total: 3 } as EvalSuiteRunDetail,
@@ -127,6 +127,15 @@ describe("AgentEvalDashboardView", () => {
     rerender(view());
     expect(screen.queryByText(/Running/)).not.toBeInTheDocument();
     expect(screen.getByText("95%")).toBeInTheDocument();
+  });
+
+  it("CR-1 a dashboard whose history[0] is running shows Running k/N and a disabled Run eval", () => {
+    const live = run(3, { status: "running", cases_done: 1, cases_total: 3, recall: null });
+    dashMock.mockReturnValue({ data: dash({ history: [live, run(2), run(1)] }), isLoading: false, isError: false });
+    render(view());
+    expect(screen.getByRole("status")).toHaveTextContent("Running 1/3");
+    expect(screen.getByRole("button", { name: "Run eval" })).toBeDisabled();
+    expect(suiteRunMock).toHaveBeenCalledWith("s3");
   });
 
   it("the switcher calls router.replace('/eval/<other>') and cards change", () => {

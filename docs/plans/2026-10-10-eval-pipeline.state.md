@@ -1,5 +1,5 @@
 # State: eval-pipeline
-Stage: 2 Review · next: plan-verifier
+Stage: 3 Fix round 1 · next: re-review delta 61327e3..round1
 Spec: specs/2026-10-10-eval-pipeline.md (SPEC-2026-10-10-eval-pipeline) · Plan: docs/plans/2026-10-10-eval-pipeline.md · Mode: multi-agent
 Inputs: prompt none · designs specs/designs/eval-pipeline/img1-6.png
 Red-first: implementer-owned
@@ -28,6 +28,24 @@ Expected red:
 
 ## Findings ledger
 | id | source | severity | kind | `path:line` | round opened | status | round closed |
+|---|---|---|---|---|---|---|---|
+| PV-1 | plan-verifier | partial | local fix (L6 test) | CaseEditor.test.tsx:106 AC-40 asserted file name only | review | fixed, awaiting re-review | round 1 |
+| PV-2 | plan-verifier | partial ×9 | red-first record (AC-9,12,29,35,38,39,41,43,44: no red run before code; mutation pairs only) | — | review | for Glib at close (cannot be fixed by code) | — |
+| AR-1 | architecture-reviewer | major | local fix (server union) | server/src/modules/eval/wiring.ts:3 adapter import, lint:boundaries fails | review | fixed, awaiting re-review | round 1 |
+| AR-2 | architecture-reviewer | minor | local fix (L5) | client/src/components/eval/DeltaBadge single consumer | review | no change: 2 consumers (MetricStat, CompareModal) per L5 | round 1 |
+| SR-1 | security-reviewer | minor | local fix (server union) | server/src/modules/eval/helpers.ts:22 redactSecrets narrow | review | fixed, awaiting re-review | round 1 |
+| SR-2 | security-reviewer | minor | local fix (L5) | client/src/lib/hooks/eval.ts ids unencoded | review | fixed, awaiting re-review | round 1 |
+| CR-1 | code-review | bug | L6 + L7 (+server check) | EvalsTab.tsx:45, AgentEvalDashboardView.tsx:31 resume reads latest (never running) | review | fixed, awaiting re-review | round 1 |
+| CR-2 | code-review | bug | server union | service.ts:221 finding range unchecked → 500 + broken case list | review | fixed, awaiting re-review | round 1 |
+| CR-3 | code-review | bug | L5 | hooks/eval.ts:119 no refresh when first poll is terminal | review | fixed, awaiting re-review | round 1 |
+| CR-4 | code-review | bug | server union | service.ts:579 case run left running on suite crash | review | fixed, awaiting re-review | round 1 |
+| CR-5 | code-review | bug | L5 | components/eval/helpers.ts:41 compare allows running | review | fixed, awaiting re-review | round 1 |
+| CR-6 | code-review | bug | L5 | hooks/eval.ts:133 dashboards don't poll while running | review | fixed, awaiting re-review | round 1 |
+| CR-7 | code-review | bug | L6 | CaseRow.tsx:32 start/poll errors swallowed, stuck running | review | fixed, awaiting re-review | round 1 |
+| CR-8 | code-review | bug | L6 | CaseEditor.tsx:38 cases list not refreshed after run on save | review | fixed, awaiting re-review | round 1 |
+| CR-9 | code-review | efficiency | — | service.ts:475 N+1 / unbounded dashboard queries | review | deferred (AC-58 passes; for Glib) | — |
+| CR-10 | code-review | cleanup | server union | service.ts:335 redundant runAll I/O, duplicate ratio | review | fixed, awaiting re-review | round 1 |
+| PV-3 | plan-verifier | partial | flow 10 uses `agent-browser select` (TESTING.md:96 allows open/wait/find) | e2e/specs/10-eval-dashboard.flow.json | review | for Glib at close | — |
 
 ## Log
 - 2026-10-10 — plan 9138e20 approved by Glib ("так, погоджую, запускай"); briefs in docs/plans/2026-10-10-eval-pipeline.assets/briefs/
@@ -36,3 +54,6 @@ Expected red:
 - 2026-10-10 — level 3 done. Notes for plan-verifier: L3 service tests written after code (no red run; no Red-first row tagged L3); L6 red-first proven by mutation pairs (fix pass); L7 fix pass loaded security+zod and added agentId zod check; L2 loaded skills after writing (deviation recorded). Open for security-reviewer: L5 hooks interpolate ids into API paths unencoded.
 - 2026-10-10 — L4 done (1 fix: AC-14 test bug), committed; level 5 launched
 - 2026-10-10 — level 5 done. Browser check found every page 500 (Next can't resolve .js specifiers in vendored contract eval-pipeline.ts); Glib chose next.config extensionAlias (ADR ../decisions/2026-10-10-client-resolves-js-specifiers.md); flow 12 clicked an already-expanded finding (fixed). e2e 12/12.
+- 2026-10-10 — plan-verifier: gaps (42 met / 10 partial / 0 not met / 6 unverifiable: e2e+browser are main session; e2e 12/12 ran on the tree committed as 61327e3). PV-1 fixed by L6. architecture-, security-reviewer and /code-review launched in parallel on 61327e3.
+- 2026-10-10 — security-reviewer pass (2 minor); architecture-reviewer fail (AR-1 major); /code-review 10 items. Fix round 1 launched in parallel: server union (L3 agent), L5, L6, L7.
+- 2026-10-10 — round 1 fixes done; gate: server tsc 0, lint:boundaries 0, unit 544; it 217 (hasDocker probe flaked under load in one full run, re-run of affected files green); client tsc 0, 492 passed. Out-of-lane edit: server/src/platform/container.ts parseDiff (for AR-1).
