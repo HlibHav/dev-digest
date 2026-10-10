@@ -94,7 +94,7 @@ Non-goals:
 - AC-9 WHILE a finding has neither an accepted nor a dismissed decision, the system shall show "Turn into eval case" disabled with the hint "Accept or dismiss first". The create route refuses such a finding with 422. — proof: e2e — verify: open a PR with an undecided finding, expect the button disabled with the hint; call the route directly, expect 422
 - AC-10 IF the finding's review has no agent, THEN the system shall show "Turn into eval case" disabled and the route shall refuse it with 422. — proof: red-first integration — verify: seed a review with a null agent and a decided finding, expect 422 from the route
 - AC-11 WHEN "Turn into eval case" is activated for a finding that already has a case in the same agent's set, the system shall return the existing case and create no second one. — proof: red-first integration — verify: call create-from-finding twice for the same finding, expect the same case id both times and one case in the set
-- AC-12 WHEN a case is created from a finding, the client shall confirm it with a message naming the agent and a link to the case on that agent's Evals tab. IF creation fails, THEN it shall show the server's reason. — proof: e2e — verify: click the button on an accepted finding, expect a confirmation naming the agent with a working link; trigger the no-patch case, expect the reason text
+- AC-12 WHEN a case is created from a finding, the client shall confirm it with a message naming the agent and a link to the case on that agent's Evals tab. IF creation fails, THEN it shall show the server's reason. — proof: red-first integration + red-first unit — verify: integration: the create-from-finding route returns the case with its owning agent, or 422 with the no-patch reason; unit: the finding card, with a mocked fetch, shows a confirmation naming the agent with a link to its Evals tab, and on a 422 shows the reason text
 - AC-13 WHEN a finding's decision changes after a case was created from it, the system shall keep the case's expectation unchanged. — proof: red-first integration — verify: accept a finding, create the case, dismiss the finding, read the case, expect its expectation still must_find
 
 ### Fixed inputs
@@ -120,7 +120,7 @@ Non-goals:
 - AC-26 IF the agent has no cases or more than 50 cases, THEN the system shall refuse the suite run with 422 and a reason naming the limit. The Evals tab shows that reason. — proof: red-first integration — verify: an agent with 0 cases and one with 51 cases each get 422 with a reason; neither creates a suite run
 - AC-27 IF a suite run for the same agent is already running, THEN the system shall refuse a new one with 409. — proof: red-first integration — verify: hold a running suite with a gated model double, start another for the same agent, expect 409; start one for another agent, expect 202
 - AC-28 The system shall limit the suite-run, run-all and single-case-run routes to 10 requests per minute each. — proof: red-first integration — verify: send 11 requests in a minute to the suite-run route, expect the 11th to be rate-limited
-- AC-29 WHILE a suite run is in progress, the system shall report cases done out of cases total on the suite-run read route, and the Evals tab and the per-agent dashboard shall poll it and show "Running k/N" until it ends. — proof: e2e — verify: start a suite on a seeded agent with a slow model double, expect "Running" with a k/N count that rises, then final metrics without a reload
+- AC-29 WHILE a suite run is in progress, the system shall report cases done out of cases total on the suite-run read route, and the Evals tab and the per-agent dashboard shall poll it and show "Running k/N" until it ends. — proof: red-first integration + red-first unit — verify: integration: start a suite with a gated model double, expect cases_done to rise on the suite-run read route, then final metrics; unit: the Evals tab and per-agent dashboard, with a mocked fetch returning running then done, show "Running k/N", then the final metrics without a reload
 - AC-30 IF a suite run fails as a whole (an unexpected error, or a process restart while it ran), THEN the system shall mark it `failed` with a reason. It never stays `running`. A suite still `running` at server start is marked `failed` with the reason "interrupted". — proof: red-first integration — verify: force an error after case 1, expect status failed with a reason; seed a running suite row, start the app, expect it read as failed with "interrupted"
 - AC-31 WHEN a suite run starts, the system shall store a snapshot of the agent's system prompt, model, provider, strategy and each linked skill's id, name, version and body. Later edits or skill changes do not alter that snapshot. — proof: red-first integration — verify: run a suite, then edit the prompt and a linked skill's body, read the suite run, expect the snapshot to hold the old prompt and old skill body
 - AC-32 The system shall number suite runs per agent from 1, in start order, and label each run "run #N · agent vM", where M is the agent's config version when the run started. — proof: red-first integration — verify: start three suites for one agent with a prompt edit between the second and third, expect run numbers 1, 2, 3 and agent versions v1, v1, v2
@@ -129,7 +129,7 @@ Non-goals:
 ### Single-case run
 
 - AC-34 WHEN the user runs a single case (the row ▷ on the Evals tab, "Run case" in the Case Editor, or "Run on save" when saving), the system shall accept the request with 202 and a case-run id, execute that case alone in the background, and store the result as the case's last result only, outside any suite run. The client polls the case-run until it ends. A case's last result is its most recent result from either a single-case run or a suite run. — proof: red-first integration — verify: run one case, expect its last result set and no new suite run, history row or trend point; then run a suite, expect the case's last result to be the suite's result for it
-- AC-35 WHERE "Run on save" is switched on in the Case Editor, the system shall run the case right after a successful save and show the result in the editor's last-run panel. — proof: e2e — verify: open the editor, switch Run on save on, save, expect the last-run panel to show passed or failed with duration and cost
+- AC-35 WHERE "Run on save" is switched on in the Case Editor, the system shall run the case right after a successful save and show the result in the editor's last-run panel. — proof: red-first unit — verify: the Case Editor with a mocked fetch: switch Run on save on, save, expect the run to start after the save and the last-run panel to show passed or failed with duration and cost
 
 ### Case list and Case Editor
 
@@ -147,7 +147,7 @@ Non-goals:
 - AC-40 WHILE the user edits the diff in the Case Editor, the system shall show a rendered diff preview of it. — proof: e2e — verify: paste a unified diff, open Preview, expect the added line rendered as an addition with its new-side line number
 - AC-41 IF an expectation's line range does not intersect any hunk of the case diff for that file, THEN the Case Editor shall warn "This expectation can never be matched" next to it, without blocking save. — proof: red-first unit — verify: a diff whose hunk covers lines 10–16 of src/config.ts, an expectation at line 40, expect the warning; at line 12, no warning
 - AC-42 WHEN the user edits or deletes a case, the system shall update or remove it. Past suite runs keep their aggregate metrics and their list of scored cases (id, name, status), while the deleted case's detailed result is removed with it. — proof: red-first integration — verify: run a suite, delete one case, read the suite run, expect unchanged metrics and the deleted case still listed by name and status in the scored-case list, with no detailed result for it
-- AC-43 WHEN a case was created from a finding, the system shall show "Created from PR #N" on the case, linking to that PR. — proof: e2e — verify: create a case from a finding, open it in the Evals tab, expect the link to land on that PR
+- AC-43 WHEN a case was created from a finding, the system shall show "Created from PR #N" on the case, linking to that PR. — proof: red-first integration + red-first unit — verify: integration: a case created from a finding returns `source` with repo_id, pr_id and pr_number; unit: the case row, given that source, renders "Created from PR #N" linking to that PR's page
 - AC-44 WHILE a case diff, PR meta or stored finding contains a string shaped like a credential (for example `sk_live_`, `ghp_`, `AKIA`, or a `-----BEGIN … PRIVATE KEY-----` block), the system shall mask it in the case list, the editor preview and run detail, behind an explicit reveal control. The stored value stays as is. — proof: red-first unit — verify: render a case whose diff contains `sk_live_51H8xq…`, expect the masked form until reveal is activated
 
 ### History, trend, compare
@@ -168,7 +168,7 @@ Non-goals:
 
 - AC-51 The system shall show an "Eval Dashboard" item in the sidebar's Skills Lab section, opening the Eval Dashboard page. — proof: e2e — verify: click the sidebar item, expect the Eval Dashboard page with the item highlighted
 - AC-52 WHEN the Eval Dashboard opens, the system shall list every agent in the workspace that has at least one case. Each row shows the agent name, model, latest suite-run label and date, passed / executed, a recall trend sparkline, and the latest recall, precision and citation accuracy. Below the list, the 20 most recent suite runs of all agents appear newest first. — proof: e2e — verify: seed two agents with runs, open the page, expect two agent rows with their latest values and a mixed recent-runs list
-- AC-53 IF no agent in the workspace has a case, THEN the Eval Dashboard shall show an empty state that points to creating a case from a finding or on an agent's Evals tab. — proof: e2e — verify: open the page in a workspace with no cases, expect the empty state text
+- AC-53 IF no agent in the workspace has a case, THEN the Eval Dashboard shall show an empty state that points to creating a case from a finding or on an agent's Evals tab. — proof: red-first unit — verify: the Eval Dashboard view, given an empty dashboard response, shows the empty-state text
 - AC-54 WHILE an agent has cases but no completed suite run, the system shall show its dashboard row and metric cards as "never run" with "—" values. — proof: red-first unit — verify: render an agent row with cases and no runs, expect "never run" and "—"
 - AC-55 WHEN the user opens an agent's row on the Eval Dashboard, or "View full dashboard" on its Evals tab, the system shall open the per-agent dashboard. It shows stat cards (latest value and delta against the previous completed run), the trend chart, the run history with selection and Compare, a "Run eval" action, and an agent switcher that changes the agent in place. — proof: e2e — verify: open the per-agent dashboard, switch to another agent, expect the cards and history to change to that agent's runs
 - AC-56 WHEN an agent's latest completed suite run has any metric 0.02 or more below the same metric of its previous completed run (both non-null), the system shall show a regression banner. The banner names each dropped metric with its drop in points and the run label. — proof: red-first unit — verify: previous precision 0.93, latest 0.91, expect a banner naming precision and 2 pts; a drop of 0.01, no banner
@@ -332,6 +332,11 @@ Routes:
 | `GET /agents/:id/eval-dashboard` | Per-agent dashboard: latest values, deltas, trend points (with run label and cost), history, alert (AC-55, AC-56) | 200 · 404 |
 | `GET /eval/dashboard` | Workspace overview: agent rows and recent suite runs (AC-52) | 200 |
 
+Decisions recorded outside this spec: ADR follow-up 2 in `../decisions/2026-10-10-eval-suite-runs-table.md` (signed off by Glib) holds how background runs execute and how case ownership and source-finding uniqueness are stored. At the behaviour level this spec requires:
+- suite and single-case runs run in the background (AC-25, AC-34);
+- every case belongs to exactly one agent and is deleted with it (AC-57);
+- one agent's set holds at most one case per source finding (AC-11).
+
 ## Inputs and provenance
 
 - Accepted and dismissed decisions, finding file, range, severity, category and title [reused: L01 finding actions]
@@ -378,7 +383,7 @@ None open. All were closed on 2026-10-10:
 | AC-9 | e2e | undecided finding → button disabled with hint; route 422 | — | — | — |
 | AC-10 | red-first integration | review with null agent → 422 | — | — | — |
 | AC-11 | red-first integration | create twice → same id, one case | — | — | — |
-| AC-12 | e2e | confirmation with agent name and link; failure shows reason | — | — | — |
+| AC-12 | red-first integration + red-first unit | route returns case with agent or 422 reason; card shows confirmation with link, or the reason | — | — | — |
 | AC-13 | red-first integration | flip decision → expectation unchanged | — | — | — |
 | AC-14 | red-first integration | captured prompt has diff and PR meta, no doc, intent or callers | — | — | — |
 | AC-15 | red-first integration | one kept, one dropped finding stored in the case result | — | — | — |
@@ -395,13 +400,13 @@ None open. All were closed on 2026-10-10:
 | AC-26 | red-first integration | 0 and 51 cases → 422, no suite | — | — | — |
 | AC-27 | red-first integration | second suite same agent → 409; other agent → 202 | — | — | — |
 | AC-28 | red-first integration | 11th request in a minute rate-limited | — | — | — |
-| AC-29 | e2e | "Running k/N" rises, then final metrics without reload | — | — | — |
+| AC-29 | red-first integration + red-first unit | gated double: cases_done rises, then metrics; UI with mocked fetch shows "Running k/N", then metrics | — | — | — |
 | AC-30 | red-first integration | mid-run error → failed with reason; running row at boot → failed "interrupted" | — | — | — |
 | AC-31 | red-first integration | snapshot keeps the old prompt and skill body after edits | — | — | — |
 | AC-32 | red-first integration | run numbers 1, 2, 3 with agent v1, v1, v2 | — | — | — |
 | AC-33 | red-first integration | one started, three skipped: no cases, already running, disabled | — | — | — |
 | AC-34 | red-first integration | 202 + poll; single-case run sets last result, no suite or history row; a later suite updates last result | — | — | — |
-| AC-35 | e2e | Run on save → last-run panel shows result, duration, cost | — | — | — |
+| AC-35 | red-first unit | Case Editor with mocked fetch: Run on save → last-run panel shows result, duration, cost | — | — | — |
 | AC-36 | e2e | four case states and "passing 1 / 4" | — | — | — |
 | AC-37 | e2e | empty state, run disabled | — | — | — |
 | AC-38 | red-first unit | invalid JSON and shape errors block save; valid list enables it | — | — | — |
@@ -409,7 +414,7 @@ None open. All were closed on 2026-10-10:
 | AC-40 | e2e | pasted diff previews with new-side line numbers | — | — | — |
 | AC-41 | red-first unit | out-of-hunk expectation warns; in-hunk does not | — | — | — |
 | AC-42 | red-first integration | deleted case: metrics unchanged, still in scored-case list, no detailed result | — | — | — |
-| AC-43 | e2e | "Created from PR #N" link lands on the PR | — | — | — |
+| AC-43 | red-first integration + red-first unit | route returns source; row renders "Created from PR #N" link | — | — | — |
 | AC-44 | red-first unit | `sk_live_` masked until reveal | — | — | — |
 | AC-45 | red-first integration | history newest first with fields; failed row has reason | — | — | — |
 | AC-46 | browser (main session) | four points, precision gap, tooltip label and cost | — | — | — |
@@ -419,7 +424,7 @@ None open. All were closed on 2026-10-10:
 | AC-50 | red-first unit | negative delta shows sign and arrow text | — | — | — |
 | AC-51 | e2e | sidebar item opens the Eval Dashboard | — | — | — |
 | AC-52 | e2e | agent rows with latest values and mixed recent runs | — | — | — |
-| AC-53 | e2e | empty workspace → empty state | — | — | — |
+| AC-53 | red-first unit | empty dashboard response → empty state | — | — | — |
 | AC-54 | red-first unit | cases but no runs → "never run" and "—" | — | — | — |
 | AC-55 | e2e | per-agent dashboard; switcher changes agent in place | — | — | — |
 | AC-56 | red-first unit | 0.93 → 0.91 banner; 0.01 drop no banner | — | — | — |
@@ -432,3 +437,4 @@ None open. All were closed on 2026-10-10:
 |---|---|---|
 | 2026-10-10 | Created (create mode, then answers mode): 57 ACs, Full SDD | L06 homework Eval Pipeline; Glib's answers to Q2 and Q6, main-session decisions on Q0, Q1, Q3, Q4, Q5, Q7 and N1 to N9 |
 | 2026-10-10 | Closed all 8 open markers: Q0 limits confirmed; case-name format (AC-6); disabled agents skipped (AC-33); single-case run 202 + poll (AC-34, case-run read route); overlap counts as noise (AC-18); read-at-start case set; 20 recent runs (AC-52); new AC-58 (p95 < 500 ms at 50 runs). Glib approved ("так approved"); the Status line is set by the main session | Glib's confirmation and approval, main-session decisions Glib saw (answers mode) |
+| 2026-10-10 | Proof tags only, AC wording unchanged: AC-29 → red-first integration + red-first unit; AC-35 and AC-53 → red-first unit; AC-12 and AC-43 → red-first integration + red-first unit. Added a pointer to ADR follow-up 2 with its behaviour-level consequences | e2e flows must not trigger an LLM call and run on read-only seeded data, so mutating or model-backed e2e proofs can't run (main-session decision, update mode) |
