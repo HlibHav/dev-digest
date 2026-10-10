@@ -1,5 +1,5 @@
 # State: eval-pipeline
-Stage: 3 Fix round 2 · next: re-review delta af41451..round2
+Stage: 3 Fix round 2 done · STOPPED: open must-close count did not drop (7 → ~9); waiting for Glib's call on round 3
 Spec: specs/2026-10-10-eval-pipeline.md (SPEC-2026-10-10-eval-pipeline) · Plan: docs/plans/2026-10-10-eval-pipeline.md · Mode: multi-agent
 Inputs: prompt none · designs specs/designs/eval-pipeline/img1-6.png
 Red-first: implementer-owned
@@ -42,18 +42,26 @@ Expected red:
 | CR-5 | code-review | bug | L5 | components/eval/helpers.ts:41 compare allows running | review | closed | round 1 |
 | CR-6 | code-review | bug | L5 | hooks/eval.ts:133 dashboards don't poll while running | review | closed | round 1 |
 | CR-7 | code-review | bug | L6 | CaseRow.tsx:32 start/poll errors swallowed, stuck running | review | closed | round 1 |
-| CR-8 | code-review | bug | L5+L6 | CaseEditor.tsx:38 cases list not refreshed after run on save | review | fixed, awaiting re-review | round 2 |
+| CR-8 | code-review | bug | L5+L6 | CaseEditor.tsx:38 cases list not refreshed after run on save | review | open (partial after round 2) | — |
 | CR-9 | code-review | efficiency | — | service.ts:475 N+1 / unbounded dashboard queries | review | deferred (AC-58 passes; for Glib) | — |
 | CR-10 | code-review | cleanup | server union | service.ts:335 redundant runAll I/O, duplicate ratio | review | closed | round 1 |
-| CR-11 | code-review r1 | bug (regression) | L6+L7 | EvalsTab.tsx:47 dashboard poll drops running suite before terminal → no invalidation | round 1 | fixed, awaiting re-review | round 2 |
-| CR-12 | code-review r1 | bug | server | helpers.ts:22 full-file finding 0..0 clamped to 1..1 never matches | round 1 | fixed, awaiting re-review | round 2 |
-| CR-13 | code-review r1 | bug | L6+L7 | EvalsTab.tsx:47 / AgentEvalDashboardView.tsx:33 finished startedId wins over newer running suite | round 1 | fixed, awaiting re-review | round 2 |
-| CR-14 | code-review r1 | efficiency | L5 | hooks/eval.ts:161 agent-dashboard poll duplicates suite poll; workspace poll N+1 every 1.5 s | round 1 | fixed, awaiting re-review | round 2 |
-| CR-15 | code-review r1 | bug | L6 | CaseRow.tsx:33 one transient poll error re-enables Play mid-run | round 1 | fixed, awaiting re-review | round 2 |
-| CR-16 | code-review r1 | bug | server | service.ts:590 crash-closed case run not counted as errored | round 1 | fixed, awaiting re-review | round 2 |
-| CR-17 | code-review r1 | cleanup | server | types.ts:141 hasRunningSuite dead; runAll extra I/O on running agents | round 1 | fixed, awaiting re-review | round 2 |
-| CR-18 | code-review r1 | cleanup | L5+L6 | CaseEditor.tsx:44 duplicated terminal-refresh effect (belongs in useCaseRun) | round 1 | fixed, awaiting re-review | round 2 |
-| CR-19 | code-review r1 | bug | L6+L7 | EvalsTab.tsx:50 Run all re-enabled between start success and first poll | round 1 | fixed, awaiting re-review | round 2 |
+| CR-11 | code-review r1 | bug (regression) | L6+L7 | EvalsTab.tsx:47 dashboard poll drops running suite before terminal → no invalidation | round 1 | closed | round 2 |
+| CR-12 | code-review r1 | bug | server | helpers.ts:22 full-file finding 0..0 clamped to 1..1 never matches | round 1 | open (partial after round 2) | — |
+| CR-13 | code-review r1 | bug | L6+L7 | EvalsTab.tsx:47 / AgentEvalDashboardView.tsx:33 finished startedId wins over newer running suite | round 1 | closed | round 2 |
+| CR-14 | code-review r1 | efficiency | L5 | hooks/eval.ts:161 agent-dashboard poll duplicates suite poll; workspace poll N+1 every 1.5 s | round 1 | closed | round 2 |
+| CR-15 | code-review r1 | bug | L6 | CaseRow.tsx:33 one transient poll error re-enables Play mid-run | round 1 | closed | round 2 |
+| CR-16 | code-review r1 | bug | server | service.ts:590 crash-closed case run not counted as errored | round 1 | open (partial after round 2) | — |
+| CR-17 | code-review r1 | cleanup | server | types.ts:141 hasRunningSuite dead; runAll extra I/O on running agents | round 1 | closed | round 2 |
+| CR-18 | code-review r1 | cleanup | L5+L6 | CaseEditor.tsx:44 duplicated terminal-refresh effect (belongs in useCaseRun) | round 1 | closed | round 2 |
+| CR-19 | code-review r1 | bug | L6+L7 | EvalsTab.tsx:50 Run all re-enabled between start success and first poll | round 1 | closed | round 2 |
+| CR-20 | code-review r2 | bug (regression of CR-16) | server | service.ts:596 crash path doesn't advance cases_done → executed count low/negative | round 2 | open | — |
+| CR-21 | code-review r2 | bug (regression of CR-19) | L6+L7 | EvalsTab/helpers.ts:160, AgentEvalDashboardView/helpers.ts:23 tracked id without data = running forever if first fetch fails | round 2 | open | — |
+| CR-22 | code-review r2 | bug (CR-12 too broad) | server | scoring.ts:34 start_line 0 matches every expectation; grounding keys on kind | round 2 | open | — |
+| CR-23 | code-review r2 | bug (CR-15 side effect) | L5+L6 | hooks/eval.ts:106 persistent non-404 error polls forever, error hidden | round 2 | open | — |
+| CR-24 | code-review r2 | bug | L7 | AgentEvalDashboardView.tsx:40 stale history shows Running N/N after tracked cleared | round 2 | open | — |
+| CR-25 | code-review r2 | bug | L6 | EvalsTab.tsx:39 tracked id not scoped to agent | round 2 | open | — |
+| CR-26 | code-review r2 | cleanup | L5/L6/L7 | runningProgress duplicated in two route helpers | round 2 | open | — |
+| CR-27 | code-review r2 | efficiency | server | service.ts:340 per-agent hasRunningSuite query | round 2 | open | — |
 | PV-3 | plan-verifier | partial | flow 10 uses `agent-browser select` (TESTING.md:96 allows open/wait/find) | e2e/specs/10-eval-dashboard.flow.json | review | for Glib at close | — |
 
 ## Log
@@ -68,3 +76,4 @@ Expected red:
 - 2026-10-10 — round 1 fixes done; gate: server tsc 0, lint:boundaries 0, unit 544; it 217 (hasDocker probe flaked under load in one full run, re-run of affected files green); client tsc 0, 492 passed. Out-of-lane edit: server/src/platform/container.ts parseDiff (for AR-1).
 - 2026-10-10 — round-1 re-review: security pass (SR-1/2 closed), architecture pass (AR-1/2 closed), plan-verifier PV-1 closed / no AC regressed, code-review: 8 of 9 closed, CR-8 partial, 9 new (CR-11..19). Open must-close went 11 → 7 bugs. Round 2 launched.
 - 2026-10-10 — round 2 fixes done; gate: server tsc 0, lint 0, unit 548, eval suites 106; client tsc 0, 503 passed; e2e 12/12.
+- 2026-10-10 — round-2 re-review: security pass, plan-verifier no regressions; code-review: 7 closed, 3 partial (CR-8, 12, 16), new CR-20..27 incl. 4 regressions. Stop rule hit (must-close count did not drop) → asked Glib.
