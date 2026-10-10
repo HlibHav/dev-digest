@@ -69,13 +69,15 @@ No linter or formatter is configured in any package: typecheck + tests are the g
 `reviewer-core/` must also pass `server/`'s checks.
 
 Harness changes run the evals (from `evals/`, `pnpm eval:quality` first). CI runs the same
-suites on push and on pull requests that touch these paths (`.github/workflows/eval-*.yml`):
+suites on pull requests and on push to `main` (`.github/workflows/evals.yml`, one job per tier,
+report-only; `evals/scripts/ci-detect.mjs` picks them). Actions → evals → Run workflow runs a
+tier by hand, with an optional skill or agent name and the task and judge models:
 
-| Change | Local run | CI |
+| Change | Local run | CI job |
 |---|---|---|
-| `.claude/skills/<name>/**` or `evals/skills/<name>/**` | `pnpm exec vitest run skills/<name>/` (all: `pnpm eval:skills`) | `eval-skills` |
-| `.claude/agents/<name>.md` or `evals/agents/<name>/**` | `pnpm exec vitest run agents/<name>/` (all: `pnpm eval:agents`) | `eval-agents` |
-| `AGENTS.md` (`CLAUDE.md` is a symlink to it), an agent definition, `evals/workflow/**` | `pnpm eval:workflow` | `eval-workflow` |
+| `.claude/skills/<name>/**` or `evals/skills/<name>/**` | `pnpm exec vitest run skills/<name>/` (all: `pnpm eval:skills`) | `skills` |
+| `.claude/agents/<name>.md` or `evals/agents/<name>/**` | `pnpm exec vitest run agents/<name>/` (all: `pnpm eval:agents`) | `agents` |
+| `AGENTS.md` / `CLAUDE.md` (root or a package's), `TESTING.md`, `.claude/rules/**`, an agent definition, a skill the workflow cases name, `evals/workflow/**` | `pnpm eval:workflow` | `workflow` |
 
 ## Naming conventions
 

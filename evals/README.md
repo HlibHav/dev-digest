@@ -241,7 +241,7 @@ Notes:
 - Because tool tiers cost real tokens, gate on `paths:` (only when the harness/artifacts change) and
   keep the case count small. For a stricter gate, split into a required `eval:agents`/`eval:skills`
   job and a non-blocking `eval:workflow` job (activation flakiness, above).
-- This repo's `eval-*.yml` keep the case step report-only (`continue-on-error`), which also hides
+- This repo's `evals.yml` keeps the case step report-only (`continue-on-error`), which also hides
   an outage: with an exhausted key every session dies on a 402 and the job still reads green. So
   the step tees its output to `eval.log` and the next step runs `pnpm eval:provider-check
   eval.log`, which fails the job on a credits or auth error and leaves failed cases and timeouts
