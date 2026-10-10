@@ -337,7 +337,9 @@ export class EvalService {
       if (!agent.enabled) out.skipped.push({ agent_id: agent.id, reason: 'disabled' });
       else if (count === 0) out.skipped.push({ agent_id: agent.id, reason: 'no cases' });
       else if (count > MAX_CASES_PER_SUITE) out.skipped.push({ agent_id: agent.id, reason: 'too many cases' });
-      else {
+      else if (await p.store.hasRunningSuite(agent.id)) {
+        out.skipped.push({ agent_id: agent.id, reason: 'already running' });
+      } else {
         try {
           const cases = await p.store.listCases(workspaceId, agent.id);
           const accepted = await this.startSuiteFor(workspaceId, agent, cases);
@@ -589,6 +591,9 @@ export class EvalService {
             await p.store
               .finishCaseRun(caseRun.id, this.erroredFinish(MSG.suiteFailed))
               .catch((e: unknown) => this.logError(e, 'eval: could not close case run', { caseRunId: caseRun.id }));
+            scored.push({ case_id: evalCase.id, case_name: evalCase.name, status: 'errored' });
+            costs.push(null);
+            errored += 1;
             throw err;
           }
           scored.push({ case_id: evalCase.id, case_name: evalCase.name, status: outcome.status });

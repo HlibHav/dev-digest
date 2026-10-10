@@ -14,6 +14,22 @@ const must = (file: string, s: number, e = s): EvalExpectation => ({ type: 'must
 const not = (file: string, s: number, e = s): EvalExpectation => ({ type: 'must_not_flag', file, start_line: s, end_line: e });
 const g = (file: string, s: number, e = s): Range => ({ file, start_line: s, end_line: e });
 
+describe('findingMatches full-file findings', () => {
+  const must: EvalExpectation = { type: 'must_find', file: 'a.ts', start_line: 1, end_line: 1 };
+  const not: EvalExpectation = { type: 'must_not_flag', file: 'a.ts', start_line: 40, end_line: 50 };
+  const g = (file: string, s: number, e: number): Range => ({ file, start_line: s, end_line: e });
+
+  it('a 0..0 finding matches a 1..1 expectation on the same file', () => {
+    expect(findingMatches(g('a.ts', 0, 0), must)).toBe(true);
+  });
+  it('a 0..0 finding hits a must_not_flag on the same file', () => {
+    expect(scoreCase([not], [g('a.ts', 0, 0)], 0).noiseFindings).toBe(1);
+  });
+  it('a 0..0 finding does not match another file', () => {
+    expect(findingMatches(g('b.ts', 0, 0), must)).toBe(false);
+  });
+});
+
 describe('findingMatches', () => {
   it('AC-16 same file and intersecting inclusive range match; severity/title are not compared', () => {
     const e = must('a.ts', 10, 12);

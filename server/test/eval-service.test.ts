@@ -41,6 +41,7 @@ class FakeStore implements EvalStore {
   }
 
   async listCases(ws: string, agentId: string) {
+    this.listCasesCalls += 1;
     return this.cases.filter((c) => c.workspaceId === ws && c.agentId === agentId);
   }
   async countCasesByAgent(ws: string) {
@@ -114,6 +115,7 @@ class FakeStore implements EvalStore {
     this.suites.push(run);
     return run;
   }
+  listCasesCalls = 0;
   async hasRunningSuite(agentId: string) {
     return this.suites.some((s) => s.agentId === agentId && s.status === 'running');
   }
@@ -408,6 +410,21 @@ describe('EvalService cases', () => {
     expect(EvalCaseView.safeParse(b.body.case).success).toBe(true);
   });
 
+  it('a case made from a 0..0 finding passes against a 0..0 finding', async () => {
+    const h = harness();
+    h.state.finding = ctx({ start_line: 0, end_line: 0 });
+    await h.svc.createFromFinding(WS, 'f-1');
+    h.state.runCase = async () => ({
+      grounded: [finding('g', 'src/a.ts', 0)],
+      dropped: [],
+      costUsd: null,
+      durationMs: 1,
+    });
+    await h.svc.startSuite(WS, AGENT_ID);
+    await h.drain();
+    expect(h.store.suites[0]!).toMatchObject({ status: 'done', casesPassed: 1, recall: 1 });
+  });
+
   it('second call returns created:false and the same id', async () => {
     const h = harness();
     const first = await h.svc.createFromFinding(WS, 'f-1');
@@ -537,6 +554,8 @@ describe('EvalService runs', () => {
     await h.svc.startSuite(WS, AGENT_ID);
     await h.drain();
     expect(h.store.suites[0]!.status).toBe('failed');
+    expect(h.store.suites[0]!.casesErrored).toBe(1);
+    expect(h.store.suites[0]!.scoredCases.map((c: EvalScoredCase) => c.status)).toEqual(['passed', 'errored']);
     expect(h.store.caseRuns.map((r) => r.status)).toEqual(['passed', 'errored']);
     expect(h.store.caseRuns[1]!.error).toBe(MSG.suiteFailed);
   });
@@ -598,6 +617,8 @@ describe('EvalService runs', () => {
     });
     const res = await h.svc.runAll(WS);
     expect(res.started.map((s) => s.agent_id)).toEqual(['ok']);
+    // cases are read for 'ok' only: the busy agent is skipped before listCases
+    expect(h.store.listCasesCalls).toBe(1);
     expect(res.skipped).toEqual([
       { agent_id: 'off', reason: 'disabled' },
       { agent_id: 'empty', reason: 'no cases' },

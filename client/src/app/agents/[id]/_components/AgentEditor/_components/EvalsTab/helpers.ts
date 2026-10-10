@@ -1,5 +1,5 @@
 /* Pure helpers for the Evals tab and the Case Editor. No React import. */
-import type { EvalCaseView, EvalExpectation, PrFile } from "@devdigest/shared";
+import type { EvalCaseView, EvalExpectation, EvalSuiteRunSummary, PrFile } from "@devdigest/shared";
 import { EvalExpectedOutput } from "@devdigest/shared/contracts/eval-pipeline";
 import { MASK, SECRET_PATTERNS } from "./constants";
 
@@ -138,4 +138,25 @@ export function expectationChipKey(list: readonly EvalExpectation[]): "mustFind"
   if (list.every((e) => e.type === "must_find")) return "mustFind";
   if (list.every((e) => e.type === "must_not_flag")) return "mustNotFlag";
   return "mixed";
+}
+
+type RunLike = Pick<EvalSuiteRunSummary, "id" | "status" | "cases_done" | "cases_total">;
+
+/** Progress of the suite that is running now, or null when none is.
+    `trackedId` is the id being polled, `suite` its latest response, `resumed` a running suite
+    listed in the dashboard history. A tracked id with no response yet counts as running. */
+export function runningProgress(args: {
+  trackedId: string | null;
+  suite: RunLike | undefined;
+  resumed: RunLike | null;
+  casesTotal: number;
+}): { done: number; total: number } | null {
+  const { trackedId, suite, resumed, casesTotal } = args;
+  const mine = suite && suite.id === trackedId ? suite : undefined;
+  const of = (r: RunLike) => ({ done: r.cases_done, total: r.cases_total });
+  if (mine?.status === "running") return of(mine);
+  // History lists a suite we have not seen end (a stale list may still show one we saw finish).
+  if (resumed && !(mine && mine.id === resumed.id)) return of(resumed);
+  if (trackedId && !mine) return { done: 0, total: casesTotal };
+  return null;
 }

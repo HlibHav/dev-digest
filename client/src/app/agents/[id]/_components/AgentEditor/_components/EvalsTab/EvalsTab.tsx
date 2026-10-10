@@ -21,7 +21,7 @@ import {
   useSuiteRun,
 } from "@/lib/hooks/eval";
 import { CASE_PARAM } from "./constants";
-import { passingCount } from "./helpers";
+import { passingCount, runningProgress } from "./helpers";
 import { CaseEditor } from "./_components/CaseEditor";
 import { CaseRow } from "./_components/CaseRow";
 import { s } from "./styles";
@@ -36,18 +36,27 @@ export function EvalsTab({ agent }: { agent: Agent }) {
   const dashboard = useAgentEvalDashboard(agent.id);
   const startSuite = useStartSuiteRun();
   const del = useDeleteEvalCase(agent.id);
-  const [startedId, setStartedId] = React.useState<string | null>(null);
+  const [trackedId, setTrackedId] = React.useState<string | null>(null);
+  const [pendingRuns, setPendingRuns] = React.useState<Record<string, string>>({});
   const [editing, setEditing] = React.useState<Editing | undefined>(undefined);
   const [compare, setCompare] = React.useState<{ base: string; head: string } | null>(null);
 
   const dash = dashboard.data;
   const latest = dash?.latest ?? null;
   // `latest` is the latest completed run; a suite still running (e.g. after a reload) is in `history`.
-  const runningInHistory = dash?.history.find((r) => r.status === "running") ?? null;
-  const activeSuiteId = startedId ?? runningInHistory?.id ?? null;
-  const suite = useSuiteRun(activeSuiteId);
-  const progress = suite.data ?? runningInHistory;
-  const running = suite.data ? suite.data.status === "running" : runningInHistory !== null;
+  const resumed = dash?.history.find((r) => r.status === "running") ?? null;
+  const suite = useSuiteRun(trackedId);
+  // The tracked id is sticky: a dashboard refetch that stops listing the suite must not drop it.
+  // It only yields to a running suite from the history once the tracked one has settled.
+  const settled = !trackedId || (suite.data !== undefined && suite.data.status !== "running");
+  if (resumed && resumed.id !== trackedId && settled) setTrackedId(resumed.id);
+  const progress = runningProgress({
+    trackedId,
+    suite: suite.data,
+    resumed,
+    casesTotal: dash?.cases_total ?? 0,
+  });
+  const running = progress !== null;
 
   const list = cases.data ?? [];
   const active: Editing = editing === undefined ? paramCase : editing;
@@ -55,7 +64,13 @@ export function EvalsTab({ agent }: { agent: Agent }) {
   const { passed, total } = passingCount(list);
 
   const runAll = () =>
-    startSuite.mutate(agent.id, { onSuccess: (a) => setStartedId(a.suite_run_id) });
+    startSuite.mutate(agent.id, { onSuccess: (a) => setTrackedId(a.suite_run_id) });
+
+  const closeEditor = (pending?: { caseId: string; caseRunId: string }) => {
+    // A Run-on-save run still going: its row keeps polling it so the list refreshes when it ends.
+    if (pending) setPendingRuns((prev) => ({ ...prev, [pending.caseId]: pending.caseRunId }));
+    setEditing(null);
+  };
 
   const remove = (id: string, name: string) => {
     if (window.confirm(t("evalsTab.deleteConfirm", { name }))) del.mutate(id);
@@ -68,9 +83,9 @@ export function EvalsTab({ agent }: { agent: Agent }) {
           <span style={s.title}>{t("evalsTab.metricsTitle")}</span>
           <Link href={`/eval/${agent.id}`}>{t("evalsTab.viewDashboard")} →</Link>
         </div>
-        {running && progress ? (
+        {progress ? (
           <div style={s.running} role="status">
-            {t("status.running", { done: progress.cases_done, total: progress.cases_total })}
+            {t("status.running", { done: progress.done, total: progress.total })}
           </div>
         ) : (
           <div style={s.cards}>
@@ -113,7 +128,7 @@ export function EvalsTab({ agent }: { agent: Agent }) {
             <span style={s.muted}>{t("evalsTab.emptyCases")}</span>
           ) : (
             list.map((c) => (
-              <CaseRow key={c.id} kase={c} onEdit={() => setEditing(c.id)} onDelete={() => remove(c.id, c.name)} />
+              <CaseRow key={c.id} kase={c} pendingRunId={pendingRuns[c.id]} onEdit={() => setEditing(c.id)} onDelete={() => remove(c.id, c.name)} />
             ))
           )}
         </div>
@@ -128,7 +143,7 @@ export function EvalsTab({ agent }: { agent: Agent }) {
       {dash && dash.trend.length > 0 ? <TrendChart points={dash.trend} /> : null}
 
       {active === "new" || editedCase ? (
-        <CaseEditor key={active} agentId={agent.id} case={editedCase} onClose={() => setEditing(null)} />
+        <CaseEditor key={active} agentId={agent.id} case={editedCase} onClose={closeEditor} />
       ) : null}
       {compare ? <CompareModal baseId={compare.base} headId={compare.head} onClose={() => setCompare(null)} /> : null}
     </div>

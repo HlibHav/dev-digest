@@ -13,7 +13,8 @@ vi.mock("@/lib/api", async (importOriginal) => {
   };
 });
 
-import { useSuiteRun, useCaseRun, useEvalWorkspaceDashboard, useAgentEvalDashboard, useEvalCases } from "./eval";
+import { ApiError } from "@/lib/api";
+import { isCaseRunGone, EVAL_DASHBOARD_POLL_MS, useSuiteRun, useCaseRun, useEvalWorkspaceDashboard, useAgentEvalDashboard, useEvalCases } from "./eval";
 
 function wrapperWith(qc: QueryClient) {
   return function Wrapper({ children }: { children: React.ReactNode }) {
@@ -116,22 +117,19 @@ describe("CR-3 / CR-6 refresh", () => {
     renderHook(() => useEvalWorkspaceDashboard(), { wrapper: wrapperWith(qc) });
     await act(async () => { await vi.advanceTimersByTimeAsync(0); });
     await act(async () => { await vi.advanceTimersByTimeAsync(1500); });
+    expect(getMock).toHaveBeenCalledTimes(1); // slower than the suite poll
+    await act(async () => { await vi.advanceTimersByTimeAsync(EVAL_DASHBOARD_POLL_MS); });
     expect(getMock).toHaveBeenCalledTimes(2);
-    await act(async () => { await vi.advanceTimersByTimeAsync(6000); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(20000); });
     expect(getMock).toHaveBeenCalledTimes(2);
   });
 
-  it("polls the agent dashboard while a history entry is running", async () => {
+  it("does not poll the agent dashboard (the suite poll owns the refresh)", async () => {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    getMock
-      .mockResolvedValueOnce({ latest: { status: "done" }, history: [{ status: "running" }, { status: "done" }] })
-      .mockResolvedValue({ latest: { status: "done" }, history: [{ status: "done" }] });
+    getMock.mockResolvedValue({ latest: { status: "done" }, history: [{ status: "running" }] });
     renderHook(() => useAgentEvalDashboard("a1"), { wrapper: wrapperWith(qc) });
-    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
-    await act(async () => { await vi.advanceTimersByTimeAsync(1500); });
-    expect(getMock).toHaveBeenCalledTimes(2);
-    await act(async () => { await vi.advanceTimersByTimeAsync(6000); });
-    expect(getMock).toHaveBeenCalledTimes(2);
+    await act(async () => { await vi.advanceTimersByTimeAsync(10000); });
+    expect(getMock).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -142,5 +140,49 @@ describe("SR-2 path encoding", () => {
     renderHook(() => useEvalCases("a/../b"), { wrapper: wrapperWith(qc) });
     await act(async () => { await vi.advanceTimersByTimeAsync(0); });
     expect(getMock).toHaveBeenCalledWith("/agents/a%2F..%2Fb/eval-cases");
+  });
+});
+
+describe("useCaseRun refresh and errors", () => {
+  const caseRun = (status: string) => ({ id: "c1", case_id: "k1", status });
+  const keysOf = (spy: { mock: { calls: unknown[][] } }) =>
+    spy.mock.calls.map(([f]) => JSON.stringify((f as { queryKey: unknown }).queryKey));
+
+  it("invalidates the agent's cases and dashboard once on a terminal status, even on the first fetch", async () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidate = vi.spyOn(qc, "invalidateQueries");
+    getMock.mockResolvedValue(caseRun("passed"));
+    renderHook(() => useCaseRun("c1", "a1"), { wrapper: wrapperWith(qc) });
+    await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
+    expect(keysOf(invalidate).sort()).toEqual(
+      [JSON.stringify(["eval-cases", "a1"]), JSON.stringify(["eval-dashboard", "a1"])].sort(),
+    );
+  });
+
+  it("keeps polling through a transient error but stops on a 404", async () => {
+    const qc = new QueryClient();
+    let n = 0;
+    getMock.mockImplementation(async () => {
+      n += 1;
+      if (n <= 3) throw new ApiError("boom", 500);
+      if (n === 4) return caseRun("running");
+      throw new ApiError("gone", 404);
+    });
+    // read `error` during render: react-query only re-renders for fields the render touched
+    const { result } = renderHook(
+      () => {
+        const q = useCaseRun("c1", "a1");
+        return { error: q.error };
+      },
+      { wrapper: wrapperWith(qc) },
+    );
+    await act(async () => { await vi.advanceTimersByTimeAsync(30000); });
+    const calls = getMock.mock.calls.length;
+    await act(async () => { await vi.advanceTimersByTimeAsync(10); });
+    expect(calls).toBeGreaterThanOrEqual(5);
+    expect(isCaseRunGone(result.current.error)).toBe(true);
+    await act(async () => { await vi.advanceTimersByTimeAsync(30000); });
+    expect(getMock.mock.calls.length).toBe(calls);
+    expect(isCaseRunGone(new ApiError("x", 500))).toBe(false);
   });
 });

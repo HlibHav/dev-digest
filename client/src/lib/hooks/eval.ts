@@ -18,10 +18,12 @@ import type {
   EvalSuiteRunSummary,
   EvalWorkspaceDashboard,
 } from "@devdigest/shared";
-import { api } from "../api";
+import { ApiError, api } from "../api";
 
 /** Poll cadence while a run is `running`. */
 export const EVAL_POLL_MS = 1500;
+/** The workspace dashboard runs an N+1 query, so it polls slower than a single run. */
+export const EVAL_DASHBOARD_POLL_MS = 5000;
 
 const seg = (id: string | null | undefined) => encodeURIComponent(id ?? "");
 
@@ -82,13 +84,40 @@ export function useStartCaseRun() {
   });
 }
 
-export function useCaseRun(caseRunId: string | null | undefined) {
-  return useQuery({
+/** True when a case-run read failed because the run no longer exists (404), as opposed to a
+    transient error that polling rides through. */
+export function isCaseRunGone(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 404;
+}
+
+/** Polls a case run until a terminal status or a 404; transient errors keep polling (the last
+    good `data` stays, `error` is set). With `agentId`, the agent's cases and dashboard are
+    refetched once per run id on any terminal status, even if the first fetch is terminal. */
+export function useCaseRun(caseRunId: string | null | undefined, agentId?: string | null) {
+  const qc = useQueryClient();
+  const query = useQuery({
     queryKey: ["eval-case-run", caseRunId],
     queryFn: () => api.get<EvalCaseResult>(`/eval-case-runs/${seg(caseRunId)}`),
     enabled: !!caseRunId,
-    refetchInterval: (q) => (q.state.data?.status === "running" ? EVAL_POLL_MS : false),
+    retry: (count, err) => !isCaseRunGone(err) && count < 2,
+    refetchInterval: (q) => {
+      const status = q.state.data?.status;
+      if (status && status !== "running") return false;
+      return isCaseRunGone(q.state.error) ? false : EVAL_POLL_MS;
+    },
   });
+
+  const status = query.data?.status;
+  const refreshed = useRef<string | null>(null);
+  useEffect(() => {
+    if (!caseRunId || !agentId || !status || status === "running") return;
+    if (refreshed.current === caseRunId) return; // once per case run
+    refreshed.current = caseRunId;
+    void qc.invalidateQueries({ queryKey: ["eval-cases", agentId] });
+    void qc.invalidateQueries({ queryKey: ["eval-dashboard", agentId] });
+  }, [caseRunId, agentId, status, qc]);
+
+  return query;
 }
 
 // ---- Suite runs ----
@@ -158,7 +187,6 @@ export function useAgentEvalDashboard(agentId: string | null | undefined) {
     queryKey: ["eval-dashboard", agentId],
     queryFn: () => api.get<EvalAgentDashboard>(`/agents/${seg(agentId)}/eval-dashboard`),
     enabled: !!agentId,
-    refetchInterval: (q) => (q.state.data?.history.some((r) => r.status === "running") ? EVAL_POLL_MS : false),
   });
 }
 
@@ -167,6 +195,6 @@ export function useEvalWorkspaceDashboard() {
     queryKey: ["eval-workspace-dashboard"],
     queryFn: () => api.get<EvalWorkspaceDashboard>("/eval/dashboard"),
     refetchInterval: (q) =>
-      q.state.data?.recent_runs.some((r) => r.status === "running") ? EVAL_POLL_MS : false,
+      q.state.data?.recent_runs.some((r) => r.status === "running") ? EVAL_DASHBOARD_POLL_MS : false,
   });
 }

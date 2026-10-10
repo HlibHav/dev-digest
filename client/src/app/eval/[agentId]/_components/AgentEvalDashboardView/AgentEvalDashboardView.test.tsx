@@ -138,6 +138,53 @@ describe("AgentEvalDashboardView", () => {
     expect(suiteRunMock).toHaveBeenCalledWith("s3");
   });
 
+  it("CR-11 a resumed suite stays tracked after history stops listing it as running", () => {
+    const live = run(3, { status: "running", cases_done: 1, cases_total: 3, recall: null });
+    suiteRunMock.mockImplementation((id: string | null) =>
+      id === "s3"
+        ? { data: { id: "s3", agent_id: "a1", status: "running", cases_done: 2, cases_total: 3 } as EvalSuiteRunDetail }
+        : { data: undefined },
+    );
+    dashMock.mockReturnValue({ data: dash({ history: [live, run(2)] }), isLoading: false, isError: false });
+    const { rerender } = render(view());
+    expect(screen.getByRole("status")).toHaveTextContent("Running 2/3");
+    dashMock.mockReturnValue({ data: dash({ history: [run(3), run(2)] }), isLoading: false, isError: false });
+    rerender(view());
+    expect(suiteRunMock).toHaveBeenLastCalledWith("s3");
+    expect(screen.getByRole("status")).toHaveTextContent("Running 2/3");
+    expect(screen.getByRole("button", { name: "Run eval" })).toBeDisabled();
+  });
+
+  it("CR-13 a newer running suite wins over a finished run started here", () => {
+    dashMock.mockReturnValue({ data: dash(), isLoading: false, isError: false });
+    startMutate.mockImplementation((_id: string, opts: { onSuccess: (r: { suite_run_id: string }) => void }) =>
+      opts.onSuccess({ suite_run_id: "s3" }),
+    );
+    suiteRunMock.mockImplementation((id: string | null) => {
+      if (id === "s3") return { data: { id: "s3", agent_id: "a1", status: "done", cases_done: 3, cases_total: 3 } as EvalSuiteRunDetail };
+      if (id === "s4") return { data: { id: "s4", agent_id: "a1", status: "running", cases_done: 2, cases_total: 5 } as EvalSuiteRunDetail };
+      return { data: undefined };
+    });
+    const { rerender } = render(view());
+    fireEvent.click(screen.getByRole("button", { name: "Run eval" }));
+    const newer = run(4, { status: "running", cases_done: 2, cases_total: 5, recall: null });
+    dashMock.mockReturnValue({ data: dash({ history: [newer, run(3), run(2)] }), isLoading: false, isError: false });
+    rerender(view());
+    expect(screen.getByRole("status")).toHaveTextContent("Running 2/5");
+    expect(screen.getByRole("button", { name: "Run eval" })).toBeDisabled();
+  });
+
+  it("CR-19 Run eval stays disabled between start success and the first suite fetch", () => {
+    dashMock.mockReturnValue({ data: dash(), isLoading: false, isError: false });
+    startMutate.mockImplementation((_id: string, opts: { onSuccess: (r: { suite_run_id: string }) => void }) =>
+      opts.onSuccess({ suite_run_id: "s3" }),
+    );
+    render(view());
+    fireEvent.click(screen.getByRole("button", { name: "Run eval" }));
+    expect(screen.getByRole("button", { name: "Run eval" })).toBeDisabled();
+    expect(screen.getByRole("status")).toHaveTextContent("Running 0/3");
+  });
+
   it("the switcher calls router.replace('/eval/<other>') and cards change", () => {
     dashMock.mockImplementation((id: string) =>
       id === "a2"

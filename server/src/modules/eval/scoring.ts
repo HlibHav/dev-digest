@@ -24,9 +24,14 @@ export interface SuiteMetrics {
 
 type MetricTriple = Pick<SuiteMetrics, 'recall' | 'precision' | 'citation_accuracy'>;
 
-/** Same file and intersecting inclusive line ranges; a reversed range is normalised. */
+/**
+ * Same file and intersecting inclusive line ranges; a reversed range is normalised.
+ * A finding with start_line 0 covers the whole file (grounding treats it so), so it
+ * intersects any expectation on that file.
+ */
 export function findingMatches(f: Range, e: EvalExpectation): boolean {
   if (f.file !== e.file) return false;
+  if (f.start_line === 0) return true;
   const fLo = Math.min(f.start_line, f.end_line);
   const fHi = Math.max(f.start_line, f.end_line);
   const eLo = Math.min(e.start_line, e.end_line);

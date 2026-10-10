@@ -14,11 +14,12 @@ vi.mock("next/navigation", () => ({
 
 const get = vi.fn();
 const post = vi.fn();
+const put = vi.fn();
 vi.mock("@/lib/api", async () => {
   const actual = await vi.importActual<typeof import("@/lib/api")>("@/lib/api");
   return {
     ...actual,
-    api: { ...actual.api, get: (...a: unknown[]) => get(...a), post: (...a: unknown[]) => post(...a) },
+    api: { ...actual.api, get: (...a: unknown[]) => get(...a), post: (...a: unknown[]) => post(...a), put: (...a: unknown[]) => put(...a) },
   };
 });
 
@@ -109,11 +110,13 @@ function renderTab() {
       </NextIntlClientProvider>
     </QueryClientProvider>,
   );
+  return qc;
 }
 
 beforeEach(() => {
   get.mockReset();
   post.mockReset();
+  put.mockReset();
   h.caseParam = null;
 });
 afterEach(cleanup);
@@ -209,5 +212,90 @@ describe("EvalsTab", () => {
     });
     renderTab();
     expect(await screen.findByRole("dialog")).toHaveTextContent("Eval case · two");
+  });
+
+  it("CR-11 keeps polling a resumed suite after a dashboard refetch stops listing it", async () => {
+    const live = run({ id: "s1", status: "running", cases_done: 1 });
+    let listed = true;
+    mockApi({
+      cases: [kase("c1", "one", null)],
+      dash: () => ({ ...dashboard(run({ id: "s0" }), 3), history: listed ? [live] : [] }),
+      suite: () => ({ ...live, snapshot: {}, case_results: [] }),
+    });
+    const qc = renderTab();
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Running 1/3"));
+    listed = false;
+    await qc.invalidateQueries({ queryKey: ["eval-dashboard", "a1"] });
+    await waitFor(() => expect(get.mock.calls.filter((c) => c[0] === "/agents/a1/eval-dashboard").length).toBeGreaterThan(1));
+    expect(screen.getByRole("status")).toHaveTextContent("Running 1/3");
+    expect(screen.getByRole("button", { name: "Run all evals" })).toBeDisabled();
+  });
+
+  it("CR-13 a running suite from the history wins over a finished started suite", async () => {
+    let listed = false;
+    const other = run({ id: "s2", status: "running", cases_done: 2 });
+    mockApi({
+      cases: [kase("c1", "one", null)],
+      dash: () => ({ ...dashboard(run({ id: "s0" }), 3), history: listed ? [other] : [] }),
+      suite: () => ({ ...run({ id: "s1" }), snapshot: {}, case_results: [] }),
+    });
+    get.mockImplementation(async (path: string) => {
+      if (path === "/agents/a1/eval-cases") return [kase("c1", "one", null)];
+      if (path === "/agents/a1/eval-dashboard") return { ...dashboard(run({ id: "s0" }), 3), history: listed ? [other] : [] };
+      if (path === "/eval-suite-runs/s1") {
+        listed = true; // by the time s1 reads done, the server lists s2 as running
+        return { ...run({ id: "s1" }), snapshot: {}, case_results: [] };
+      }
+      if (path === "/eval-suite-runs/s2") return { ...other, snapshot: {}, case_results: [] };
+      throw new Error(`unexpected GET ${path}`);
+    });
+    post.mockResolvedValueOnce({ suite_run_id: "s1", status: "running", run_number: 1, cases_total: 3 });
+    renderTab();
+    const btn = await screen.findByRole("button", { name: "Run all evals" });
+    await waitFor(() => expect(btn).toBeEnabled());
+    fireEvent.click(btn);
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Running 2/3"));
+    expect(get).toHaveBeenCalledWith("/eval-suite-runs/s2");
+  });
+
+  it("CR-19 a started suite with no response yet counts as running and keeps Run all disabled", async () => {
+    mockApi({ cases: [kase("c1", "one", null)], dash: () => dashboard(null, 3), suite: () => new Promise(() => {}) });
+    post.mockResolvedValueOnce({ suite_run_id: "s1", status: "running", run_number: 1, cases_total: 3 });
+    renderTab();
+    const btn = await screen.findByRole("button", { name: "Run all evals" });
+    await waitFor(() => expect(btn).toBeEnabled());
+    fireEvent.click(btn);
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Running 0/3"));
+    expect(screen.getByRole("button", { name: "Run all evals" })).toBeDisabled();
+  });
+
+  it("CR-8 closing the editor mid-run hands the case run to its row, which refreshes the list when it ends", async () => {
+    h.caseParam = "c1";
+    let polls = 0;
+    const casesCalls = () => get.mock.calls.filter((c) => c[0] === "/agents/a1/eval-cases").length;
+    mockApi({ cases: [kase("c1", "one", null)], dash: () => dashboard(null, 1) });
+    get.mockImplementation(async (path: string) => {
+      if (path === "/agents/a1/eval-cases") return [kase("c1", "one", null)];
+      if (path === "/agents/a1/eval-dashboard") return dashboard(null, 1);
+      if (path === "/eval-case-runs/cr1") {
+        polls++;
+        return polls < 2
+          ? { id: "cr1", status: "running" }
+          : { id: "cr1", status: "passed", matched_must_find: 1, must_find_total: 1, duration_ms: 1000, cost_usd: 0.01 };
+      }
+      throw new Error(`unexpected GET ${path}`);
+    });
+    put.mockResolvedValue({ id: "c1" });
+    post.mockResolvedValue({ case_run_id: "cr1", status: "running" });
+    renderTab();
+    await screen.findByRole("dialog");
+    fireEvent.click(screen.getByRole("switch"));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await screen.findByText("Running…", { selector: "strong" });
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    const before = casesCalls();
+    await waitFor(() => expect(casesCalls()).toBeGreaterThan(before), { timeout: 5000 });
+    expect(polls).toBeGreaterThanOrEqual(2);
   });
 });

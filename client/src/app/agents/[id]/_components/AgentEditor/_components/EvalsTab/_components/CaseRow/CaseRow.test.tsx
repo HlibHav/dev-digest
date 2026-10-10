@@ -89,4 +89,19 @@ describe("CaseRow", () => {
     fireEvent.click(screen.getByRole("button", { name: "Run case" }));
     await waitFor(() => expect(post).toHaveBeenCalledTimes(2));
   });
+
+  it("CR-15 transient poll errors, even once retries run out, neither end running nor re-enable Play", async () => {
+    post.mockResolvedValue({ case_run_id: "cr1", status: "running" });
+    get.mockRejectedValue(new ApiError("Bad gateway", 502));
+    renderRow(KASE);
+    fireEvent.click(screen.getByRole("button", { name: "Run case" }));
+    // the hook retries twice (1s, 2s) before it reports the error
+    await waitFor(() => expect(get).toHaveBeenCalledTimes(3), { timeout: 6000 });
+    await new Promise((r) => setTimeout(r, 500));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByText("Running…")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Run case" }));
+    await new Promise((r) => setTimeout(r, 50)); // the mutation fires asynchronously
+    expect(post).toHaveBeenCalledTimes(1);
+  }, 10000);
 });

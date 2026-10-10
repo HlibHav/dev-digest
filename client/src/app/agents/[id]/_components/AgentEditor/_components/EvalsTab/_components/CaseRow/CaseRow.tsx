@@ -6,8 +6,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { IconBtn } from "@devdigest/ui";
 import type { EvalCaseView } from "@devdigest/shared";
-import { useQueryClient } from "@tanstack/react-query";
-import { useCaseRun, useStartCaseRun } from "@/lib/hooks/eval";
+import { isCaseRunGone, useCaseRun, useStartCaseRun } from "@/lib/hooks/eval";
 import { STATUS_COLOR } from "../../constants";
 import { expectationChipKey } from "../../helpers";
 import { MaskedText } from "../MaskedText";
@@ -15,34 +14,30 @@ import { s } from "./styles";
 
 export function CaseRow({
   kase,
+  pendingRunId,
   onEdit,
   onDelete,
 }: {
   kase: EvalCaseView;
+  /** A case run started in the editor and still going when it closed; this row keeps polling it. */
+  pendingRunId?: string;
   onEdit: () => void;
   onDelete: () => void;
 }) {
   const t = useTranslations("eval");
-  const qc = useQueryClient();
   const start = useStartCaseRun();
-  const [runId, setRunId] = React.useState<string | null>(null);
-  const run = useCaseRun(runId);
+  const [ownRunId, setOwnRunId] = React.useState<string | null>(null);
+  const runId = ownRunId ?? pendingRunId ?? null;
+  const run = useCaseRun(runId, kase.agent_id);
 
   const polledStatus = run.data?.status;
-  // Running means the server said so (or the first poll is still in flight); an error ends it.
-  const polling = runId !== null && !run.isError && (polledStatus === undefined || polledStatus === "running");
+  const gone = isCaseRunGone(run.error);
+  // Running until a terminal status or a 404; a transient poll error keeps polling.
+  const polling = runId !== null && !gone && (polledStatus === undefined || polledStatus === "running");
   const running = start.isPending || polling;
-  const error = start.error ?? run.error;
+  const error = start.error ?? (gone ? run.error : null);
   const last = kase.last_result;
   const status = running ? "running" : (last?.status ?? "neverRun");
-
-  // The poll finished: refresh the list so the stored last result shows.
-  const refreshed = React.useRef<string | null>(null);
-  React.useEffect(() => {
-    if (!runId || !polledStatus || polledStatus === "running" || refreshed.current === runId) return;
-    refreshed.current = runId;
-    void qc.invalidateQueries({ queryKey: ["eval-cases", kase.agent_id] });
-  }, [runId, polledStatus, qc, kase.agent_id]);
 
   const chip = expectationChipKey(kase.expected_output);
   const mustFind = kase.expected_output.filter((e) => e.type === "must_find").length;
@@ -82,8 +77,8 @@ export function CaseRow({
           label={t("evalsTab.runCase")}
           onClick={() => {
             if (running) return;
-            setRunId(null);
-            start.mutate(kase.id, { onSuccess: (a) => setRunId(a.case_run_id) });
+            setOwnRunId(null);
+            start.mutate(kase.id, { onSuccess: (a) => setOwnRunId(a.case_run_id) });
           }}
         />
         <IconBtn icon="Edit" label={t("evalsTab.edit")} onClick={onEdit} />

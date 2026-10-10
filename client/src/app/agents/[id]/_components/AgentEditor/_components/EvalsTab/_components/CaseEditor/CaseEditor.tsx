@@ -6,7 +6,6 @@
 
 import React from "react";
 import { useTranslations } from "next-intl";
-import { useQueryClient } from "@tanstack/react-query";
 import { Button, Modal, Tabs, TextInput, Toggle } from "@devdigest/ui";
 import type { EvalCaseView, EvalCaseWrite } from "@devdigest/shared";
 import { DiffViewer } from "@/components/diff-viewer";
@@ -19,7 +18,16 @@ import { s } from "./styles";
 
 type EditorTab = "diff" | "preview" | "meta";
 
-export function CaseEditor({ agentId, case: kase, onClose }: { agentId: string; case?: EvalCaseView; onClose: () => void }) {
+export function CaseEditor({
+  agentId,
+  case: kase,
+  onClose,
+}: {
+  agentId: string;
+  case?: EvalCaseView;
+  /** Receives the run still in progress (Run on save) so the caller can keep following it. */
+  onClose: (pending?: { caseId: string; caseRunId: string }) => void;
+}) {
   const t = useTranslations("eval");
   const [name, setName] = React.useState(kase?.name ?? "");
   const [diff, setDiff] = React.useState(kase?.input_diff ?? "");
@@ -36,17 +44,10 @@ export function CaseEditor({ agentId, case: kase, onClose }: { agentId: string; 
   const create = useCreateEvalCase(agentId);
   const update = useUpdateEvalCase(agentId);
   const startRun = useStartCaseRun();
-  const run = useCaseRun(caseRunId);
-  const qc = useQueryClient();
+  const run = useCaseRun(caseRunId, agentId);
 
-  // The run just finished: refresh the case list once so the row shows the new result.
-  const runStatus = run.data?.status;
-  const refreshedRun = React.useRef<string | null>(null);
-  React.useEffect(() => {
-    if (!caseRunId || !runStatus || runStatus === "running" || refreshedRun.current === caseRunId) return;
-    refreshedRun.current = caseRunId;
-    void qc.invalidateQueries({ queryKey: ["eval-cases", agentId] });
-  }, [caseRunId, runStatus, qc, agentId]);
+  const runDone = run.data !== undefined && run.data.status !== "running";
+  const close = () => onClose(caseRunId && savedId && !runDone ? { caseId: savedId, caseRunId } : undefined);
 
   const check = validateExpectedOutput(expectedText);
   const warnings = check.ok ? unmatchableExpectations(diff, check.value) : [];
@@ -82,7 +83,7 @@ export function CaseEditor({ agentId, case: kase, onClose }: { agentId: string; 
     <Modal
       width={820}
       title={kase ? t("caseEditor.caseTitle", { name: kase.name }) : t("caseEditor.newCase")}
-      onClose={onClose}
+      onClose={close}
       footer={
         <div style={s.footer}>
           <span style={s.row}>
@@ -90,7 +91,7 @@ export function CaseEditor({ agentId, case: kase, onClose }: { agentId: string; 
             <span>{t("caseEditor.runOnSave")}</span>
           </span>
           <span style={s.grow} />
-          <Button kind="ghost" onClick={onClose}>
+          <Button kind="ghost" onClick={close}>
             {t("caseEditor.cancel")}
           </Button>
           <Button kind="primary" disabled={!canSave} loading={busy} onClick={save}>
