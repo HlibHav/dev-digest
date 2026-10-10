@@ -122,11 +122,16 @@ export const cases: WorkflowCase[] = [
     shouldActivate: true,
     maxTurns: 4,
   },
+  // The near-miss shares the topic but has no repo task in it. A pgvector question about THIS repo
+  // is a server task, and the root AGENTS.md rightly starts those with the skill (to read
+  // server/INSIGHTS.md); the old prompt asked exactly that and failed 0/3 for following the rule.
+  // The activation check sees engagement, not recording, so the negative must be "no repo task".
   {
     kind: "activation",
-    name: "near-miss negative — explaining the same topic must NOT record an insight",
+    name: "near-miss negative — a general pgvector question with no repo task does not engage the skill",
     prompt:
-      "Поясни, як у pgvector працюють розмірності колонок і чому невідповідність повертає нуль рядків.",
+      "Загальне питання, не про цей репозиторій і без змін у коді: поясни, як у pgvector працюють " +
+      "розмірності колонок і чому невідповідність розмірності повертає нуль рядків.",
     skill: "engineering-insights",
     shouldActivate: false,
     maxTurns: 4,

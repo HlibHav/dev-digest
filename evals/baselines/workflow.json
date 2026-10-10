@@ -30,10 +30,10 @@
       },
       "metrics": {
         "durationMs": {
-          "mean": 13520,
-          "stddev": 2741.0530823024933,
-          "min": 11284,
-          "max": 16578,
+          "mean": 13589,
+          "stddev": 2134.308553138463,
+          "min": 11128,
+          "max": 14933,
           "n": 3
         },
         "inputTokens": {
@@ -51,10 +51,10 @@
           "n": 3
         },
         "numTurns": {
-          "mean": 2.3333333333333335,
-          "stddev": 0.5773502691896258,
+          "mean": 2,
+          "stddev": 0,
           "min": 2,
-          "max": 3,
+          "max": 2,
           "n": 3
         },
         "toolCallCount": {
@@ -88,10 +88,10 @@
       },
       "metrics": {
         "durationMs": {
-          "mean": 11440.666666666666,
-          "stddev": 684.8651935478495,
-          "min": 10791,
-          "max": 12156,
+          "mean": 11488,
+          "stddev": 526.5557900165945,
+          "min": 11052,
+          "max": 12073,
           "n": 3
         },
         "inputTokens": {
@@ -109,17 +109,17 @@
           "n": 3
         },
         "numTurns": {
-          "mean": 6.333333333333333,
+          "mean": 5.666666666666667,
           "stddev": 0.5773502691896258,
-          "min": 6,
-          "max": 7,
+          "min": 5,
+          "max": 6,
           "n": 3
         },
         "toolCallCount": {
-          "mean": 3,
-          "stddev": 1,
+          "mean": 2.6666666666666665,
+          "stddev": 0.5773502691896258,
           "min": 2,
-          "max": 4,
+          "max": 3,
           "n": 3
         }
       }
@@ -146,10 +146,10 @@
       },
       "metrics": {
         "durationMs": {
-          "mean": 7734.333333333333,
-          "stddev": 2062.080583617753,
-          "min": 6267,
-          "max": 10092,
+          "mean": 7576,
+          "stddev": 901.4305297692108,
+          "min": 6807,
+          "max": 8568,
           "n": 3
         },
         "inputTokens": {
@@ -167,8 +167,8 @@
           "n": 3
         },
         "numTurns": {
-          "mean": 2.6666666666666665,
-          "stddev": 1.1547005383792515,
+          "mean": 3,
+          "stddev": 1,
           "min": 2,
           "max": 4,
           "n": 3
@@ -209,10 +209,10 @@
       },
       "metrics": {
         "durationMs": {
-          "mean": 21193.666666666668,
-          "stddev": 7687.758147427203,
-          "min": 15605,
-          "max": 29961,
+          "mean": 16476,
+          "stddev": 3069.229870830792,
+          "min": 13504,
+          "max": 19634,
           "n": 3
         },
         "inputTokens": {
@@ -230,17 +230,17 @@
           "n": 3
         },
         "numTurns": {
-          "mean": 15,
-          "stddev": 7,
-          "min": 10,
-          "max": 23,
+          "mean": 10.666666666666666,
+          "stddev": 1.5275252316519468,
+          "min": 9,
+          "max": 12,
           "n": 3
         },
         "toolCallCount": {
-          "mean": 9,
-          "stddev": 4.358898943540674,
-          "min": 6,
-          "max": 14,
+          "mean": 6,
+          "stddev": 1,
+          "min": 5,
+          "max": 7,
           "n": 3
         }
       }
@@ -277,10 +277,10 @@
       },
       "metrics": {
         "durationMs": {
-          "mean": 16594.666666666668,
-          "stddev": 1718.0833313123474,
-          "min": 14685,
-          "max": 18015,
+          "mean": 18890,
+          "stddev": 5548.114364358399,
+          "min": 14886,
+          "max": 25223,
           "n": 3
         },
         "inputTokens": {
@@ -298,17 +298,17 @@
           "n": 3
         },
         "numTurns": {
-          "mean": 11.666666666666666,
-          "stddev": 0.5773502691896257,
-          "min": 11,
-          "max": 12,
+          "mean": 12.333333333333334,
+          "stddev": 5.131601439446884,
+          "min": 8,
+          "max": 18,
           "n": 3
         },
         "toolCallCount": {
-          "mean": 6.666666666666667,
-          "stddev": 0.5773502691896258,
-          "min": 6,
-          "max": 7,
+          "mean": 6.333333333333333,
+          "stddev": 2.516611478423583,
+          "min": 4,
+          "max": 9,
           "n": 3
         }
       }
@@ -340,10 +340,10 @@
       },
       "metrics": {
         "durationMs": {
-          "mean": 10451.333333333334,
-          "stddev": 3244.645486541378,
-          "min": 6837,
-          "max": 13113,
+          "mean": 9734.333333333334,
+          "stddev": 1930.8739817329697,
+          "min": 7586,
+          "max": 11325,
           "n": 3
         },
         "inputTokens": {
@@ -361,10 +361,10 @@
           "n": 3
         },
         "numTurns": {
-          "mean": 6,
-          "stddev": 2,
+          "mean": 5.333333333333333,
+          "stddev": 1.5275252316519465,
           "min": 4,
-          "max": 8,
+          "max": 7,
           "n": 3
         },
         "toolCallCount": {
@@ -387,24 +387,24 @@
       "practices": {},
       "metrics": {
         "durationMs": {
-          "mean": 17426.666666666668,
-          "stddev": 2445.3990131128567,
-          "min": 15217,
-          "max": 20054,
+          "mean": 21480.666666666668,
+          "stddev": 3265.3202497355956,
+          "min": 18128,
+          "max": 24651,
           "n": 3
         },
         "inputTokens": {
-          "mean": 6581.666666666667,
-          "stddev": 946.8544414709862,
-          "min": 6035,
+          "mean": 7675,
+          "stddev": 0,
+          "min": 7675,
           "max": 7675,
           "n": 3
         },
         "outputTokens": {
-          "mean": 2454.6666666666665,
-          "stddev": 586.6935599896536,
-          "min": 1958,
-          "max": 3102,
+          "mean": 2990.6666666666665,
+          "stddev": 419.2187177754988,
+          "min": 2525,
+          "max": 3338,
           "n": 3
         },
         "numTurns": {
@@ -415,57 +415,57 @@
           "n": 3
         },
         "toolCallCount": {
-          "mean": 6.666666666666667,
+          "mean": 5.666666666666667,
           "stddev": 0.5773502691896258,
-          "min": 6,
-          "max": 7,
+          "min": 5,
+          "max": 6,
           "n": 3
         }
       }
     },
-    "workflow/review-workflow.eval.ts > workflow:review > near-miss negative — explaining the same topic must NOT record an insight": {
-      "nodeid": "workflow/review-workflow.eval.ts > workflow:review > near-miss negative — explaining the same topic must NOT record an insight",
-      "label": "near-miss negative — explaining the same topic must NOT record an insight",
+    "workflow/review-workflow.eval.ts > workflow:review > near-miss negative — a general pgvector question with no repo task does not engage the skill": {
+      "nodeid": "workflow/review-workflow.eval.ts > workflow:review > near-miss negative — a general pgvector question with no repo task does not engage the skill",
+      "label": "near-miss negative — a general pgvector question with no repo task does not engage the skill",
       "pass": {
-        "passed": 0,
+        "passed": 3,
         "total": 3,
-        "rate": 0
+        "rate": 1
       },
       "practices": {},
       "metrics": {
         "durationMs": {
-          "mean": 26565,
-          "stddev": 7939.420696751117,
-          "min": 19480,
-          "max": 35146,
+          "mean": 22185.333333333332,
+          "stddev": 1844.2788111707334,
+          "min": 20061,
+          "max": 23377,
           "n": 3
         },
         "inputTokens": {
-          "mean": 7943.666666666667,
-          "stddev": 232.67215848341917,
-          "min": 7675,
-          "max": 8078,
+          "mean": 5956,
+          "stddev": 0,
+          "min": 5956,
+          "max": 5956,
           "n": 3
         },
         "outputTokens": {
-          "mean": 4002.3333333333335,
-          "stddev": 1460.2233847371892,
-          "min": 2606,
-          "max": 5519,
+          "mean": 4335.666666666667,
+          "stddev": 247.97244470572397,
+          "min": 4070,
+          "max": 4561,
           "n": 3
         },
         "numTurns": {
-          "mean": 5,
+          "mean": 1,
           "stddev": 0,
-          "min": 5,
-          "max": 5,
+          "min": 1,
+          "max": 1,
           "n": 3
         },
         "toolCallCount": {
-          "mean": 9,
-          "stddev": 1,
-          "min": 8,
-          "max": 10,
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0,
           "n": 3
         }
       }
@@ -481,10 +481,10 @@
       "practices": {},
       "metrics": {
         "durationMs": {
-          "mean": 5743,
-          "stddev": 1011.0504438454097,
-          "min": 4584,
-          "max": 6444,
+          "mean": 5017,
+          "stddev": 1076.9907149089076,
+          "min": 4362,
+          "max": 6260,
           "n": 3
         },
         "inputTokens": {
@@ -495,10 +495,10 @@
           "n": 3
         },
         "outputTokens": {
-          "mean": 880,
-          "stddev": 214.00700923100626,
-          "min": 658,
-          "max": 1085,
+          "mean": 754.6666666666666,
+          "stddev": 209.34739867820983,
+          "min": 612,
+          "max": 995,
           "n": 3
         },
         "numTurns": {
@@ -528,38 +528,38 @@
       "practices": {},
       "metrics": {
         "durationMs": {
-          "mean": 21205.5,
-          "stddev": 11535.653440529495,
-          "min": 11739,
-          "max": 36877,
+          "mean": 33031.166666666664,
+          "stddev": 33153.20958469431,
+          "min": 11904,
+          "max": 93648,
           "n": 6
         },
         "inputTokens": {
-          "mean": 82,
-          "stddev": 28.48157299026864,
+          "mean": 90.66666666666667,
+          "stddev": 39.14417794087221,
           "min": 56,
-          "max": 108,
+          "max": 134,
           "n": 6
         },
         "outputTokens": {
-          "mean": 1769.8333333333333,
-          "stddev": 122.5616851494245,
-          "min": 1613,
-          "max": 1882,
+          "mean": 1929.3333333333333,
+          "stddev": 248.6086616887406,
+          "min": 1618,
+          "max": 2240,
           "n": 6
         },
         "numTurns": {
-          "mean": 7.666666666666667,
-          "stddev": 4.457203906785808,
-          "min": 3,
-          "max": 13,
+          "mean": 6.166666666666667,
+          "stddev": 2.7868739954771304,
+          "min": 4,
+          "max": 11,
           "n": 6
         },
         "toolCallCount": {
-          "mean": 6.666666666666667,
-          "stddev": 4.457203906785808,
-          "min": 2,
-          "max": 12,
+          "mean": 7.333333333333333,
+          "stddev": 4.844240566555986,
+          "min": 3,
+          "max": 13,
           "n": 6
         }
       }
