@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { createDb, type Db } from './client.js';
 import * as t from './schema.js';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, isNull } from 'drizzle-orm';
 import {
   GENERAL_REVIEWER_PROMPT,
   SECURITY_REVIEWER_PROMPT,
@@ -30,8 +30,9 @@ const DEFAULT_MODEL = 'deepseek/deepseek-v4-flash';
  * Plus three pending convention candidates for the demo repo, standing in for
  * a finished scan (a real scan calls a model, which e2e flows may not).
  *
- * Course lessons populate the remaining tables (memory, eval, …) once their
- * features are built — they start empty here.
+ * Plus an eval demo block (cases, finished suite runs) for the Evals tab and
+ * the Eval Dashboard. Course lessons populate the remaining tables (memory, …)
+ * once their features are built — they start empty here.
  */
 
 export const DEFAULT_WORKSPACE_NAME = 'default';
@@ -348,7 +349,201 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
     }
   }
 
+  await seedEvalDemo(db, workspaceId);
+
   return { workspaceId, userId };
+}
+
+/**
+ * Eval demo data: gold cases and finished suite runs, written directly (an
+ * eval run calls a model, and e2e flows may not). Inserted only while the
+ * workspace has no eval case, so a re-seed never duplicates or resets it.
+ *
+ * Security Reviewer: four cases (passed, failed, errored, never run) and two
+ * done suites. Performance Reviewer: one case and one done suite. The other
+ * agents keep no cases. The two seeded findings stay undecided.
+ */
+async function seedEvalDemo(db: Db, workspaceId: string): Promise<void> {
+  const agentByName = async (name: string) => {
+    const [a] = await db
+      .select()
+      .from(t.agents)
+      .where(and(eq(t.agents.workspaceId, workspaceId), eq(t.agents.name, name)));
+    return a;
+  };
+  const security = await agentByName('Security Reviewer');
+  const performance = await agentByName('Performance Reviewer');
+  if (!security || !performance) return;
+
+  // The sample review is the Security Reviewer's, so its findings can offer
+  // "Turn into eval case". Both seeded findings stay undecided.
+  await db
+    .update(t.reviews)
+    .set({ agentId: security.id })
+    .where(and(eq(t.reviews.workspaceId, workspaceId), eq(t.reviews.model, 'seed'), isNull(t.reviews.agentId)));
+
+  const [existing] = await db
+    .select({ id: t.evalCases.id })
+    .from(t.evalCases)
+    .where(eq(t.evalCases.workspaceId, workspaceId))
+    .limit(1);
+  if (existing) return;
+
+  const snapshotOf = (a: typeof security) => ({
+    system_prompt: a.systemPrompt,
+    model: a.model,
+    provider: a.provider,
+    strategy: 'single-pass' as const,
+    skills: [],
+  });
+  const at = (iso: string) => new Date(iso);
+  const meta = (title: string) => ({ title, body: 'Seeded demo case.' });
+  const diff = (file: string, line: string) =>
+    [
+      `diff --git a/${file} b/${file}`,
+      `--- a/${file}`,
+      `+++ b/${file}`,
+      '@@ -10,3 +10,4 @@',
+      ' const a = 1;',
+      `+${line}`,
+      ' const b = 2;',
+      '',
+    ].join('\n');
+
+  const caseValues = (agentId: string, name: string, file: string, line: string, expected: unknown[]) => ({
+    workspaceId,
+    ownerKind: 'agent' as const,
+    ownerId: agentId,
+    agentId,
+    name,
+    inputDiff: diff(file, line),
+    inputMeta: meta(name),
+    expectedOutput: expected,
+  });
+  const mustFind = (file: string, n: number) => ({ type: 'must_find', file, start_line: n, end_line: n });
+  const mustNot = (file: string, n: number) => ({ type: 'must_not_flag', file, start_line: n, end_line: n });
+
+  const [cPassed, cFailed, cErrored] = await db
+    .insert(t.evalCases)
+    .values([
+      caseValues(security.id, 'Stripe key committed in config', 'src/config.ts', "const key = 'sk_live_demo';", [
+        mustFind('src/config.ts', 11),
+      ]),
+      caseValues(security.id, 'Safe constant is not a secret', 'src/limits.ts', 'const MAX = 100;', [
+        mustNot('src/limits.ts', 11),
+      ]),
+      caseValues(security.id, 'Pure rename has no findings', 'src/names.ts', 'const renamed = 1;', []),
+      caseValues(security.id, 'SQL built from request input', 'src/search.ts', 'db.query(`... ${q}`);', [
+        mustFind('src/search.ts', 11),
+      ]),
+    ])
+    .returning();
+  const [cPerf] = await db
+    .insert(t.evalCases)
+    .values([
+      caseValues(performance.id, 'Query inside a loop', 'src/api/users.ts', 'for (const u of us) await get(u);', [
+        mustFind('src/api/users.ts', 11),
+      ]),
+    ])
+    .returning();
+
+  const suiteRow = (
+    agentId: string,
+    runNumber: number,
+    startedAt: string,
+    v: {
+      total: number;
+      passed: number;
+      errored: number;
+      recall: number;
+      precision: number;
+      citation: number;
+      cost: number;
+      scored: Array<{ id: string; name: string; status: 'passed' | 'failed' | 'errored' }>;
+    },
+    snapshot: unknown,
+  ) => ({
+    workspaceId,
+    agentId,
+    runNumber,
+    agentVersion: 1,
+    status: 'done' as const,
+    startedAt: at(startedAt),
+    finishedAt: at(startedAt),
+    casesTotal: v.total,
+    casesDone: v.total,
+    casesPassed: v.passed,
+    casesErrored: v.errored,
+    recall: v.recall,
+    precision: v.precision,
+    citationAccuracy: v.citation,
+    costUsd: v.cost,
+    durationMs: 12000,
+    scoredCases: v.scored.map((c) => ({ case_id: c.id, case_name: c.name, status: c.status })),
+    snapshot,
+  });
+
+  const secSnap = snapshotOf(security);
+  const [secRun1, secRun2] = await db
+    .insert(t.evalSuiteRuns)
+    .values([
+      suiteRow(security.id, 1, '2026-10-01T09:00:00Z', {
+        total: 3, passed: 0, errored: 1, recall: 0.5, precision: 0.5, citation: 0.8, cost: 0.004,
+        scored: [
+          { id: cPassed!.id, name: cPassed!.name, status: 'failed' },
+          { id: cFailed!.id, name: cFailed!.name, status: 'failed' },
+          { id: cErrored!.id, name: cErrored!.name, status: 'errored' },
+        ],
+      }, secSnap),
+      suiteRow(security.id, 2, '2026-10-02T09:00:00Z', {
+        total: 3, passed: 1, errored: 1, recall: 0.75, precision: 0.6, citation: 0.9, cost: 0.005,
+        scored: [
+          { id: cPassed!.id, name: cPassed!.name, status: 'passed' },
+          { id: cFailed!.id, name: cFailed!.name, status: 'failed' },
+          { id: cErrored!.id, name: cErrored!.name, status: 'errored' },
+        ],
+      }, secSnap),
+    ])
+    .returning();
+  const [perfRun1] = await db
+    .insert(t.evalSuiteRuns)
+    .values([
+      suiteRow(performance.id, 1, '2026-10-02T10:00:00Z', {
+        total: 1, passed: 1, errored: 0, recall: 1, precision: 1, citation: 1, cost: 0.001,
+        scored: [{ id: cPerf!.id, name: cPerf!.name, status: 'passed' }],
+      }, snapshotOf(performance)),
+    ])
+    .returning();
+
+  const empty = { grounded: [], dropped: [] };
+  await db.insert(t.evalRuns).values([
+    // Older run of the first case, so the latest result is the second suite's.
+    {
+      caseId: cPassed!.id, suiteRunId: secRun1!.id, ranAt: at('2026-10-01T09:00:05Z'), status: 'failed' as const,
+      pass: false, matchedMustFind: 0, mustFindTotal: 1, noiseCount: 0, recall: 0, precision: null,
+      citationAccuracy: null, durationMs: 4000, costUsd: 0.001, actualOutput: empty,
+    },
+    {
+      caseId: cPassed!.id, suiteRunId: secRun2!.id, ranAt: at('2026-10-02T09:00:05Z'), status: 'passed' as const,
+      pass: true, matchedMustFind: 1, mustFindTotal: 1, noiseCount: 0, recall: 1, precision: 1,
+      citationAccuracy: 1, durationMs: 4200, costUsd: 0.002, actualOutput: empty,
+    },
+    {
+      caseId: cFailed!.id, suiteRunId: secRun2!.id, ranAt: at('2026-10-02T09:00:10Z'), status: 'failed' as const,
+      pass: false, matchedMustFind: 0, mustFindTotal: 0, noiseCount: 1, recall: null, precision: 0,
+      citationAccuracy: 1, durationMs: 3900, costUsd: 0.002, actualOutput: empty,
+    },
+    {
+      caseId: cErrored!.id, suiteRunId: secRun2!.id, ranAt: at('2026-10-02T09:00:15Z'), status: 'errored' as const,
+      error: 'The provider call failed.', pass: null, matchedMustFind: null, mustFindTotal: null,
+      noiseCount: null, durationMs: 1000, costUsd: null,
+    },
+    {
+      caseId: cPerf!.id, suiteRunId: perfRun1!.id, ranAt: at('2026-10-02T10:00:05Z'), status: 'passed' as const,
+      pass: true, matchedMustFind: 1, mustFindTotal: 1, noiseCount: 0, recall: 1, precision: 1,
+      citationAccuracy: 1, durationMs: 4100, costUsd: 0.001, actualOutput: empty,
+    },
+  ]);
 }
 
 // CLI entrypoint

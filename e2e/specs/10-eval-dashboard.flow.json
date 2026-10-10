@@ -1,0 +1,169 @@
+{
+  "name": "Eval Dashboard lists agents with cases, recent runs, and the per-agent dashboard",
+  "description": "Sidebar 'Eval Dashboard' opens /eval. Seeded data (no model call, no writes): Security Reviewer (2 done suites, latest run #2, 1/2 pass) and Performance Reviewer (1 done suite, 1/1 pass) are listed, Test Quality Reviewer has no cases so it has no row; the recent-runs list sits below. Opening an agent row opens its per-agent dashboard (stat cards, history, Run eval, agent switcher), and the switcher changes the agent in place. Covers AC-51, AC-52, AC-55. Switching uses agent-browser `select` on the labelled <select> because `find` cannot drive a native select.",
+  "steps": [
+    {
+      "cmd": [
+        "open",
+        "{BASE}/agents"
+      ],
+      "label": "load the agents page"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "Security Reviewer"
+      ],
+      "label": "agents render so the sidebar is mounted"
+    },
+    {
+      "cmd": [
+        "find",
+        "text",
+        "Eval Dashboard",
+        "click"
+      ],
+      "label": "open Eval Dashboard from the sidebar (AC-51)"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--url",
+        "/eval"
+      ],
+      "label": "eval route reached"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--load",
+        "networkidle"
+      ],
+      "label": "dashboard fetch settles"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "Recent eval runs"
+      ],
+      "label": "recent-runs list renders (AC-52)"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "Performance Reviewer"
+      ],
+      "label": "agent with one case has a row"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "Security Reviewer"
+      ],
+      "label": "agent with four cases has a row"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "2026-10-02 09:00"
+      ],
+      "label": "latest run date of the Security Reviewer row"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "1/2 pass"
+      ],
+      "label": "Security Reviewer latest passed / executed"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "1/1 pass"
+      ],
+      "label": "Performance Reviewer latest passed / executed"
+    },
+    {
+      "cmd": [
+        "find",
+        "role",
+        "link",
+        "click",
+        "--name",
+        "Security Reviewer"
+      ],
+      "label": "open the Security Reviewer row"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--url",
+        "/eval/"
+      ],
+      "label": "per-agent dashboard route reached (AC-55)"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "Recall"
+      ],
+      "label": "stat cards render"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "Citation accuracy"
+      ],
+      "label": "citation card renders"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "Recent runs"
+      ],
+      "label": "run history renders"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "Run eval"
+      ],
+      "label": "Run eval action is present"
+    },
+    {
+      "cmd": [
+        "select",
+        "select[aria-label='Switch agent']",
+        "Performance Reviewer"
+      ],
+      "label": "switch agent in place"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--url",
+        "/eval/"
+      ],
+      "label": "still on a per-agent dashboard"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "1/1"
+      ],
+      "label": "Performance Reviewer's history shows its single run"
+    }
+  ]
+}
