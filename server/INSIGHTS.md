@@ -15,6 +15,8 @@ fixed — add to the one that fits.
 
 ## What Doesn't Work
 
+- **2026-10-10** — A workflow `activation` negative for `engineering-insights` cannot be a question about this repo. The root "Before answering" rule starts every package task with that skill, to read the package's `INSIGHTS.md`, and the activation check counts any Skill call or `SKILL.md` read as engaged, so it cannot tell a read from a record. "Explain how pgvector dimensions work and why a mismatch returns zero rows" is a server question: haiku-5.5 read `server/INSIGHTS.md` and recorded nothing, and the case failed 0/3 for following the rule. The same question marked general and not about this repo passes 3/3. A negative for this skill must carry no repo task. Evidence: `AGENTS.md:10`, `evals/src/dsl/case.ts:77`, `evals/workflow/review-workflow.cases.ts:131`
+
 - **2026-10-09** — The two `architecture-reviewer` misses in CI (a wrong `path:line` from a hunk, a second finding for the same fastify violation) come from the CI agent model (gemini-2.5-flash), and prompt rules did not fix them. On haiku-4-5 the baseline was 8/8. Gemini at n=4 per series: correct `:18` went 0/3 at baseline, 2/3 with a hunk-counting rule plus a "one violation, one finding" rule, and 1/3 with the counting rule alone. The duplicate-finding practice went 2/4, 0/4 and 1/3. On haiku the counting rule alone dropped that practice from 2/2 to 0/2, so both rules were reverted. A first draft whose examples reused the fixture's own numbers (`+15` → 18, `reply?: FastifyReply`) measures recall, not the rule. The untried robust fix is to hand the agent numbered new-side lines instead of asking it to count. Evidence: `evals/agents/architecture-reviewer/fixtures/reviewer-core-fs-read.diff:5`, `evals/src/repeat.ts:76`
 
 - **2026-10-08** — One rule paragraph does not stop `architecture-reviewer` from answering `Verdict: needs-answers` on a pasted diff. `eval:repeat agents/architecture-reviewer/ -n 2` (4 cases, 8 runs): baseline 6/8; adding "a pasted diff is a target, never needs-answers" to Step 1 gave 4/8, because Haiku quoted the new rule and still asked about the base branch, and it bolded the value (`Verdict: **fail**`), which the plain `Verdict: fail` grounding substring misses. What fixed it was telling the agent where the question goes instead (an assumption under `## Not checked`) plus a plain-text verdict line the caller can parse: 7/8, needs-answers 1/8 → 0/8. Evidence: `.claude/agents/architecture-reviewer.md:114`, `.claude/agents/architecture-reviewer.md:213`
@@ -84,6 +86,8 @@ fixed — add to the one that fits.
 - **2026-09-26** — A JSDoc block that spells out a glob such as `**/*.md` closes the comment at the `*/` inside it; `tsc` then reports a cascade of syntax errors from the middle of the doc text (first hit: `classify.ts(17,53)`) with nothing pointing at the comment. Describe glob patterns in words inside `/** … */` comments (or use `//` lines), never a literal `*/`. Evidence: `server/src/modules/smart-diff/classify.ts:15`
 
 ## Session Notes
+
+- **2026-10-10** — L06 self-check: eval CI folded into `evals.yml` (baseline delta, budget, fork guard), n=3 baselines on haiku-5.5, near-miss insights negative rewritten → What Doesn't Work ×1. Evidence: `evals/workflow/review-workflow.cases.ts:131`
 
 - **2026-10-08** — Eval sandbox leak: sessions edited the repo through tools outside the allow-list; `run-claude.ts` now passes `tools` → Tool & Library Notes ×1. Evidence: `evals/src/runtime/run-claude.ts:71`
 
