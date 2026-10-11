@@ -50,6 +50,10 @@ describe("decideSuite", () => {
     const failedStale = decideSuite({ ...base, trackedId: "s1", failed: true, history: [r("s1", "running")] });
     expect(failedStale).toEqual({ adoptId: null, progress: null });
   });
+  it("CR-28 a failed poll (404 or stall) settles the suite even when its last data said running", () => {
+    const d = decideSuite({ ...base, trackedId: "s1", suite: r("s1", "running", 2), failed: true, history: [] });
+    expect(d).toEqual({ adoptId: null, progress: null });
+  });
   it("an unfinished tracked suite is not displaced by another running one in history", () => {
     const d = decideSuite({ ...base, trackedId: "s1", suite: r("s1", "running", 2), history: [r("s2", "running")] });
     expect(d).toEqual({ adoptId: null, progress: { done: 2, total: 3 } });
@@ -121,6 +125,56 @@ describe("useTrackedSuite", () => {
     expect(result.current.trackedId).toBeNull();
     expect(result.current.running).toBe(false);
     rerender({ id: "a1", h: [] });
+    expect(result.current.running).toBe(true);
+  });
+});
+
+describe("useTrackedSuite failure states (CR-28/CR-32)", () => {
+  const fakeWrapper = () => {
+    const qc = new QueryClient();
+    return function W({ children }: { children: React.ReactNode }) {
+      return <QueryClientProvider client={qc}>{children}</QueryClientProvider>;
+    };
+  };
+  const tick = (ms: number) => act(async () => { await vi.advanceTimersByTimeAsync(ms); });
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it("CR-28 a 404 after running responses settles the suite and stops polling", async () => {
+    getMock.mockResolvedValueOnce(detail("s1", "running", 1)).mockRejectedValue(new ApiError("gone", 404));
+    const { result } = renderHook(() => useTrackedSuite("a1", [], 3), { wrapper: fakeWrapper() });
+    act(() => result.current.track("s1"));
+    await tick(0);
+    expect(result.current.running).toBe(true);
+    await tick(30000);
+    expect(result.current.running).toBe(false);
+    expect(result.current.error?.message).toBe("gone");
+    expect(getMock.mock.calls.length).toBe(2);
+  });
+
+  it("CR-32 a transient failure with no data keeps showing the history row's progress and keeps polling; a stall shows an error and recovers", async () => {
+    getMock.mockRejectedValue(new ApiError("bad gateway", 502));
+    const history = [r("s1", "running", 2)];
+    const { result } = renderHook(() => useTrackedSuite("a1", history, 3), { wrapper: fakeWrapper() });
+    act(() => result.current.track("s1"));
+    await tick(0);
+    expect(getMock.mock.calls.length).toBe(1);
+    expect(result.current.progress).toEqual({ done: 2, total: 3 });
+    expect(result.current.error).toBeNull();
+    await tick(1500);
+    expect(getMock.mock.calls.length).toBe(2);
+    expect(result.current.running).toBe(true);
+    await tick(30000);
+    expect(getMock.mock.calls.length).toBe(3);
+    expect(result.current.running).toBe(false);
+    expect(result.current.error?.message).toBe("bad gateway");
+
+    // recovery without a reload: tracking a new suite clears the error
+    getMock.mockReset();
+    getMock.mockResolvedValue(detail("s2", "running", 1));
+    act(() => result.current.track("s2"));
+    await tick(0);
+    expect(result.current.error).toBeNull();
     expect(result.current.running).toBe(true);
   });
 });

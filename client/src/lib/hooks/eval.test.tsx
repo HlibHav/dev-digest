@@ -41,7 +41,7 @@ describe("useSuiteRun", () => {
       .mockResolvedValueOnce(suite("running"))
       .mockResolvedValueOnce(suite("running"))
       .mockResolvedValue(suite("done"));
-    const { result } = renderHook(() => useSuiteRun("s1"), { wrapper: wrapperWith(qc) });
+    const { result } = renderHook(() => useSuiteRun("s1").query, { wrapper: wrapperWith(qc) });
 
     await act(async () => { await vi.advanceTimersByTimeAsync(0); });
     expect(getMock).toHaveBeenCalledTimes(1);
@@ -80,7 +80,7 @@ describe("useCaseRun", () => {
     getMock
       .mockResolvedValueOnce({ id: "c1", status: "running" })
       .mockResolvedValue({ id: "c1", status: "errored" });
-    const { result } = renderHook(() => useCaseRun("c1"), { wrapper: wrapperWith(qc) });
+    const { result } = renderHook(() => useCaseRun("c1").query, { wrapper: wrapperWith(qc) });
 
     await act(async () => { await vi.advanceTimersByTimeAsync(0); });
     await act(async () => { await vi.advanceTimersByTimeAsync(1500); });
@@ -172,7 +172,7 @@ describe("useCaseRun refresh and errors", () => {
     const { result } = renderHook(
       () => {
         const q = useCaseRun("c1", "a1");
-        return { error: q.error };
+        return { error: q.query.error };
       },
       { wrapper: wrapperWith(qc) },
     );
@@ -192,7 +192,7 @@ describe("useCaseRun refresh and errors", () => {
     const { result } = renderHook(
       () => {
         const q = useCaseRun("c1", "a1");
-        return { error: q.error, stalled: q.stalled };
+        return { error: q.query.error, stalled: q.stalled };
       },
       { wrapper: wrapperWith(qc) },
     );
@@ -214,12 +214,73 @@ describe("useCaseRun refresh and errors", () => {
     const second = renderHook(
       () => {
         const q = useCaseRun("c2", "a1");
-        return { status: q.data?.status, stalled: q.stalled };
+        return { status: q.query.data?.status, stalled: q.stalled };
       },
       { wrapper: wrapperWith(new QueryClient()) },
     );
     await act(async () => { await vi.advanceTimersByTimeAsync(30000); });
     expect(second.result.current.status).toBe("passed");
     expect(second.result.current.stalled).toBe(false);
+  });
+});
+
+describe("fix4 run tracking (CR-28/29/34)", () => {
+  it("CR-29/CR-34 a suite poll that fails 3 times in a row stalls, even after running responses; no more polling", async () => {
+    const qc = new QueryClient();
+    getMock.mockResolvedValueOnce(suite("running")).mockRejectedValue(new ApiError("bad gateway", 502));
+    const { result } = renderHook(
+      () => {
+        const run = useSuiteRun("s1");
+        return { error: run.query.error, stalled: run.stalled, gone: run.gone };
+      },
+      { wrapper: wrapperWith(qc) },
+    );
+    await act(async () => { await vi.advanceTimersByTimeAsync(30000); });
+    expect(getMock.mock.calls.length).toBe(4); // 1 good poll + 3 failed polls
+    expect(result.current.stalled).toBe(true);
+    expect(result.current.gone).toBe(false);
+  });
+
+  it("CR-29 two failed polls (an API restart) do not stall a suite run; it finishes", async () => {
+    const qc = new QueryClient();
+    getMock
+      .mockResolvedValueOnce(suite("running"))
+      .mockRejectedValueOnce(new ApiError("down", 502))
+      .mockRejectedValueOnce(new ApiError("down", 502))
+      .mockResolvedValue(suite("done"));
+    const { result } = renderHook(
+      () => {
+        const run = useSuiteRun("s1");
+        return { status: run.query.data?.status, stalled: run.stalled };
+      },
+      { wrapper: wrapperWith(qc) },
+    );
+    await act(async () => { await vi.advanceTimersByTimeAsync(30000); });
+    expect(result.current).toEqual({ status: "done", stalled: false });
+  });
+
+  it("CR-29 each failed poll is one attempt: a case run fails once per poll, not three times", async () => {
+    const qc = new QueryClient();
+    getMock.mockRejectedValue(new ApiError("bad gateway", 502));
+    renderHook(() => useCaseRun("c1", "a1"), { wrapper: wrapperWith(qc) });
+    await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+    expect(getMock.mock.calls.length).toBe(1); // no hidden retry inside the first poll
+    await act(async () => { await vi.advanceTimersByTimeAsync(600); });
+    expect(getMock.mock.calls.length).toBe(2);
+  });
+
+  it("CR-28 a 404 after earlier running responses stops polling and reports gone", async () => {
+    const qc = new QueryClient();
+    getMock.mockResolvedValueOnce(suite("running")).mockRejectedValue(new ApiError("gone", 404));
+    const { result } = renderHook(
+      () => {
+        const run = useSuiteRun("s1");
+        return { gone: run.gone, stalled: run.stalled };
+      },
+      { wrapper: wrapperWith(qc) },
+    );
+    await act(async () => { await vi.advanceTimersByTimeAsync(30000); });
+    expect(getMock.mock.calls.length).toBe(2);
+    expect(result.current).toEqual({ gone: true, stalled: false });
   });
 });

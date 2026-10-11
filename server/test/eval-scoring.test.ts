@@ -19,9 +19,13 @@ describe('findingMatches full-file findings', () => {
   const not: EvalExpectation = { type: 'must_not_flag', file: 'a.ts', start_line: 40, end_line: 50 };
   const whole = (file: string, s: number, e: number): Range => ({ file, start_line: s, end_line: e, kind: 'secret_leak' });
 
-  it('a full-file-kind finding matches an expectation on its file whatever its lines (0..0 and 5..5)', () => {
+  it('a full-file-kind finding at 0..0 matches an expectation on its file whatever its lines', () => {
     expect(findingMatches(whole('a.ts', 0, 0), must)).toBe(true);
-    expect(findingMatches(whole('a.ts', 5, 5), must)).toBe(true);
+    expect(findingMatches(whole('a.ts', 0, 0), { ...must, start_line: 400, end_line: 400 })).toBe(true);
+  });
+  it('CR-31: a precisely cited full-file-kind finding (5..5) matches by line intersection', () => {
+    expect(findingMatches(whole('a.ts', 5, 5), must)).toBe(false);
+    expect(findingMatches(whole('a.ts', 5, 5), { ...must, start_line: 5, end_line: 6 })).toBe(true);
   });
   it('a full-file-kind finding hits a must_not_flag on the same file', () => {
     expect(scoreCase([not], [whole('a.ts', 0, 0)], 0).noiseFindings).toBe(1);
@@ -48,6 +52,17 @@ describe('scoreCase whole-file findings', () => {
     const s = scoreCase([must('a.ts', 10), must('a.ts', 20)], [whole('a.ts'), g('a.ts', 10)], 0);
     expect(s.matchedMustFind).toBe(2);
     expect(s.passed).toBe(true);
+  });
+  it('CR-36: a whole-file finding that takes no open must_find is neither matched nor noise', () => {
+    const s = scoreCase([must('a.ts', 10)], [g('a.ts', 10), whole('a.ts'), whole('a.ts')], 0);
+    expect(s.matchedMustFind).toBe(1);
+    expect(s.matchedFindings).toBe(1);
+    expect(s.noiseFindings).toBe(0);
+  });
+  it('CR-35: scoring uses the FULL_FILE_KINDS exported by reviewer-core', async () => {
+    const core = await import('@devdigest/reviewer-core/grounding.js');
+    const scoring = await import('../src/modules/eval/scoring.js');
+    expect(scoring.FULL_FILE_KINDS).toBe(core.FULL_FILE_KINDS);
   });
   it('a whole-file finding is still noise against a must_not_flag on its file', () => {
     const s = scoreCase([must('a.ts', 10), not('a.ts', 99)], [whole('a.ts')], 0);

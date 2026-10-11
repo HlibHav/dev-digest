@@ -22,6 +22,7 @@ vi.mock("@/lib/api", async () => {
   };
 });
 
+import { ApiError } from "@/lib/api";
 import { CaseEditor } from "./CaseEditor";
 
 const DIFF = [
@@ -200,5 +201,22 @@ describe("CaseEditor", () => {
     fireEvent.click(screen.getByRole("switch"));
     fireEvent.click(saveButton());
     await waitFor(() => expect(onClose).toHaveBeenCalledWith({ caseId: "c1", caseRunId: "cr1" }));
+  });
+
+  it("CR-30 a run that is gone (404) shows an error instead of Running forever", async () => {
+    post.mockImplementation(async (path: string) =>
+      path === "/agents/a1/eval-cases" ? { id: "c1" } : { case_run_id: "cr1", status: "running" },
+    );
+    get.mockRejectedValue(new ApiError("case run not found", 404));
+    renderEditor();
+    type("Name", "leak");
+    type("Diff", DIFF);
+    type("Expected output", VALID);
+    fireEvent.click(screen.getByRole("switch"));
+    fireEvent.click(saveButton());
+
+    const alert = await screen.findByText("case run not found");
+    expect(alert).toHaveAttribute("role", "alert");
+    expect(screen.queryByText("Last run running")).not.toBeInTheDocument();
   });
 });

@@ -583,7 +583,20 @@ export class EvalService {
     try {
       let done = 0;
       for (const evalCase of cases) {
-        const caseRun = await p.store.insertCaseRun(evalCase.id, run.id);
+        let caseRun: Awaited<ReturnType<typeof p.store.insertCaseRun>>;
+        try {
+          caseRun = await p.store.insertCaseRun(evalCase.id, run.id);
+        } catch (err) {
+          // No row exists to close; count the case as errored and advance, as a runOne throw does.
+          scored.push({ case_id: evalCase.id, case_name: evalCase.name, status: 'errored' });
+          costs.push(null);
+          errored += 1;
+          done += 1;
+          await p.store
+            .updateSuiteProgress(run.id, done)
+            .catch((e: unknown) => this.logError(e, 'eval: could not record progress', { suiteRunId: run.id }));
+          throw err;
+        }
         if (caseRun) {
           let outcome: CaseOutcome;
           try {

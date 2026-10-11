@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { IconBtn } from "@devdigest/ui";
 import type { EvalCaseView } from "@devdigest/shared";
-import { isCaseRunGone, useCaseRun, useStartCaseRun } from "@/lib/hooks/eval";
+import { useCaseRun, useStartCaseRun } from "@/lib/hooks/eval";
 import { STATUS_COLOR } from "../../constants";
 import { expectationChipKey } from "../../helpers";
 import { MaskedText } from "../MaskedText";
@@ -33,14 +33,13 @@ export function CaseRow({
     setSeenPending(pendingRunId);
     if (pendingRunId) setRunId(pendingRunId);
   }
-  const run = useCaseRun(runId, kase.agent_id);
+  const { query: run, gone, stalled } = useCaseRun(runId, kase.agent_id);
 
   const polledStatus = run.data?.status;
-  const gone = isCaseRunGone(run.error);
   // Running until a terminal status, a 404 or repeated poll failures; a transient error keeps polling.
-  const polling = runId !== null && !gone && !run.stalled && (polledStatus === undefined || polledStatus === "running");
+  const polling = runId !== null && !gone && !stalled && (polledStatus === undefined || polledStatus === "running");
   const running = start.isPending || polling;
-  const error = start.error ?? (gone || run.stalled ? run.error : null);
+  const error = start.error ?? (gone || stalled ? run.error : null);
   const last = kase.last_result;
   const status = running ? "running" : (last?.status ?? "neverRun");
 

@@ -1,19 +1,19 @@
 import type { EvalExpectation, EvalMetricName } from '@devdigest/shared';
+import { FULL_FILE_KINDS } from '@devdigest/reviewer-core/grounding.js';
 
 /** A drop of this many whole points (or more) between two runs is a regression. */
 export const REGRESSION_POINTS = 2;
 
 export type Range = { file: string; start_line: number; end_line: number; kind?: string | null };
 
-/**
- * Finding kinds that cite a whole file rather than a line range. Mirrors FULL_FILE_KINDS in
- * reviewer-core/src/grounding.ts (scoring stays pure, so it keeps its own copy).
- */
-export const FULL_FILE_KINDS: ReadonlySet<string> = new Set(['secret_leak', 'lethal_trifecta', 'phantom', 'hook']);
+export { FULL_FILE_KINDS };
 
-/** Grounding keeps a 0..0 range only for these kinds, so `kind` decides, not the line numbers. */
+/**
+ * Grounding keeps a 0..0 range only for the full-file kinds, so a finding is whole-file when its
+ * kind is one of them AND its range is 0..0. A precisely cited secret_leak (5..5) matches by lines.
+ */
 export function isWholeFileFinding(f: Range): boolean {
-  return !!f.kind && FULL_FILE_KINDS.has(f.kind);
+  return !!f.kind && FULL_FILE_KINDS.has(f.kind) && f.start_line === 0 && f.end_line === 0;
 }
 
 export interface CaseScore {
@@ -72,14 +72,16 @@ export function scoreCase(
     }
     const onFile = mustFind.filter((e) => findingMatches(f, e));
     if (onFile.length === 0) continue;
-    matchedFindings += 1;
     if (isWholeFileFinding(f)) {
       // A vague whole-file finding satisfies at most one expectation: the first still open.
+      // One that takes nothing is neither matched nor noise.
       const open = onFile.find((e) => !matchedExpectations.has(e));
-      if (open) matchedExpectations.add(open);
+      if (!open) continue;
+      matchedExpectations.add(open);
     } else {
       for (const e of onFile) matchedExpectations.add(e);
     }
+    matchedFindings += 1;
   }
 
   const matchedMustFind = matchedExpectations.size;

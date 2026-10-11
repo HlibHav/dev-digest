@@ -43,7 +43,7 @@ export function EvalsTab({ agent }: { agent: Agent }) {
   const dash = dashboard.data;
   const latest = dash?.latest ?? null;
   // `latest` is the latest completed run; a suite still running (e.g. after a reload) is in `history`.
-  const { progress, running, track } = useTrackedSuite(agent.id, dash?.history, dash?.cases_total ?? 0);
+  const { progress, running, error: suiteError, track } = useTrackedSuite(agent.id, dash?.history, dash?.cases_total ?? 0);
 
   const list = cases.data ?? [];
   const active: Editing = editing === undefined ? paramCase : editing;
@@ -103,9 +103,9 @@ export function EvalsTab({ agent }: { agent: Agent }) {
             {t("evalsTab.newEvalCase")}
           </Button>
         </div>
-        {startSuite.error ? (
+        {startSuite.error ?? suiteError ? (
           <p role="alert" style={s.error}>
-            {startSuite.error.message}
+            {(startSuite.error ?? suiteError)?.message}
           </p>
         ) : null}
         <div style={{ ...s.list, marginTop: 12 }}>

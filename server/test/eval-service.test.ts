@@ -31,6 +31,8 @@ class FakeStore implements EvalStore {
   failFinishCaseRunAfter: number | null = null;
   finishCaseRunCalls = 0;
   failFinishCaseRunOnCall: number | null = null;
+  failInsertCaseRunOnCall: number | null = null;
+  insertCaseRunCalls = 0;
   progressReturns = true;
   progressCalls = 0;
   reapReason: string | null = null;
@@ -149,6 +151,8 @@ class FakeStore implements EvalStore {
     return true;
   }
   async insertCaseRun(caseId: string, suiteRunId: string | null) {
+    this.insertCaseRunCalls += 1;
+    if (this.failInsertCaseRunOnCall === this.insertCaseRunCalls) throw new Error('db blip');
     const c = this.cases.find((x) => x.id === caseId);
     if (!c) return undefined;
     const r: CaseRunRecord = {
@@ -563,6 +567,21 @@ describe('EvalService runs', () => {
     expect(h.store.suites[0]!.scoredCases.map((c: EvalScoredCase) => c.status)).toEqual(['passed', 'errored']);
     expect(h.store.caseRuns.map((r) => r.status)).toEqual(['passed', 'errored']);
     expect(h.store.caseRuns[1]!.error).toBe(MSG.suiteFailed);
+  });
+
+  it('CR-33: insertCaseRun throwing counts that case as errored and advances cases_done', async () => {
+    const h = harness();
+    addCase(h);
+    addCase(h);
+    h.store.failInsertCaseRunOnCall = 2;
+    await h.svc.startSuite(WS, AGENT_ID);
+    await h.drain();
+    const suite = h.store.suites[0]!;
+    expect(suite.status).toBe('failed');
+    expect(suite.casesDone).toBe(2);
+    expect(suite.casesErrored).toBe(1);
+    expect(suite.scoredCases.map((c: EvalScoredCase) => c.status)).toEqual(['passed', 'errored']);
+    expect(h.store.caseRuns.some((r) => r.status === 'running')).toBe(false);
   });
 
   it('suite stops when its row is gone (updateSuiteProgress false) and logs once', async () => {

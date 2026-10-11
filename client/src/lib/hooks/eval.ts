@@ -3,7 +3,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import type {
   EvalAgentDashboard,
   EvalCaseCreated,
@@ -84,29 +84,36 @@ export function useStartCaseRun() {
   });
 }
 
-/** True when a case-run read failed because the run no longer exists (404), as opposed to a
+/** True when a run read failed because the run no longer exists (404), as opposed to a
     transient error that polling rides through. */
 export function isCaseRunGone(error: unknown): boolean {
   return error instanceof ApiError && error.status === 404;
 }
 
-/** Consecutive failed case-run reads after which polling stops and the error is surfaced. */
+/** Consecutive failed polls after which polling stops and the error is surfaced. */
 export const CASE_RUN_MAX_FAILURES = 3;
 
-/** Polls a case run until a terminal status, a 404, or `CASE_RUN_MAX_FAILURES` failed reads in a
-    row (`stalled`: the last good `data` stays, `error` is set, and a retry means a new run). A
-    success resets the count. With `agentId`, the agent's cases and dashboard are refetched once
-    per run id on any terminal status, even if the first fetch is terminal. */
-export function useCaseRun(caseRunId: string | null | undefined, agentId?: string | null) {
-  const qc = useQueryClient();
-  const failures = useRef<{ id: string | null | undefined; n: number }>({ id: caseRunId, n: 0 });
-  if (failures.current.id !== caseRunId) failures.current = { id: caseRunId, n: 0 };
+/** What a polled run hook returns: the un-spread query plus the two terminal-failure flags.
+    `gone`: the run no longer exists (404). `stalled`: `CASE_RUN_MAX_FAILURES` failed polls in a row. */
+export type PolledRun<T> = { query: UseQueryResult<T>; gone: boolean; stalled: boolean };
+
+/** One poll loop for a run (case or suite): re-reads every `EVAL_POLL_MS` while `running`, counts
+    failures per poll (`retry: false`, so one queryFn call is one poll; a success resets the
+    count) and stops on a terminal status, a 404 or `CASE_RUN_MAX_FAILURES` failed polls. The last
+    good `data` stays when it stops. */
+function usePolledRun<T extends { status: string }>(
+  queryKey: readonly unknown[],
+  id: string | null | undefined,
+  read: () => Promise<T>,
+): PolledRun<T> {
+  const failures = useRef<{ id: string | null | undefined; n: number }>({ id, n: 0 });
+  if (failures.current.id !== id) failures.current = { id, n: 0 };
   const query = useQuery({
-    queryKey: ["eval-case-run", caseRunId],
+    queryKey,
     queryFn: async () => {
       const counter = failures.current;
       try {
-        const run = await api.get<EvalCaseResult>(`/eval-case-runs/${seg(caseRunId)}`);
+        const run = await read();
         counter.n = 0;
         return run;
       } catch (err) {
@@ -114,8 +121,8 @@ export function useCaseRun(caseRunId: string | null | undefined, agentId?: strin
         throw err;
       }
     },
-    enabled: !!caseRunId,
-    retry: (count, err) => !isCaseRunGone(err) && count < CASE_RUN_MAX_FAILURES - 1,
+    enabled: !!id,
+    retry: false,
     refetchInterval: (q) => {
       const status = q.state.data?.status;
       if (status && status !== "running") return false;
@@ -123,8 +130,25 @@ export function useCaseRun(caseRunId: string | null | undefined, agentId?: strin
       return EVAL_POLL_MS;
     },
   });
+  const gone = isCaseRunGone(query.error);
+  // Subscribe to every failed poll: an error equal to the last one changes no other tracked field,
+  // and the render that crosses the stall threshold must still happen.
+  void query.errorUpdateCount;
+  const stalled = query.isError && !gone && failures.current.n >= CASE_RUN_MAX_FAILURES;
+  return { query, gone, stalled };
+}
 
-  const status = query.data?.status;
+/** Polls a case run until a terminal status, a 404 or a stall (`stalled`: the last good `data`
+    stays, `error` is set, and a retry means a new run). With `agentId`, the agent's cases and
+    dashboard are refetched once per run id on any terminal status, even if the first fetch is
+    terminal. */
+export function useCaseRun(caseRunId: string | null | undefined, agentId?: string | null) {
+  const qc = useQueryClient();
+  const polled = usePolledRun(["eval-case-run", caseRunId], caseRunId, () =>
+    api.get<EvalCaseResult>(`/eval-case-runs/${seg(caseRunId)}`),
+  );
+
+  const status = polled.query.data?.status;
   const refreshed = useRef<string | null>(null);
   useEffect(() => {
     if (!caseRunId || !agentId || !status || status === "running") return;
@@ -134,8 +158,7 @@ export function useCaseRun(caseRunId: string | null | undefined, agentId?: strin
     void qc.invalidateQueries({ queryKey: ["eval-dashboard", agentId] });
   }, [caseRunId, agentId, status, qc]);
 
-  const stalled = query.isError && failures.current.n >= CASE_RUN_MAX_FAILURES;
-  return { ...query, stalled };
+  return polled;
 }
 
 // ---- Suite runs ----
@@ -145,21 +168,17 @@ export function useStartSuiteRun() {
   });
 }
 
-/** Polls while `running`; on reaching a terminal status (even on the first fetch) the agent's
-    dashboard, cases and history and the workspace dashboard are refetched once. */
+/** Polls while `running` with the same failure rules as `useCaseRun`; on reaching a terminal
+    status (even on the first fetch) the agent's dashboard, cases and history and the workspace
+    dashboard are refetched once. */
 export function useSuiteRun(suiteRunId: string | null | undefined) {
   const qc = useQueryClient();
-  const query = useQuery({
-    queryKey: ["eval-suite-run", suiteRunId],
-    queryFn: () => api.get<EvalSuiteRunDetail>(`/eval-suite-runs/${seg(suiteRunId)}`),
-    enabled: !!suiteRunId,
-    // a 404 is final; anything else is retried a couple of times before `isError` is set
-    retry: (count, err) => !(err instanceof ApiError && err.status === 404) && count < 2,
-    refetchInterval: (q) => (q.state.data?.status === "running" ? EVAL_POLL_MS : false),
-  });
+  const polled = usePolledRun(["eval-suite-run", suiteRunId], suiteRunId, () =>
+    api.get<EvalSuiteRunDetail>(`/eval-suite-runs/${seg(suiteRunId)}`),
+  );
 
-  const status = query.data?.status;
-  const agentId = query.data?.agent_id;
+  const status = polled.query.data?.status;
+  const agentId = polled.query.data?.agent_id;
   const refreshed = useRef<string | null>(null);
   useEffect(() => {
     if (!suiteRunId || !status || !agentId || status === "running") return;
@@ -171,7 +190,7 @@ export function useSuiteRun(suiteRunId: string | null | undefined) {
     void qc.invalidateQueries({ queryKey: ["eval-workspace-dashboard"] });
   }, [suiteRunId, status, agentId, qc]);
 
-  return query;
+  return polled;
 }
 
 export function useRunAllAgents() {
