@@ -1,5 +1,5 @@
 # State: eval-pipeline
-Stage: 3 Fix round 3 done · rounds exhausted · waiting for Glib on CR-16/20/21/23 remainders + CR-28..36
+Stage: 3 Extra fix round 4 (Glib-approved) done at 77fc011 · waiting for Glib on CR-29/32/33 remainders + CR-37..39
 Spec: specs/2026-10-10-eval-pipeline.md (SPEC-2026-10-10-eval-pipeline) · Plan: docs/plans/2026-10-10-eval-pipeline.md · Mode: multi-agent
 Inputs: prompt none · designs specs/designs/eval-pipeline/img1-6.png
 Red-first: implementer-owned
@@ -26,6 +26,8 @@ Expected red:
 | e2e hermetic | E2E_PG_PORT=5633 E2E_API_PORT=3301 E2E_WEB_PORT=3300 npm run e2e:hermetic | level 5 | 12/12 flows passed (after next.config extensionAlias fix + flow 12 fix) |
 | eval-cases + eval-runs it (Docker, main session) | server: pnpm exec vitest run test/eval-cases.it.test.ts test/eval-runs.it.test.ts | level 4 | 29 passed (after L4 fix: GatedLLM did not record calls) |
 
+| round 4 gates | server tsc/lint/unit/it · client tsc/test · reviewer-core · e2e | 77fc011 | clean · 556 · 217 · 526 · 64 · 12/12 |
+
 ## Findings ledger
 | id | source | severity | kind | `path:line` | round opened | status | round closed |
 |---|---|---|---|---|---|---|---|
@@ -50,27 +52,30 @@ Expected red:
 | CR-13 | code-review r1 | bug | L6+L7 | EvalsTab.tsx:47 / AgentEvalDashboardView.tsx:33 finished startedId wins over newer running suite | round 1 | closed | round 2 |
 | CR-14 | code-review r1 | efficiency | L5 | hooks/eval.ts:161 agent-dashboard poll duplicates suite poll; workspace poll N+1 every 1.5 s | round 1 | closed | round 2 |
 | CR-15 | code-review r1 | bug | L6 | CaseRow.tsx:33 one transient poll error re-enables Play mid-run | round 1 | closed | round 2 |
-| CR-16 | code-review r1 | bug | server | service.ts:590 crash-closed case run not counted as errored | round 1 | open after round 3 | — |
+| CR-16 | code-review r1 | bug | server | service.ts:590 crash-closed case run not counted as errored | round 1 | closed (insertCaseRun path via CR-33) | round 4 |
 | CR-17 | code-review r1 | cleanup | server | types.ts:141 hasRunningSuite dead; runAll extra I/O on running agents | round 1 | closed | round 2 |
 | CR-18 | code-review r1 | cleanup | L5+L6 | CaseEditor.tsx:44 duplicated terminal-refresh effect (belongs in useCaseRun) | round 1 | closed | round 2 |
 | CR-19 | code-review r1 | bug | L6+L7 | EvalsTab.tsx:50 Run all re-enabled between start success and first poll | round 1 | closed | round 2 |
-| CR-20 | code-review r2 | bug (regression of CR-16) | server | service.ts:596 crash path doesn't advance cases_done → executed count low/negative | round 2 | open after round 3 | — |
-| CR-21 | code-review r2 | bug (regression of CR-19) | L6+L7 | EvalsTab/helpers.ts:160, AgentEvalDashboardView/helpers.ts:23 tracked id without data = running forever if first fetch fails | round 2 | open after round 3 | — |
+| CR-20 | code-review r2 | bug (regression of CR-16) | server | service.ts:596 crash path doesn't advance cases_done → executed count low/negative | round 2 | closed (insertCaseRun path via CR-33) | round 4 |
+| CR-21 | code-review r2 | bug (regression of CR-19) | L6+L7 | EvalsTab/helpers.ts:160, AgentEvalDashboardView/helpers.ts:23 tracked id without data = running forever if first fetch fails | round 2 | closed (via CR-28/CR-32) | round 4 |
 | CR-22 | code-review r2 | bug (CR-12 too broad) | server | scoring.ts:34 start_line 0 matches every expectation; grounding keys on kind | round 2 | closed | round 3 |
-| CR-23 | code-review r2 | bug (CR-15 side effect) | L5+L6 | hooks/eval.ts:106 persistent non-404 error polls forever, error hidden | round 2 | open after round 3 | — |
+| CR-23 | code-review r2 | bug (CR-15 side effect) | L5+L6 | hooks/eval.ts:106 persistent non-404 error polls forever, error hidden | round 2 | closed (via CR-29/CR-30) | round 4 |
 | CR-24 | code-review r2 | bug | L7 | AgentEvalDashboardView.tsx:40 stale history shows Running N/N after tracked cleared | round 2 | closed | round 3 |
 | CR-25 | code-review r2 | bug | L6 | EvalsTab.tsx:39 tracked id not scoped to agent | round 2 | closed | round 3 |
 | CR-26 | code-review r2 | cleanup | L5/L6/L7 | runningProgress duplicated in two route helpers | round 2 | closed | round 3 |
 | CR-27 | code-review r2 | efficiency | server | service.ts:340 per-agent hasRunningSuite query | round 2 | closed | round 3 |
-| CR-28 | code-review r3 | bug | client | eval-tracked-suite.ts:30 404 after a running response keeps the suite running forever (CR-21 remainder) | round 3 | open | — |
-| CR-29 | code-review r3 | bug | client | hooks/eval.ts:112 failure counter counts retry attempts → one failed poll stalls polling (CR-23 remainder) | round 3 | open | — |
-| CR-30 | code-review r3 | bug | client | CaseEditor.tsx:83 ignores stalled/error → 'running' forever | round 3 | open | — |
-| CR-31 | code-review r3 | bug | server | scoring.ts:45 precise secret_leak/hook finding treated as whole-file (kind alone) | round 3 | open | — |
-| CR-32 | code-review r3 | bug | client | eval-tracked-suite.ts:30 failed first fetch marks a running suite settled; history row ignored | round 3 | open | — |
-| CR-33 | code-review r3 | bug | server | service.ts:586 insertCaseRun throw not counted (CR-20 remainder) | round 3 | open | — |
-| CR-34 | code-review r3 | efficiency | client | hooks/eval.ts:137 spreading query result defeats tracked props | round 3 | open | — |
-| CR-35 | code-review r3 | cleanup | server | scoring.ts:12 FULL_FILE_KINDS hand-copied from reviewer-core | round 3 | open | — |
-| CR-36 | code-review r3 | bug | server | scoring.ts:75 whole-file finding with no open must_find still counted matched (precision inflated) | round 3 | open | — |
+| CR-28 | code-review r3 | bug | client | eval-tracked-suite.ts:30 404 after a running response keeps the suite running forever (CR-21 remainder) | round 3 | closed | round 4 |
+| CR-29 | code-review r3 | bug | client | hooks/eval.ts:112 failure counter counts retry attempts → one failed poll stalls polling (CR-23 remainder) | round 3 | partly closed partly: 3 polls ≈ same 3 s window; no focus refetch to recover | — |
+| CR-30 | code-review r3 | bug | client | CaseEditor.tsx:83 ignores stalled/error → 'running' forever | round 3 | closed | round 4 |
+| CR-31 | code-review r3 | bug | server | scoring.ts:45 precise secret_leak/hook finding treated as whole-file (kind alone) | round 3 | closed | round 4 |
+| CR-32 | code-review r3 | bug | client | eval-tracked-suite.ts:30 failed first fetch marks a running suite settled; history row ignored | round 3 | partly closed partly: a suite with running data drops after 3 failed polls | — |
+| CR-33 | code-review r3 | bug | server | service.ts:586 insertCaseRun throw not counted (CR-20 remainder) | round 3 | partly closed partly: updateSuiteProgress throw after a scored case leaves cases_done one behind | — |
+| CR-34 | code-review r3 | efficiency | client | hooks/eval.ts:137 spreading query result defeats tracked props | round 3 | closed | round 4 |
+| CR-35 | code-review r3 | cleanup | server | scoring.ts:12 FULL_FILE_KINDS hand-copied from reviewer-core | round 3 | closed | round 4 |
+| CR-36 | code-review r3 | bug | server | scoring.ts:75 whole-file finding with no open must_find still counted matched (precision inflated) | round 3 | closed | round 4 |
+| CR-37 | code-review r4 | bug (regression) | client | eval-tracked-suite.ts:32 running suite dropped after 3 failed polls, never re-polled (no focus refetch) | round 4 | open | — |
+| CR-38 | code-review r4 | bug (regression) | client | CaseEditor.tsx:51 stalled run treated as done, not handed to CaseRow | round 4 | open | — |
+| CR-39 | code-review r4 | bug | client | EvalsTab.tsx:106 stale startSuite error shadows suite poll error | round 4 | open | — |
 | PV-4 | plan-verifier r3 | doc | plan | docs/plans/2026-10-10-eval-pipeline.md:346 still names hasRunningSuite | round 3 | open (plan doc drift; /implement doesn't rewrite plans) | — |
 | PV-3 | plan-verifier | partial | flow 10 uses `agent-browser select` (TESTING.md:96 allows open/wait/find) | e2e/specs/10-eval-dashboard.flow.json | review | for Glib at close | — |
 
