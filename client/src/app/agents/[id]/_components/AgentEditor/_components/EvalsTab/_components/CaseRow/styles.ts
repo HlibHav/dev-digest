@@ -23,5 +23,6 @@ export const s = {
     whiteSpace: "nowrap",
   } satisfies CSSProperties,
   error: { fontSize: 12, color: "var(--crit)" } satisfies CSSProperties,
+  notice: { fontSize: 12, color: "var(--warn)" } satisfies CSSProperties,
   actions: { display: "flex", gap: 4 } satisfies CSSProperties,
 } as const;

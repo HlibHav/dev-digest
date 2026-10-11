@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
-import { render, screen, cleanup, fireEvent, waitFor, within } from "@testing-library/react";
+import { act, render, screen, cleanup, fireEvent, waitFor, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import evalMessages from "../../../../../../../../../../messages/en/eval.json";
@@ -218,5 +218,34 @@ describe("CaseEditor", () => {
     const alert = await screen.findByText("case run not found");
     expect(alert).toHaveAttribute("role", "alert");
     expect(screen.queryByText("Last run running")).not.toBeInTheDocument();
+  });
+
+  it("CR-38 a run that is reconnecting (polls failing, not gone) is shown with a notice and handed to the caller on close", async () => {
+    vi.useFakeTimers();
+    try {
+      post.mockImplementation(async (path: string) =>
+        path === "/agents/a1/eval-cases" ? { id: "c1" } : { case_run_id: "cr1", status: "running" },
+      );
+      let n = 0;
+      get.mockImplementation(async () => {
+        n += 1;
+        if (n === 1) return { id: "cr1", status: "running" };
+        throw new ApiError("bad gateway", 502);
+      });
+      const onClose = renderEditor();
+      type("Name", "leak");
+      type("Diff", DIFF);
+      type("Expected output", VALID);
+      fireEvent.click(screen.getByRole("switch"));
+      fireEvent.click(saveButton());
+      await act(async () => { await vi.advanceTimersByTimeAsync(20000); });
+      expect(n).toBeGreaterThanOrEqual(3);
+      expect(screen.getByText("Connection problem, retrying…")).toBeInTheDocument();
+      expect(screen.queryByText("bad gateway")).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      expect(onClose).toHaveBeenCalledWith({ caseId: "c1", caseRunId: "cr1" });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

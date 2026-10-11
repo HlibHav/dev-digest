@@ -43,12 +43,22 @@ export function EvalsTab({ agent }: { agent: Agent }) {
   const dash = dashboard.data;
   const latest = dash?.latest ?? null;
   // `latest` is the latest completed run; a suite still running (e.g. after a reload) is in `history`.
-  const { progress, running, error: suiteError, track } = useTrackedSuite(agent.id, dash?.history, dash?.cases_total ?? 0);
+  const { trackedId, progress, running, error: suiteError, reconnecting, track } = useTrackedSuite(agent.id, dash?.history, dash?.cases_total ?? 0);
+
+  // The tracked suite's poll state wins over a start error.
+  const notice = suiteError ?? (reconnecting ? null : startSuite.error);
 
   const list = cases.data ?? [];
   const active: Editing = editing === undefined ? paramCase : editing;
   const editedCase = active && active !== "new" ? list.find((c) => c.id === active) : undefined;
   const { passed, total } = passingCount(list);
+
+  // A start error belongs to the attempt that raised it: tracking another suite (a started one or
+  // one adopted from the history) clears it, so it never shadows that suite's own poll state.
+  const resetStart = startSuite.reset;
+  React.useEffect(() => {
+    resetStart();
+  }, [trackedId, resetStart]);
 
   const runAll = () =>
     startSuite.mutate(agent.id, { onSuccess: (a) => track(a.suite_run_id) });
@@ -103,9 +113,13 @@ export function EvalsTab({ agent }: { agent: Agent }) {
             {t("evalsTab.newEvalCase")}
           </Button>
         </div>
-        {startSuite.error ?? suiteError ? (
+        {notice ? (
           <p role="alert" style={s.error}>
-            {(startSuite.error ?? suiteError)?.message}
+            {notice.message}
+          </p>
+        ) : reconnecting ? (
+          <p role="status" style={s.notice}>
+            {t("reconnecting")}
           </p>
         ) : null}
         <div style={{ ...s.list, marginTop: 12 }}>

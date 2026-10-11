@@ -90,17 +90,23 @@ export function isCaseRunGone(error: unknown): boolean {
   return error instanceof ApiError && error.status === 404;
 }
 
-/** Consecutive failed polls after which polling stops and the error is surfaced. */
-export const CASE_RUN_MAX_FAILURES = 3;
+/** Longest wait between polls while the API keeps failing. */
+export const EVAL_POLL_MAX_MS = 10000;
 
-/** What a polled run hook returns: the un-spread query plus the two terminal-failure flags.
-    `gone`: the run no longer exists (404). `stalled`: `CASE_RUN_MAX_FAILURES` failed polls in a row. */
-export type PolledRun<T> = { query: UseQueryResult<T>; gone: boolean; stalled: boolean };
+/** Wait before the next poll after `failures` consecutive failed polls: the normal interval
+    when there are none, then doubling (3 s, 6 s) up to `EVAL_POLL_MAX_MS`. */
+export function pollIntervalMs(failures: number): number {
+  return failures <= 0 ? EVAL_POLL_MS : Math.min(EVAL_POLL_MS * 2 ** failures, EVAL_POLL_MAX_MS);
+}
 
-/** One poll loop for a run (case or suite): re-reads every `EVAL_POLL_MS` while `running`, counts
-    failures per poll (`retry: false`, so one queryFn call is one poll; a success resets the
-    count) and stops on a terminal status, a 404 or `CASE_RUN_MAX_FAILURES` failed polls. The last
-    good `data` stays when it stops. */
+/** What a polled run hook returns: the un-spread query plus two flags. `gone`: the run no longer
+    exists (404), polling is over. `reconnecting`: the last poll failed (not a 404) and polling
+    goes on with backoff; the last good `data` stays. */
+export type PolledRun<T> = { query: UseQueryResult<T>; gone: boolean; reconnecting: boolean };
+
+/** One poll loop for a run (case or suite): re-reads while `running` and stops only on a terminal
+    status or a 404. A transient failure never stops it: `retry: false` makes one queryFn call one
+    poll, consecutive failures stretch the interval (`pollIntervalMs`) and a success resets it. */
 function usePolledRun<T extends { status: string }>(
   queryKey: readonly unknown[],
   id: string | null | undefined,
@@ -126,20 +132,21 @@ function usePolledRun<T extends { status: string }>(
     refetchInterval: (q) => {
       const status = q.state.data?.status;
       if (status && status !== "running") return false;
-      if (isCaseRunGone(q.state.error) || failures.current.n >= CASE_RUN_MAX_FAILURES) return false;
-      return EVAL_POLL_MS;
+      if (isCaseRunGone(q.state.error)) return false;
+      return pollIntervalMs(failures.current.n);
     },
   });
   const gone = isCaseRunGone(query.error);
   // Subscribe to every failed poll: an error equal to the last one changes no other tracked field,
-  // and the render that crosses the stall threshold must still happen.
+  // and the render that flags `reconnecting` must still happen.
   void query.errorUpdateCount;
-  const stalled = query.isError && !gone && failures.current.n >= CASE_RUN_MAX_FAILURES;
-  return { query, gone, stalled };
+  const status = query.data?.status;
+  const over = gone || (status !== undefined && status !== "running");
+  return { query, gone, reconnecting: query.isError && !over };
 }
 
-/** Polls a case run until a terminal status, a 404 or a stall (`stalled`: the last good `data`
-    stays, `error` is set, and a retry means a new run). With `agentId`, the agent's cases and
+/** Polls a case run until a terminal status, a 404 (`gone`); transient failures are
+    ridden through with backoff (`reconnecting`). With `agentId`, the agent's cases and
     dashboard are refetched once per run id on any terminal status, even if the first fetch is
     terminal. */
 export function useCaseRun(caseRunId: string | null | undefined, agentId?: string | null) {

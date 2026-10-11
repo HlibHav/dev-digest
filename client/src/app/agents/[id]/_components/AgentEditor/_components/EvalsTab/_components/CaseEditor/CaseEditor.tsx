@@ -44,11 +44,11 @@ export function CaseEditor({
   const create = useCreateEvalCase(agentId);
   const update = useUpdateEvalCase(agentId);
   const startRun = useStartCaseRun();
-  const { query: run, gone, stalled } = useCaseRun(caseRunId, agentId);
-  // A run that is gone (404) or whose polls keep failing is over: shown as an error, not "running".
-  const runFailed = gone || stalled;
+  const { query: run, gone, reconnecting } = useCaseRun(caseRunId, agentId);
+  // A run that is gone (404) is over: shown as an error, not "running". Failing polls are not over.
+  const runFailed = gone;
 
-  const runDone = runFailed || (run.data !== undefined && run.data.status !== "running");
+  const runDone = gone || (run.data !== undefined && run.data.status !== "running");
   // Every close goes through here, so a run still going is handed to the caller.
   const closeWith = (caseId: string | null) =>
     onClose(caseRunId && caseId && !runDone ? { caseId, caseRunId } : undefined);
@@ -209,6 +209,11 @@ export function CaseEditor({
         {runFailed && run.error ? (
           <span role="alert" style={s.error}>
             {run.error.message}
+          </span>
+        ) : null}
+        {reconnecting ? (
+          <span role="status" style={s.notice}>
+            {t("reconnecting")}
           </span>
         ) : null}
         {lastView ? (

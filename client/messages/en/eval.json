@@ -145,6 +145,7 @@
     "down": "down",
     "partialCost": "partial"
   },
+  "reconnecting": "Connection problem, retrying…",
   "status": {
     "running": "Running {done}/{total}",
     "done": "done",

@@ -14,7 +14,7 @@ vi.mock("@/lib/api", async (importOriginal) => {
 });
 
 import { ApiError } from "@/lib/api";
-import { isCaseRunGone, EVAL_DASHBOARD_POLL_MS, useSuiteRun, useCaseRun, useEvalWorkspaceDashboard, useAgentEvalDashboard, useEvalCases } from "./eval";
+import { isCaseRunGone, pollIntervalMs, EVAL_POLL_MS, EVAL_POLL_MAX_MS, EVAL_DASHBOARD_POLL_MS, useSuiteRun, useCaseRun, useEvalWorkspaceDashboard, useAgentEvalDashboard, useEvalCases } from "./eval";
 
 function wrapperWith(qc: QueryClient) {
   return function Wrapper({ children }: { children: React.ReactNode }) {
@@ -186,59 +186,57 @@ describe("useCaseRun refresh and errors", () => {
     expect(isCaseRunGone(new ApiError("x", 500))).toBe(false);
   });
 
-  it("CR-23 stops polling after 3 consecutive failures and reports stalled; a success resets the count", async () => {
+  it("CR-37 a case run that keeps failing is never given up on: backoff grows, a success resets and it finishes", async () => {
     const qc = new QueryClient();
-    getMock.mockRejectedValue(new ApiError("bad gateway", 502));
-    const { result } = renderHook(
-      () => {
-        const q = useCaseRun("c1", "a1");
-        return { error: q.query.error, stalled: q.stalled };
-      },
-      { wrapper: wrapperWith(qc) },
-    );
-    await act(async () => { await vi.advanceTimersByTimeAsync(30000); });
-    expect(getMock.mock.calls.length).toBe(3);
-    expect(result.current.stalled).toBe(true);
-    expect(result.current.error).toBeInstanceOf(ApiError);
-
-    // two failures, a success, two failures: never 3 in a row, so polling goes on
-    cleanup();
-    getMock.mockReset();
     let n = 0;
     getMock.mockImplementation(async () => {
       n += 1;
-      if (n === 3) return caseRun("running");
-      if (n <= 5) throw new ApiError("boom", 500);
+      if (n === 1) return caseRun("running");
+      if (n <= 6) throw new ApiError("down", 502);
       return caseRun("passed");
     });
-    const second = renderHook(
+    const { result } = renderHook(
       () => {
-        const q = useCaseRun("c2", "a1");
-        return { status: q.query.data?.status, stalled: q.stalled };
+        const q = useCaseRun("c1", "a1");
+        return { status: q.query.data?.status, reconnecting: q.reconnecting, gone: q.gone };
       },
-      { wrapper: wrapperWith(new QueryClient()) },
+      { wrapper: wrapperWith(qc) },
     );
-    await act(async () => { await vi.advanceTimersByTimeAsync(30000); });
-    expect(second.result.current.status).toBe("passed");
-    expect(second.result.current.stalled).toBe(false);
+    await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+    expect(result.current).toEqual({ status: "running", reconnecting: false, gone: false });
+    // 5 consecutive failed polls: still polling, flagged as reconnecting
+    await act(async () => { await vi.advanceTimersByTimeAsync(EVAL_POLL_MS); });
+    expect(result.current.reconnecting).toBe(true);
+    await act(async () => { await vi.advanceTimersByTimeAsync(40000); });
+    expect(getMock.mock.calls.length).toBeGreaterThanOrEqual(7);
+    expect(result.current).toEqual({ status: "passed", reconnecting: false, gone: false });
   });
 });
 
 describe("fix4 run tracking (CR-28/29/34)", () => {
-  it("CR-29/CR-34 a suite poll that fails 3 times in a row stalls, even after running responses; no more polling", async () => {
+  it("CR-37 a suite poll that fails over and over keeps polling with backoff, reports reconnecting, then recovers", async () => {
     const qc = new QueryClient();
     getMock.mockResolvedValueOnce(suite("running")).mockRejectedValue(new ApiError("bad gateway", 502));
     const { result } = renderHook(
       () => {
         const run = useSuiteRun("s1");
-        return { error: run.query.error, stalled: run.stalled, gone: run.gone };
+        return { status: run.query.data?.status, reconnecting: run.reconnecting, gone: run.gone };
       },
       { wrapper: wrapperWith(qc) },
     );
-    await act(async () => { await vi.advanceTimersByTimeAsync(30000); });
-    expect(getMock.mock.calls.length).toBe(4); // 1 good poll + 3 failed polls
-    expect(result.current.stalled).toBe(true);
-    expect(result.current.gone).toBe(false);
+    await act(async () => { await vi.advanceTimersByTimeAsync(60000); });
+    // 1 good poll, then failures at 1.5 s, +3, +6, +10, +10, +10 ...: well past the old 3-failure stop
+    expect(getMock.mock.calls.length).toBeGreaterThanOrEqual(7);
+    expect(result.current).toEqual({ status: "running", reconnecting: true, gone: false });
+    getMock.mockResolvedValue(suite("done"));
+    await act(async () => { await vi.advanceTimersByTimeAsync(EVAL_POLL_MAX_MS + 100); });
+    expect(result.current).toEqual({ status: "done", reconnecting: false, gone: false });
+  });
+
+  it("CR-37 pollIntervalMs grows per consecutive failure up to the cap and resets on success", () => {
+    expect(pollIntervalMs(0)).toBe(EVAL_POLL_MS);
+    expect([1, 2, 3, 4, 9].map(pollIntervalMs)).toEqual([3000, 6000, EVAL_POLL_MAX_MS, EVAL_POLL_MAX_MS, EVAL_POLL_MAX_MS]);
+    expect(EVAL_POLL_MAX_MS).toBe(10000);
   });
 
   it("CR-29 two failed polls (an API restart) do not stall a suite run; it finishes", async () => {
@@ -251,12 +249,12 @@ describe("fix4 run tracking (CR-28/29/34)", () => {
     const { result } = renderHook(
       () => {
         const run = useSuiteRun("s1");
-        return { status: run.query.data?.status, stalled: run.stalled };
+        return { status: run.query.data?.status, reconnecting: run.reconnecting };
       },
       { wrapper: wrapperWith(qc) },
     );
     await act(async () => { await vi.advanceTimersByTimeAsync(30000); });
-    expect(result.current).toEqual({ status: "done", stalled: false });
+    expect(result.current).toEqual({ status: "done", reconnecting: false });
   });
 
   it("CR-29 each failed poll is one attempt: a case run fails once per poll, not three times", async () => {
@@ -265,7 +263,9 @@ describe("fix4 run tracking (CR-28/29/34)", () => {
     renderHook(() => useCaseRun("c1", "a1"), { wrapper: wrapperWith(qc) });
     await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
     expect(getMock.mock.calls.length).toBe(1); // no hidden retry inside the first poll
-    await act(async () => { await vi.advanceTimersByTimeAsync(600); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(1800); }); // backoff: next poll after 3 s, not 1.5 s
+    expect(getMock.mock.calls.length).toBe(1);
+    await act(async () => { await vi.advanceTimersByTimeAsync(400); });
     expect(getMock.mock.calls.length).toBe(2);
   });
 
@@ -275,12 +275,12 @@ describe("fix4 run tracking (CR-28/29/34)", () => {
     const { result } = renderHook(
       () => {
         const run = useSuiteRun("s1");
-        return { gone: run.gone, stalled: run.stalled };
+        return { gone: run.gone, reconnecting: run.reconnecting };
       },
       { wrapper: wrapperWith(qc) },
     );
     await act(async () => { await vi.advanceTimersByTimeAsync(30000); });
     expect(getMock.mock.calls.length).toBe(2);
-    expect(result.current).toEqual({ gone: true, stalled: false });
+    expect(result.current).toEqual({ gone: true, reconnecting: false });
   });
 });

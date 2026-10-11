@@ -12,10 +12,10 @@ export type SuiteProgress = { done: number; total: number };
 
 const of = (r: RunLike): SuiteProgress => ({ done: r.cases_done, total: r.cases_total });
 
-/** Pure decision. `suite` is the tracked id's latest poll response, `failed` says the poll is
-    over in error (a 404 or a stall, even after earlier `running` responses; a transient failure
-    is not `failed`), `history` is the agent's dashboard history. A tracked id is *settled* once
-    its poll turned terminal or failed.
+/** Pure decision. `suite` is the tracked id's latest poll response, `failed` says the suite is
+    gone (a 404, even after earlier `running` responses; a transient failure is never `failed`),
+    `history` is the agent's dashboard history. A tracked id is *settled* only once its poll turned
+    terminal or gone.
     - unsettled tracked id: it is the running suite (a started id with no response counts, 0/N,
       or the same-id running history row's progress);
     - settled or none: a running history row of another id is adopted (`adoptId`); a row for the
@@ -49,12 +49,11 @@ export function useTrackedSuite(
 ) {
   const [tracked, setTracked] = useState<{ agentId: string; id: string } | null>(null);
   const trackedId = tracked && tracked.agentId === agentId ? tracked.id : null;
-  const { query, gone, stalled } = useSuiteRun(trackedId);
-  const failed = gone || stalled;
+  const { query, gone, reconnecting } = useSuiteRun(trackedId);
   const { adoptId, progress } = decideSuite({
     trackedId,
     suite: query.data,
-    failed,
+    failed: gone,
     history,
     casesTotal,
   });
@@ -65,8 +64,10 @@ export function useTrackedSuite(
     suite: query.data,
     progress,
     running: progress !== null,
-    /** Set once the poll is over in error (404 or stall); cleared by tracking another suite. */
-    error: failed ? query.error : null,
+    /** Set once the suite is gone (404); cleared by tracking another suite. */
+    error: gone ? query.error : null,
+    /** The last poll failed but polling goes on: the suite is still tracked and unsettled. */
+    reconnecting,
     track: (id: string) => setTracked({ agentId, id }),
   };
 }

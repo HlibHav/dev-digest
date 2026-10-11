@@ -33,13 +33,13 @@ export function CaseRow({
     setSeenPending(pendingRunId);
     if (pendingRunId) setRunId(pendingRunId);
   }
-  const { query: run, gone, stalled } = useCaseRun(runId, kase.agent_id);
+  const { query: run, gone, reconnecting } = useCaseRun(runId, kase.agent_id);
 
   const polledStatus = run.data?.status;
-  // Running until a terminal status, a 404 or repeated poll failures; a transient error keeps polling.
-  const polling = runId !== null && !gone && !stalled && (polledStatus === undefined || polledStatus === "running");
+  // Running until a terminal status or a 404; a transient poll failure keeps it running (`reconnecting`).
+  const polling = runId !== null && !gone && (polledStatus === undefined || polledStatus === "running");
   const running = start.isPending || polling;
-  const error = start.error ?? (gone || stalled ? run.error : null);
+  const error = start.error ?? (gone ? run.error : null);
   const last = kase.last_result;
   const status = running ? "running" : (last?.status ?? "neverRun");
 
@@ -69,6 +69,10 @@ export function CaseRow({
         {error ? (
           <span role="alert" style={s.error}>
             {error.message}
+          </span>
+        ) : reconnecting && running ? (
+          <span role="status" style={s.notice}>
+            {t("reconnecting")}
           </span>
         ) : null}
       </div>

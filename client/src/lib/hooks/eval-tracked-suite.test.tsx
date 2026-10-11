@@ -11,6 +11,7 @@ vi.mock("@/lib/api", async (importOriginal) => {
 });
 
 import { ApiError } from "@/lib/api";
+import { EVAL_POLL_MAX_MS, EVAL_POLL_MS } from "./eval";
 import { decideSuite, useTrackedSuite } from "./eval-tracked-suite";
 
 const r = (id: string, status: "running" | "done" | "failed", cases_done = 1, cases_total = 3) => ({
@@ -50,7 +51,7 @@ describe("decideSuite", () => {
     const failedStale = decideSuite({ ...base, trackedId: "s1", failed: true, history: [r("s1", "running")] });
     expect(failedStale).toEqual({ adoptId: null, progress: null });
   });
-  it("CR-28 a failed poll (404 or stall) settles the suite even when its last data said running", () => {
+  it("CR-28 a gone suite (404) settles the suite even when its last data said running", () => {
     const d = decideSuite({ ...base, trackedId: "s1", suite: r("s1", "running", 2), failed: true, history: [] });
     expect(d).toEqual({ adoptId: null, progress: null });
   });
@@ -152,7 +153,7 @@ describe("useTrackedSuite failure states (CR-28/CR-32)", () => {
     expect(getMock.mock.calls.length).toBe(2);
   });
 
-  it("CR-32 a transient failure with no data keeps showing the history row's progress and keeps polling; a stall shows an error and recovers", async () => {
+  it("CR-32/CR-37 a transient failure with no data keeps the history row's progress, keeps polling and never settles", async () => {
     getMock.mockRejectedValue(new ApiError("bad gateway", 502));
     const history = [r("s1", "running", 2)];
     const { result } = renderHook(() => useTrackedSuite("a1", history, 3), { wrapper: fakeWrapper() });
@@ -161,20 +162,45 @@ describe("useTrackedSuite failure states (CR-28/CR-32)", () => {
     expect(getMock.mock.calls.length).toBe(1);
     expect(result.current.progress).toEqual({ done: 2, total: 3 });
     expect(result.current.error).toBeNull();
-    await tick(1500);
-    expect(getMock.mock.calls.length).toBe(2);
-    expect(result.current.running).toBe(true);
     await tick(30000);
-    expect(getMock.mock.calls.length).toBe(3);
-    expect(result.current.running).toBe(false);
-    expect(result.current.error?.message).toBe("bad gateway");
+    expect(getMock.mock.calls.length).toBeGreaterThan(3);
+    expect(result.current.running).toBe(true);
+    expect(result.current.reconnecting).toBe(true);
+    expect(result.current.error).toBeNull();
 
-    // recovery without a reload: tracking a new suite clears the error
+    // tracking a new suite resets the failure state
     getMock.mockReset();
     getMock.mockResolvedValue(detail("s2", "running", 1));
     act(() => result.current.track("s2"));
     await tick(0);
-    expect(result.current.error).toBeNull();
+    expect(result.current.reconnecting).toBe(false);
+    expect(result.current.running).toBe(true);
+  });
+
+  it("CR-37 running data then 5 failed polls then success: still tracked, reconnecting meanwhile, progress updates after", async () => {
+    let n = 0;
+    getMock.mockImplementation(async () => {
+      n += 1;
+      if (n === 1) return detail("s1", "running", 1);
+      if (n <= 6) throw new ApiError("down", 502);
+      return detail("s1", "running", 2);
+    });
+    const { result } = renderHook(() => useTrackedSuite("a1", [], 3), { wrapper: fakeWrapper() });
+    act(() => result.current.track("s1"));
+    await tick(0);
+    expect(result.current.progress).toEqual({ done: 1, total: 3 });
+    await tick(EVAL_POLL_MS + 200);
+    expect(result.current.reconnecting).toBe(true);
+    for (let i = 0; i < 30 && n < 6; i++) {
+      await tick(1000);
+      expect(result.current.running).toBe(true);
+      expect(result.current.error).toBeNull();
+      expect(result.current.progress).toEqual({ done: 1, total: 3 });
+    }
+    expect(n).toBe(6);
+    await tick(EVAL_POLL_MAX_MS + 100);
+    expect(result.current.progress).toEqual({ done: 2, total: 3 });
+    expect(result.current.reconnecting).toBe(false);
     expect(result.current.running).toBe(true);
   });
 });

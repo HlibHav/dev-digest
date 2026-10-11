@@ -28,7 +28,7 @@ export function AgentEvalDashboardView({ agentId }: { agentId: string }) {
   const [compare, setCompare] = useState<{ base: string; head: string } | null>(null);
 
   // `latest` is the latest completed run, so a suite already running on load is found in the history.
-  const { progress: running, error: suiteError, track } = useTrackedSuite(agentId, data?.history, data?.cases_total ?? 0);
+  const { progress: running, error: suiteError, reconnecting, track } = useTrackedSuite(agentId, data?.history, data?.cases_total ?? 0);
 
   const name = data?.agent.name ?? "";
   const crumb = [
@@ -76,6 +76,11 @@ export function AgentEvalDashboardView({ agentId }: { agentId: string }) {
           {running ? (
             <span style={s.running} role="status">
               {t("status.running", { done: running.done, total: running.total })}
+            </span>
+          ) : null}
+          {reconnecting ? (
+            <span style={s.notice} role="status">
+              {t("reconnecting")}
             </span>
           ) : null}
           {suiteError ? (

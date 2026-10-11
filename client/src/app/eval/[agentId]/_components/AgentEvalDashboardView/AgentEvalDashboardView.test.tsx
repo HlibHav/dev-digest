@@ -15,10 +15,10 @@ const { dashMock, suiteRunMock, startMutate, replaceMock } = vi.hoisted(() => ({
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: replaceMock, push: vi.fn() }) }));
 vi.mock("@/lib/hooks/eval", () => ({
   useAgentEvalDashboard: dashMock,
-  // the hook returns the un-spread query beside the failure flags; the mock returns the query
+  // the hook returns the un-spread query beside the gone/reconnecting flags; the mock returns the query
   useSuiteRun: (id: string | null) => {
     const run = suiteRunMock(id);
-    return { query: run, gone: false, stalled: run.stalled === true };
+    return { query: run, gone: run.gone === true, reconnecting: run.reconnecting === true };
   },
   useStartSuiteRun: () => ({ mutate: startMutate, isPending: false }),
   useEvalCompare: () => ({ data: undefined, isPending: true, error: null }),
@@ -189,17 +189,36 @@ describe("AgentEvalDashboardView", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Running 0/3");
   });
 
-  it("CR-21/CR-32 a started suite whose polls stalled stops showing Running, shows the error and Run eval is usable", () => {
+  it("CR-21/CR-32 a started suite that is gone (404) stops showing Running, shows the error and Run eval is usable", () => {
     dashMock.mockReturnValue({ data: dash(), isLoading: false, isError: false });
     startMutate.mockImplementation((_id: string, opts: { onSuccess: (r: { suite_run_id: string }) => void }) =>
       opts.onSuccess({ suite_run_id: "s3" }),
     );
-    suiteRunMock.mockReturnValue({ data: undefined, isError: true, stalled: true, error: new Error("bad gateway") });
+    suiteRunMock.mockReturnValue({ data: undefined, isError: true, gone: true, error: new Error("bad gateway") });
     render(view());
     fireEvent.click(screen.getByRole("button", { name: "Run eval" }));
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
     expect(screen.getByRole("alert")).toHaveTextContent("bad gateway");
     expect(screen.getByRole("button", { name: "Run eval" })).toBeEnabled();
+  });
+
+  it("CR-37 a suite whose polls are failing keeps Running k/N and a disabled Run eval, with a non-blocking notice", () => {
+    dashMock.mockReturnValue({ data: dash(), isLoading: false, isError: false });
+    startMutate.mockImplementation((_id: string, opts: { onSuccess: (r: { suite_run_id: string }) => void }) =>
+      opts.onSuccess({ suite_run_id: "s3" }),
+    );
+    suiteRunMock.mockReturnValue({
+      data: { id: "s3", agent_id: "a1", status: "running", cases_done: 2, cases_total: 3 },
+      isError: true,
+      reconnecting: true,
+      error: new Error("bad gateway"),
+    });
+    render(view());
+    fireEvent.click(screen.getByRole("button", { name: "Run eval" }));
+    expect(screen.getByText("Running 2/3")).toBeInTheDocument();
+    expect(screen.getByText("Connection problem, retrying…")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Run eval" })).toBeDisabled();
   });
 
   it("CR-24 a stale history row for the suite that just finished does not bring Running back", () => {

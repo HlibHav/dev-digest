@@ -25,4 +25,5 @@ export const s = {
   list: { display: "flex", flexDirection: "column", gap: 10 } satisfies CSSProperties,
   muted: { color: "var(--text-muted)", fontSize: 13 } satisfies CSSProperties,
   error: { color: "var(--crit)", fontSize: 13 } satisfies CSSProperties,
+  notice: { color: "var(--warn)", fontSize: 13 } satisfies CSSProperties,
 } as const;

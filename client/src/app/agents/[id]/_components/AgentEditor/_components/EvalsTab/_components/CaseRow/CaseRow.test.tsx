@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
-import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
+import { act, render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { EvalCaseView } from "@devdigest/shared";
@@ -90,18 +90,40 @@ describe("CaseRow", () => {
     await waitFor(() => expect(post).toHaveBeenCalledTimes(2));
   });
 
-  it("CR-23 after 3 consecutive poll failures the error is shown and Play starts a new run", async () => {
-    post.mockResolvedValue({ case_run_id: "cr1", status: "running" });
-    get.mockRejectedValue(new ApiError("Bad gateway", 502));
-    renderRow(KASE);
-    fireEvent.click(screen.getByRole("button", { name: "Run case" }));
-    // the hook retries twice (1s, 2s) before the third failure ends polling
-    expect(await screen.findByRole("alert", undefined, { timeout: 6000 })).toHaveTextContent("Bad gateway");
-    expect(get).toHaveBeenCalledTimes(3);
-    expect(screen.queryByText("Running…")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Run case" }));
-    await waitFor(() => expect(post).toHaveBeenCalledTimes(2));
-  }, 10000);
+  it("CR-37 a case run whose polls fail five times in a row stays running with a notice, then finishes after recovery", async () => {
+    vi.useFakeTimers();
+    try {
+      post.mockResolvedValue({ case_run_id: "cr1", status: "running" });
+      let n = 0;
+      get.mockImplementation(async () => {
+        n += 1;
+        if (n === 1) return { id: "cr1", status: "running" };
+        if (n <= 6) throw new ApiError("Bad gateway", 502);
+        return { id: "cr1", status: "passed" };
+      });
+      renderRow(KASE);
+      fireEvent.click(screen.getByRole("button", { name: "Run case" }));
+      const tick = (ms: number) => act(async () => { await vi.advanceTimersByTimeAsync(ms); });
+      await tick(100);
+      expect(screen.queryByText("Connection problem, retrying…")).not.toBeInTheDocument();
+      await tick(1600);
+      expect(screen.getByText("Connection problem, retrying…")).toBeInTheDocument();
+      for (let i = 0; i < 40 && n < 6; i++) {
+        await tick(1000);
+        expect(screen.getByText("Running…")).toBeInTheDocument();
+        expect(screen.getByText("Connection problem, retrying…")).toBeInTheDocument();
+        expect(screen.queryByText("Bad gateway")).not.toBeInTheDocument();
+      }
+      expect(n).toBe(6);
+      fireEvent.click(screen.getByRole("button", { name: "Run case" })); // still running: ignored
+      expect(post).toHaveBeenCalledTimes(1);
+      await tick(11000);
+      expect(screen.queryByText("Connection problem, retrying…")).not.toBeInTheDocument();
+      expect(screen.queryByText("Running…")).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 
   it("CR-8 a newer run handed up by the editor is followed even after an older own run finished", async () => {
     post.mockResolvedValue({ case_run_id: "cr1", status: "running" });

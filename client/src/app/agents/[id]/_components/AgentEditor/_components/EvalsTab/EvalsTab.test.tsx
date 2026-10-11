@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
-import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
+import { act, render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Agent, EvalCaseView, EvalSuiteRunSummary } from "@devdigest/shared";
@@ -315,5 +315,64 @@ describe("EvalsTab", () => {
     await waitFor(() => expect(get).toHaveBeenCalledWith("/eval-suite-runs/s1"));
     await waitFor(() => expect(screen.queryByRole("status")).not.toBeInTheDocument());
     expect(screen.getByRole("button", { name: "Run all evals" })).toBeEnabled();
+  });
+
+  it("CR-37 a resumed suite whose polls fail five times in a row stays tracked: notice shown, Run all disabled, progress updates after recovery", async () => {
+    vi.useFakeTimers();
+    try {
+      let n = 0;
+      mockApi({
+        cases: [kase("c1", "one", null)],
+        dash: () => ({ ...dashboard(null, 3), history: [run({ status: "running", cases_done: 1 })] }),
+        suite: () => {
+          n += 1;
+          if (n === 1) return { ...run({ status: "running", cases_done: 1 }), agent_id: "a1" };
+          if (n <= 6) throw new ApiError("Bad gateway", 502);
+          return { ...run({ status: "running", cases_done: 2 }), agent_id: "a1" };
+        },
+      });
+      renderTab();
+      const tick = (ms: number) => act(async () => { await vi.advanceTimersByTimeAsync(ms); });
+      await tick(100);
+      expect(screen.getByRole("status")).toHaveTextContent("Running 1/3");
+      await tick(1700);
+      for (let i = 0; i < 40 && n < 6; i++) {
+        await tick(1000);
+        expect(screen.getByText("Connection problem, retrying…")).toBeInTheDocument();
+        expect(screen.getAllByText("Running 1/3").length).toBeGreaterThan(0);
+        expect(screen.getByRole("button", { name: "Run all evals" })).toBeDisabled();
+        expect(screen.queryByText("Bad gateway")).not.toBeInTheDocument();
+      }
+      expect(n).toBe(6);
+      await tick(11000);
+      expect(screen.queryByText("Connection problem, retrying…")).not.toBeInTheDocument();
+      expect(screen.getAllByText("Running 2/3").length).toBeGreaterThan(0);
+      expect(screen.getByRole("button", { name: "Run all evals" })).toBeDisabled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("CR-39 the poll notice of the tracked suite wins over an older 409 start error", async () => {
+    let history: EvalSuiteRunSummary[] = [];
+    mockApi({
+      cases: [kase("c1", "one", null)],
+      dash: () => ({ ...dashboard(null, 3), history }),
+      suite: () => {
+        throw new ApiError("Bad gateway", 502);
+      },
+    });
+    post.mockRejectedValueOnce(new ApiError("A suite is already running", 409));
+    const qc = renderTab();
+    const btn = await screen.findByRole("button", { name: "Run all evals" });
+    await waitFor(() => expect(btn).toBeEnabled());
+    fireEvent.click(btn);
+    expect(await screen.findByRole("alert")).toHaveTextContent("A suite is already running");
+    // the suite that blocked the start is found in the history and tracked; its poll fails
+    history = [run({ status: "running", cases_done: 1 })];
+    await act(async () => { await qc.invalidateQueries({ queryKey: ["eval-dashboard", "a1"] }); });
+    expect(await screen.findByText("Connection problem, retrying…")).toBeInTheDocument();
+    expect(screen.queryByText("A suite is already running")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Run all evals" })).toBeDisabled();
   });
 });

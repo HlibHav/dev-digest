@@ -22,6 +22,7 @@ export const s = {
   ok: { fontSize: 12, color: "var(--ok)" } satisfies CSSProperties,
   error: { fontSize: 12, color: "var(--crit)" } satisfies CSSProperties,
   warn: { fontSize: 12, color: "var(--warn)" } satisfies CSSProperties,
+  notice: { fontSize: 12, color: "var(--warn)" } satisfies CSSProperties,
   hint: { fontSize: 12, color: "var(--text-muted)" } satisfies CSSProperties,
   lastRun: {
     display: "flex",
