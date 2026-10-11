@@ -331,13 +331,14 @@ export class EvalService {
     const p = this.ports;
     const agents = await p.listAgents(workspaceId);
     const counts = await p.store.countCasesByAgent(workspaceId);
+    const running = await p.store.agentsWithRunningSuite(workspaceId);
     const out: EvalRunAllResult = { started: [], skipped: [] };
     for (const agent of agents) {
       const count = counts.get(agent.id) ?? 0;
       if (!agent.enabled) out.skipped.push({ agent_id: agent.id, reason: 'disabled' });
       else if (count === 0) out.skipped.push({ agent_id: agent.id, reason: 'no cases' });
       else if (count > MAX_CASES_PER_SUITE) out.skipped.push({ agent_id: agent.id, reason: 'too many cases' });
-      else if (await p.store.hasRunningSuite(agent.id)) {
+      else if (running.has(agent.id)) {
         out.skipped.push({ agent_id: agent.id, reason: 'already running' });
       } else {
         try {
@@ -594,6 +595,10 @@ export class EvalService {
             scored.push({ case_id: evalCase.id, case_name: evalCase.name, status: 'errored' });
             costs.push(null);
             errored += 1;
+            done += 1;
+            await p.store
+              .updateSuiteProgress(run.id, done)
+              .catch((e: unknown) => this.logError(e, 'eval: could not record progress', { suiteRunId: run.id }));
             throw err;
           }
           scored.push({ case_id: evalCase.id, case_name: evalCase.name, status: outcome.status });

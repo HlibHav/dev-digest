@@ -184,4 +184,21 @@ describe("CaseEditor", () => {
     const casesCalls = () => spy.mock.calls.filter((c) => JSON.stringify(c[0]?.queryKey) === '["eval-cases","a1"]').length;
     await waitFor(() => expect(casesCalls()).toBeGreaterThanOrEqual(2)); // one after save, one after the run ends
   });
+
+  it("CR-8 saving with Run on save switched off still hands a run that is still going to the caller", async () => {
+    post.mockImplementation(async (path: string) =>
+      path === "/agents/a1/eval-cases" ? { id: "c1" } : { case_run_id: "cr1", status: "running" },
+    );
+    put.mockResolvedValue({ id: "c1" });
+    get.mockResolvedValue({ id: "cr1", status: "running" });
+    const onClose = renderEditor();
+    type("Name", "leak");
+    type("Diff", DIFF);
+    fireEvent.click(screen.getByRole("switch"));
+    fireEvent.click(saveButton());
+    await waitFor(() => expect(get).toHaveBeenCalledWith("/eval-case-runs/cr1"));
+    fireEvent.click(screen.getByRole("switch"));
+    fireEvent.click(saveButton());
+    await waitFor(() => expect(onClose).toHaveBeenCalledWith({ caseId: "c1", caseRunId: "cr1" }));
+  });
 });

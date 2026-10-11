@@ -64,13 +64,12 @@ export class SuiteRunRepo {
     }
   }
 
-  async hasRunning(agentId: string): Promise<boolean> {
+  async agentsWithRunning(workspaceId: string): Promise<Set<string>> {
     const rows = await this.db
-      .select({ id: t.evalSuiteRuns.id })
+      .selectDistinct({ agentId: t.evalSuiteRuns.agentId })
       .from(t.evalSuiteRuns)
-      .where(and(eq(t.evalSuiteRuns.agentId, agentId), eq(t.evalSuiteRuns.status, 'running')))
-      .limit(1);
-    return rows.length > 0;
+      .where(and(eq(t.evalSuiteRuns.workspaceId, workspaceId), eq(t.evalSuiteRuns.status, 'running')));
+    return new Set(rows.map((r) => r.agentId));
   }
 
   async get(workspaceId: string, id: string): Promise<SuiteRunRecord | undefined> {

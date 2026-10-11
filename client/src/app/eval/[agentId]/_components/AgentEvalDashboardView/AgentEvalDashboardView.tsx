@@ -2,7 +2,7 @@
    banner, trend, run history, compare and a Run eval action polled while it runs. */
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button, ErrorState, Skeleton } from "@devdigest/ui";
@@ -13,10 +13,10 @@ import { RunHistoryTable } from "@/components/eval/RunHistoryTable";
 import { TrendChart } from "@/components/eval/TrendChart";
 import { executedCount, formatCost } from "@/components/eval/helpers";
 import { useAgents } from "@/lib/hooks/agents";
-import { useAgentEvalDashboard, useStartSuiteRun, useSuiteRun } from "@/lib/hooks/eval";
+import { useAgentEvalDashboard, useStartSuiteRun } from "@/lib/hooks/eval";
+import { useTrackedSuite } from "@/lib/hooks/eval-tracked-suite";
 import { AgentSwitcher } from "./_components/AgentSwitcher";
 import { RegressionBanner } from "./_components/RegressionBanner";
-import { runningProgress } from "./helpers";
 import { s } from "./styles";
 
 export function AgentEvalDashboardView({ agentId }: { agentId: string }) {
@@ -25,23 +25,10 @@ export function AgentEvalDashboardView({ agentId }: { agentId: string }) {
   const { data, isLoading, isError } = useAgentEvalDashboard(agentId);
   const { data: agents } = useAgents();
   const start = useStartSuiteRun();
-  const [tracked, setTracked] = useState<{ agentId: string; runId: string } | null>(null);
   const [compare, setCompare] = useState<{ base: string; head: string } | null>(null);
 
-  // `latest` is the latest completed run, so a suite already running on load is found in
-  // the history. The tracked id is sticky: it is kept until its own status turns terminal.
-  const resumed = data?.history.find((r) => r.status === "running") ?? null;
-  const trackedId = tracked?.agentId === agentId ? tracked.runId : null;
-  const { data: suite } = useSuiteRun(trackedId ?? resumed?.id ?? null);
-  const mine = suite && suite.id === trackedId ? suite : undefined;
-  const running = runningProgress({ trackedId, suite, resumed, casesTotal: data?.cases_total ?? 0 });
-
-  useEffect(() => {
-    if (trackedId && mine && mine.status !== "running") setTracked(null);
-    else if (!trackedId && resumed && !(suite && suite.id === resumed.id && suite.status !== "running")) {
-      setTracked({ agentId, runId: resumed.id });
-    }
-  }, [trackedId, mine, resumed, suite, agentId]);
+  // `latest` is the latest completed run, so a suite already running on load is found in the history.
+  const { progress: running, track } = useTrackedSuite(agentId, data?.history, data?.cases_total ?? 0);
 
   const name = data?.agent.name ?? "";
   const crumb = [
@@ -51,7 +38,7 @@ export function AgentEvalDashboardView({ agentId }: { agentId: string }) {
   ];
 
   const onRun = () =>
-    start.mutate(agentId, { onSuccess: (r) => setTracked({ agentId, runId: r.suite_run_id }) });
+    start.mutate(agentId, { onSuccess: (r) => track(r.suite_run_id) });
 
   if (isError) {
     return (

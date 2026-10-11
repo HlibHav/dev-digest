@@ -26,16 +26,21 @@ export function CaseRow({
 }) {
   const t = useTranslations("eval");
   const start = useStartCaseRun();
-  const [ownRunId, setOwnRunId] = React.useState<string | null>(null);
-  const runId = ownRunId ?? pendingRunId ?? null;
+  // The run to follow is the most recent one: started here, or handed up by the editor.
+  const [runId, setRunId] = React.useState<string | null>(pendingRunId ?? null);
+  const [seenPending, setSeenPending] = React.useState(pendingRunId);
+  if (pendingRunId !== seenPending) {
+    setSeenPending(pendingRunId);
+    if (pendingRunId) setRunId(pendingRunId);
+  }
   const run = useCaseRun(runId, kase.agent_id);
 
   const polledStatus = run.data?.status;
   const gone = isCaseRunGone(run.error);
-  // Running until a terminal status or a 404; a transient poll error keeps polling.
-  const polling = runId !== null && !gone && (polledStatus === undefined || polledStatus === "running");
+  // Running until a terminal status, a 404 or repeated poll failures; a transient error keeps polling.
+  const polling = runId !== null && !gone && !run.stalled && (polledStatus === undefined || polledStatus === "running");
   const running = start.isPending || polling;
-  const error = start.error ?? (gone ? run.error : null);
+  const error = start.error ?? (gone || run.stalled ? run.error : null);
   const last = kase.last_result;
   const status = running ? "running" : (last?.status ?? "neverRun");
 
@@ -77,8 +82,8 @@ export function CaseRow({
           label={t("evalsTab.runCase")}
           onClick={() => {
             if (running) return;
-            setOwnRunId(null);
-            start.mutate(kase.id, { onSuccess: (a) => setOwnRunId(a.case_run_id) });
+            setRunId(null);
+            start.mutate(kase.id, { onSuccess: (a) => setRunId(a.case_run_id) });
           }}
         />
         <IconBtn icon="Edit" label={t("evalsTab.edit")} onClick={onEdit} />

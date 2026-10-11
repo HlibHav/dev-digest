@@ -116,8 +116,10 @@ class FakeStore implements EvalStore {
     return run;
   }
   listCasesCalls = 0;
-  async hasRunningSuite(agentId: string) {
-    return this.suites.some((s) => s.agentId === agentId && s.status === 'running');
+  runningAgentQueries = 0;
+  async agentsWithRunningSuite(ws: string) {
+    this.runningAgentQueries += 1;
+    return new Set(this.suites.filter((s) => s.workspaceId === ws && s.status === 'running').map((s) => s.agentId));
   }
   async getSuite(ws: string, id: string) {
     return this.suites.find((s) => s.workspaceId === ws && s.id === id);
@@ -410,12 +412,12 @@ describe('EvalService cases', () => {
     expect(EvalCaseView.safeParse(b.body.case).success).toBe(true);
   });
 
-  it('a case made from a 0..0 finding passes against a 0..0 finding', async () => {
+  it('a case made from a 0..0 finding passes against a full-file-kind finding', async () => {
     const h = harness();
     h.state.finding = ctx({ start_line: 0, end_line: 0 });
     await h.svc.createFromFinding(WS, 'f-1');
     h.state.runCase = async () => ({
-      grounded: [finding('g', 'src/a.ts', 0)],
+      grounded: [{ ...finding('g', 'src/a.ts', 0), kind: 'secret_leak' }],
       dropped: [],
       costUsd: null,
       durationMs: 1,
@@ -544,6 +546,9 @@ describe('EvalService runs', () => {
     const suite = h.store.suites[0]!;
     expect(suite.status).toBe('failed');
     expect(suite.error).toBe(MSG.suiteFailed);
+    // case 1 finished, case 2 crashed: both are done, one of them errored
+    expect(suite.casesDone).toBe(2);
+    expect(suite.casesErrored).toBe(1);
   });
 
   it('a case run left running by a throwing finishCaseRun is closed as errored', async () => {
@@ -619,6 +624,7 @@ describe('EvalService runs', () => {
     expect(res.started.map((s) => s.agent_id)).toEqual(['ok']);
     // cases are read for 'ok' only: the busy agent is skipped before listCases
     expect(h.store.listCasesCalls).toBe(1);
+    expect(h.store.runningAgentQueries).toBe(1);
     expect(res.skipped).toEqual([
       { agent_id: 'off', reason: 'disabled' },
       { agent_id: 'empty', reason: 'no cases' },

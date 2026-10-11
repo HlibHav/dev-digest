@@ -185,6 +185,62 @@ describe("AgentEvalDashboardView", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Running 0/3");
   });
 
+  it("CR-21 a started suite whose fetch fails stops showing Running", () => {
+    dashMock.mockReturnValue({ data: dash(), isLoading: false, isError: false });
+    startMutate.mockImplementation((_id: string, opts: { onSuccess: (r: { suite_run_id: string }) => void }) =>
+      opts.onSuccess({ suite_run_id: "s3" }),
+    );
+    suiteRunMock.mockReturnValue({ data: undefined, isError: true });
+    render(view());
+    fireEvent.click(screen.getByRole("button", { name: "Run eval" }));
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Run eval" })).toBeEnabled();
+  });
+
+  it("CR-24 a stale history row for the suite that just finished does not bring Running back", () => {
+    dashMock.mockReturnValue({ data: dash(), isLoading: false, isError: false });
+    startMutate.mockImplementation((_id: string, opts: { onSuccess: (r: { suite_run_id: string }) => void }) =>
+      opts.onSuccess({ suite_run_id: "s3" }),
+    );
+    suiteRunMock.mockImplementation((id: string | null) =>
+      id === "s3"
+        ? { data: { id: "s3", agent_id: "a1", status: "done", cases_done: 3, cases_total: 3 } as EvalSuiteRunDetail }
+        : { data: undefined },
+    );
+    const { rerender } = render(view());
+    fireEvent.click(screen.getByRole("button", { name: "Run eval" }));
+    dashMock.mockReturnValue({
+      data: dash({ history: [run(3, { status: "running", cases_done: 3, recall: null }), run(2)] }),
+      isLoading: false,
+      isError: false,
+    });
+    rerender(view());
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+
+  it("CR-25 switching agents while mounted does not show the other agent's running suite", () => {
+    dashMock.mockReturnValue({ data: dash(), isLoading: false, isError: false });
+    startMutate.mockImplementation((_id: string, opts: { onSuccess: (r: { suite_run_id: string }) => void }) =>
+      opts.onSuccess({ suite_run_id: "s3" }),
+    );
+    suiteRunMock.mockImplementation((id: string | null) =>
+      id === "s3"
+        ? { data: { id: "s3", agent_id: "a1", status: "running", cases_done: 1, cases_total: 3 } as EvalSuiteRunDetail }
+        : { data: undefined },
+    );
+    const { rerender } = render(view("a1"));
+    fireEvent.click(screen.getByRole("button", { name: "Run eval" }));
+    expect(screen.getByRole("status")).toHaveTextContent("Running 1/3");
+    dashMock.mockReturnValue({
+      data: dash({ agent: { id: "a2", name: "Style", model: "m" } }),
+      isLoading: false,
+      isError: false,
+    });
+    rerender(view("a2"));
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Run eval" })).toBeEnabled();
+  });
+
   it("the switcher calls router.replace('/eval/<other>') and cards change", () => {
     dashMock.mockImplementation((id: string) =>
       id === "a2"

@@ -298,4 +298,22 @@ describe("EvalsTab", () => {
     await waitFor(() => expect(casesCalls()).toBeGreaterThan(before), { timeout: 5000 });
     expect(polls).toBeGreaterThanOrEqual(2);
   });
+
+  it("CR-21 a started suite whose fetch fails (404) stops showing Running and re-enables Run all", async () => {
+    mockApi({
+      cases: [kase("c1", "one", null)],
+      dash: () => dashboard(null, 1),
+      suite: () => {
+        throw new ApiError("gone", 404);
+      },
+    });
+    post.mockResolvedValue({ suite_run_id: "s1" });
+    renderTab();
+    const btn = await screen.findByRole("button", { name: "Run all evals" });
+    await waitFor(() => expect(btn).toBeEnabled());
+    fireEvent.click(btn);
+    await waitFor(() => expect(get).toHaveBeenCalledWith("/eval-suite-runs/s1"));
+    await waitFor(() => expect(screen.queryByRole("status")).not.toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Run all evals" })).toBeEnabled();
+  });
 });

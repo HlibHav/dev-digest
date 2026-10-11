@@ -47,7 +47,10 @@ export function CaseEditor({
   const run = useCaseRun(caseRunId, agentId);
 
   const runDone = run.data !== undefined && run.data.status !== "running";
-  const close = () => onClose(caseRunId && savedId && !runDone ? { caseId: savedId, caseRunId } : undefined);
+  // Every close goes through here, so a run still going is handed to the caller.
+  const closeWith = (caseId: string | null) =>
+    onClose(caseRunId && caseId && !runDone ? { caseId, caseRunId } : undefined);
+  const close = () => closeWith(savedId);
 
   const check = validateExpectedOutput(expectedText);
   const warnings = check.ok ? unmatchableExpectations(diff, check.value) : [];
@@ -69,7 +72,7 @@ export function CaseEditor({
     try {
       const saved = savedId ? await update.mutateAsync({ id: savedId, body: payload }) : await create.mutateAsync(payload);
       setSavedId(saved.id);
-      if (!runOnSave) return onClose();
+      if (!runOnSave) return closeWith(saved.id);
       const accepted = await startRun.mutateAsync(saved.id);
       setCaseRunId(accepted.case_run_id);
     } catch (e) {

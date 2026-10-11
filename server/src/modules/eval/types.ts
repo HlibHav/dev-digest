@@ -138,7 +138,8 @@ export interface EvalStore {
   deleteCase(workspaceId: string, caseId: string): Promise<boolean>;
   lastResults(caseIds: string[]): Promise<Map<string, CaseRunRecord>>;
   insertSuite(input: NewSuiteRun): Promise<SuiteRunRecord | 'already_running'>;
-  hasRunningSuite(agentId: string): Promise<boolean>;
+  /** Ids of the workspace's agents that have a suite run in flight. */
+  agentsWithRunningSuite(workspaceId: string): Promise<Set<string>>;
   getSuite(workspaceId: string, id: string): Promise<SuiteRunRecord | undefined>;
   listSuites(workspaceId: string, agentId: string): Promise<SuiteRunRecord[]>;
   recentSuites(workspaceId: string, limit: number): Promise<(SuiteRunRecord & { agentName: string })[]>;

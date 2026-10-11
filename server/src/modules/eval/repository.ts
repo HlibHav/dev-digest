@@ -50,8 +50,8 @@ export class EvalRepository implements EvalStore {
   insertSuite(input: NewSuiteRun): Promise<SuiteRunRecord | 'already_running'> {
     return this.suites.insert(input);
   }
-  hasRunningSuite(agentId: string): Promise<boolean> {
-    return this.suites.hasRunning(agentId);
+  agentsWithRunningSuite(workspaceId: string): Promise<Set<string>> {
+    return this.suites.agentsWithRunning(workspaceId);
   }
   getSuite(workspaceId: string, id: string): Promise<SuiteRunRecord | undefined> {
     return this.suites.get(workspaceId, id);

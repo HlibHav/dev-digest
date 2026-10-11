@@ -3,7 +3,18 @@ import type { EvalExpectation, EvalMetricName } from '@devdigest/shared';
 /** A drop of this many whole points (or more) between two runs is a regression. */
 export const REGRESSION_POINTS = 2;
 
-export type Range = { file: string; start_line: number; end_line: number };
+export type Range = { file: string; start_line: number; end_line: number; kind?: string | null };
+
+/**
+ * Finding kinds that cite a whole file rather than a line range. Mirrors FULL_FILE_KINDS in
+ * reviewer-core/src/grounding.ts (scoring stays pure, so it keeps its own copy).
+ */
+export const FULL_FILE_KINDS: ReadonlySet<string> = new Set(['secret_leak', 'lethal_trifecta', 'phantom', 'hook']);
+
+/** Grounding keeps a 0..0 range only for these kinds, so `kind` decides, not the line numbers. */
+export function isWholeFileFinding(f: Range): boolean {
+  return !!f.kind && FULL_FILE_KINDS.has(f.kind);
+}
 
 export interface CaseScore {
   matchedMustFind: number;
@@ -26,12 +37,12 @@ type MetricTriple = Pick<SuiteMetrics, 'recall' | 'precision' | 'citation_accura
 
 /**
  * Same file and intersecting inclusive line ranges; a reversed range is normalised.
- * A finding with start_line 0 covers the whole file (grounding treats it so), so it
- * intersects any expectation on that file.
+ * A whole-file finding (see isWholeFileFinding) matches any expectation on that file; any
+ * other finding needs its lines to intersect.
  */
 export function findingMatches(f: Range, e: EvalExpectation): boolean {
   if (f.file !== e.file) return false;
-  if (f.start_line === 0) return true;
+  if (isWholeFileFinding(f)) return true;
   const fLo = Math.min(f.start_line, f.end_line);
   const fHi = Math.max(f.start_line, f.end_line);
   const eLo = Math.min(e.start_line, e.end_line);
@@ -51,16 +62,23 @@ export function scoreCase(
   let matchedFindings = 0;
   let noiseFindings = 0;
 
-  for (const f of grounded) {
+  // Line-range findings first, so a whole-file finding only takes an expectation they left open.
+  const ordered = [...grounded.filter((f) => !isWholeFileFinding(f)), ...grounded.filter(isWholeFileFinding)];
+  for (const f of ordered) {
     const isNoise = expectClean || mustNot.some((e) => findingMatches(f, e));
     if (isNoise) {
       noiseFindings += 1;
       continue;
     }
-    const hits = mustFind.filter((e) => findingMatches(f, e));
-    if (hits.length > 0) {
-      matchedFindings += 1;
-      for (const e of hits) matchedExpectations.add(e);
+    const onFile = mustFind.filter((e) => findingMatches(f, e));
+    if (onFile.length === 0) continue;
+    matchedFindings += 1;
+    if (isWholeFileFinding(f)) {
+      // A vague whole-file finding satisfies at most one expectation: the first still open.
+      const open = onFile.find((e) => !matchedExpectations.has(e));
+      if (open) matchedExpectations.add(open);
+    } else {
+      for (const e of onFile) matchedExpectations.add(e);
     }
   }
 

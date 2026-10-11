@@ -164,8 +164,8 @@ describe("useCaseRun refresh and errors", () => {
     let n = 0;
     getMock.mockImplementation(async () => {
       n += 1;
-      if (n <= 3) throw new ApiError("boom", 500);
-      if (n === 4) return caseRun("running");
+      if (n <= 2) throw new ApiError("boom", 500);
+      if (n === 3) return caseRun("running");
       throw new ApiError("gone", 404);
     });
     // read `error` during render: react-query only re-renders for fields the render touched
@@ -179,10 +179,47 @@ describe("useCaseRun refresh and errors", () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(30000); });
     const calls = getMock.mock.calls.length;
     await act(async () => { await vi.advanceTimersByTimeAsync(10); });
-    expect(calls).toBeGreaterThanOrEqual(5);
+    expect(calls).toBeGreaterThanOrEqual(4);
     expect(isCaseRunGone(result.current.error)).toBe(true);
     await act(async () => { await vi.advanceTimersByTimeAsync(30000); });
     expect(getMock.mock.calls.length).toBe(calls);
     expect(isCaseRunGone(new ApiError("x", 500))).toBe(false);
+  });
+
+  it("CR-23 stops polling after 3 consecutive failures and reports stalled; a success resets the count", async () => {
+    const qc = new QueryClient();
+    getMock.mockRejectedValue(new ApiError("bad gateway", 502));
+    const { result } = renderHook(
+      () => {
+        const q = useCaseRun("c1", "a1");
+        return { error: q.error, stalled: q.stalled };
+      },
+      { wrapper: wrapperWith(qc) },
+    );
+    await act(async () => { await vi.advanceTimersByTimeAsync(30000); });
+    expect(getMock.mock.calls.length).toBe(3);
+    expect(result.current.stalled).toBe(true);
+    expect(result.current.error).toBeInstanceOf(ApiError);
+
+    // two failures, a success, two failures: never 3 in a row, so polling goes on
+    cleanup();
+    getMock.mockReset();
+    let n = 0;
+    getMock.mockImplementation(async () => {
+      n += 1;
+      if (n === 3) return caseRun("running");
+      if (n <= 5) throw new ApiError("boom", 500);
+      return caseRun("passed");
+    });
+    const second = renderHook(
+      () => {
+        const q = useCaseRun("c2", "a1");
+        return { status: q.data?.status, stalled: q.stalled };
+      },
+      { wrapper: wrapperWith(new QueryClient()) },
+    );
+    await act(async () => { await vi.advanceTimersByTimeAsync(30000); });
+    expect(second.result.current.status).toBe("passed");
+    expect(second.result.current.stalled).toBe(false);
   });
 });

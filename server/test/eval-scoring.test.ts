@@ -17,16 +17,42 @@ const g = (file: string, s: number, e = s): Range => ({ file, start_line: s, end
 describe('findingMatches full-file findings', () => {
   const must: EvalExpectation = { type: 'must_find', file: 'a.ts', start_line: 1, end_line: 1 };
   const not: EvalExpectation = { type: 'must_not_flag', file: 'a.ts', start_line: 40, end_line: 50 };
-  const g = (file: string, s: number, e: number): Range => ({ file, start_line: s, end_line: e });
+  const whole = (file: string, s: number, e: number): Range => ({ file, start_line: s, end_line: e, kind: 'secret_leak' });
 
-  it('a 0..0 finding matches a 1..1 expectation on the same file', () => {
-    expect(findingMatches(g('a.ts', 0, 0), must)).toBe(true);
+  it('a full-file-kind finding matches an expectation on its file whatever its lines (0..0 and 5..5)', () => {
+    expect(findingMatches(whole('a.ts', 0, 0), must)).toBe(true);
+    expect(findingMatches(whole('a.ts', 5, 5), must)).toBe(true);
   });
-  it('a 0..0 finding hits a must_not_flag on the same file', () => {
-    expect(scoreCase([not], [g('a.ts', 0, 0)], 0).noiseFindings).toBe(1);
+  it('a full-file-kind finding hits a must_not_flag on the same file', () => {
+    expect(scoreCase([not], [whole('a.ts', 0, 0)], 0).noiseFindings).toBe(1);
   });
-  it('a 0..0 finding does not match another file', () => {
-    expect(findingMatches(g('b.ts', 0, 0), must)).toBe(false);
+  it('a full-file-kind finding does not match another file', () => {
+    expect(findingMatches(whole('b.ts', 0, 0), must)).toBe(false);
+  });
+  it('a non-full-file finding spanning 0..12 gets no whole-file credit for line 400', () => {
+    expect(findingMatches({ ...g('a.ts', 0, 12), kind: 'finding' }, { type: 'must_find', file: 'a.ts', start_line: 400, end_line: 400 })).toBe(false);
+    expect(findingMatches(g('a.ts', 0, 12), { type: 'must_find', file: 'a.ts', start_line: 400, end_line: 400 })).toBe(false);
+  });
+});
+
+describe('scoreCase whole-file findings', () => {
+  const whole = (file: string): Range => ({ file, start_line: 0, end_line: 0, kind: 'secret_leak' });
+
+  it('one whole-file finding satisfies at most one of three must_find on its file (recall 1/3)', () => {
+    const s = scoreCase([must('a.ts', 10), must('a.ts', 20), must('a.ts', 30)], [whole('a.ts')], 0);
+    expect(s.matchedMustFind).toBe(1);
+    expect(s.mustFindTotal).toBe(3);
+    expect(s.passed).toBe(false);
+  });
+  it('a whole-file finding leaves expectations a line-range finding already took', () => {
+    const s = scoreCase([must('a.ts', 10), must('a.ts', 20)], [whole('a.ts'), g('a.ts', 10)], 0);
+    expect(s.matchedMustFind).toBe(2);
+    expect(s.passed).toBe(true);
+  });
+  it('a whole-file finding is still noise against a must_not_flag on its file', () => {
+    const s = scoreCase([must('a.ts', 10), not('a.ts', 99)], [whole('a.ts')], 0);
+    expect(s.noiseFindings).toBe(1);
+    expect(s.matchedMustFind).toBe(0);
   });
 });
 

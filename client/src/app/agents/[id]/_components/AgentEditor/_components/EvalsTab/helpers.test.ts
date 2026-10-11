@@ -7,7 +7,6 @@ import {
   hunkRangesByFile,
   maskSecrets,
   passingCount,
-  runningProgress,
   unmatchableExpectations,
   validateExpectedOutput,
 } from "./helpers";
@@ -94,17 +93,5 @@ describe("passingCount and chips", () => {
     expect(expectationChipKey([e("must_find")])).toBe("mustFind");
     expect(expectationChipKey([e("must_not_flag")])).toBe("mustNotFlag");
     expect(expectationChipKey([e("must_find"), e("must_not_flag")])).toBe("mixed");
-  });
-});
-
-describe("runningProgress", () => {
-  const r = (id: string, status: "running" | "done", cases_done = 1) => ({ id, status, cases_done, cases_total: 3 });
-  it("counts a tracked id without a response as running, and lets a running suite beat a finished one", () => {
-    expect(runningProgress({ trackedId: "s1", suite: undefined, resumed: null, casesTotal: 3 })).toEqual({ done: 0, total: 3 });
-    expect(runningProgress({ trackedId: "s1", suite: r("s1", "running"), resumed: null, casesTotal: 3 })).toEqual({ done: 1, total: 3 });
-    expect(runningProgress({ trackedId: "s1", suite: r("s1", "done", 3), resumed: r("s2", "running", 2), casesTotal: 3 })).toEqual({ done: 2, total: 3 });
-    // a stale history entry for the suite we saw finish is not running
-    expect(runningProgress({ trackedId: "s1", suite: r("s1", "done", 3), resumed: r("s1", "running"), casesTotal: 3 })).toBeNull();
-    expect(runningProgress({ trackedId: null, suite: undefined, resumed: null, casesTotal: 3 })).toBeNull();
   });
 });

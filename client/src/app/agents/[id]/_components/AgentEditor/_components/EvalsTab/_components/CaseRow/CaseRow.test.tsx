@@ -90,18 +90,37 @@ describe("CaseRow", () => {
     await waitFor(() => expect(post).toHaveBeenCalledTimes(2));
   });
 
-  it("CR-15 transient poll errors, even once retries run out, neither end running nor re-enable Play", async () => {
+  it("CR-23 after 3 consecutive poll failures the error is shown and Play starts a new run", async () => {
     post.mockResolvedValue({ case_run_id: "cr1", status: "running" });
     get.mockRejectedValue(new ApiError("Bad gateway", 502));
     renderRow(KASE);
     fireEvent.click(screen.getByRole("button", { name: "Run case" }));
-    // the hook retries twice (1s, 2s) before it reports the error
-    await waitFor(() => expect(get).toHaveBeenCalledTimes(3), { timeout: 6000 });
-    await new Promise((r) => setTimeout(r, 500));
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-    expect(screen.getByText("Running…")).toBeInTheDocument();
+    // the hook retries twice (1s, 2s) before the third failure ends polling
+    expect(await screen.findByRole("alert", undefined, { timeout: 6000 })).toHaveTextContent("Bad gateway");
+    expect(get).toHaveBeenCalledTimes(3);
+    expect(screen.queryByText("Running…")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Run case" }));
-    await new Promise((r) => setTimeout(r, 50)); // the mutation fires asynchronously
-    expect(post).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(post).toHaveBeenCalledTimes(2));
   }, 10000);
+
+  it("CR-8 a newer run handed up by the editor is followed even after an older own run finished", async () => {
+    post.mockResolvedValue({ case_run_id: "cr1", status: "running" });
+    get.mockImplementation(async (path: string) =>
+      path === "/eval-case-runs/cr1" ? { id: "cr1", status: "passed" } : { id: "cr2", status: "running" },
+    );
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    const tree = (pending?: string) => (
+      <QueryClientProvider client={qc}>
+        <NextIntlClientProvider locale="en" messages={{ eval: evalMessages }}>
+          <CaseRow kase={KASE} pendingRunId={pending} onEdit={() => {}} onDelete={() => {}} />
+        </NextIntlClientProvider>
+      </QueryClientProvider>
+    );
+    const { rerender } = render(tree());
+    fireEvent.click(screen.getByRole("button", { name: "Run case" }));
+    await waitFor(() => expect(get).toHaveBeenCalledWith("/eval-case-runs/cr1"));
+    await waitFor(() => expect(screen.queryByText("Running…")).not.toBeInTheDocument());
+    rerender(tree("cr2"));
+    expect(await screen.findByText("Running…")).toBeInTheDocument();
+  });
 });

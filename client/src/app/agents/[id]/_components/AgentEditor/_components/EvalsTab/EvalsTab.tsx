@@ -18,10 +18,10 @@ import {
   useDeleteEvalCase,
   useEvalCases,
   useStartSuiteRun,
-  useSuiteRun,
 } from "@/lib/hooks/eval";
+import { useTrackedSuite } from "@/lib/hooks/eval-tracked-suite";
 import { CASE_PARAM } from "./constants";
-import { passingCount, runningProgress } from "./helpers";
+import { passingCount } from "./helpers";
 import { CaseEditor } from "./_components/CaseEditor";
 import { CaseRow } from "./_components/CaseRow";
 import { s } from "./styles";
@@ -36,7 +36,6 @@ export function EvalsTab({ agent }: { agent: Agent }) {
   const dashboard = useAgentEvalDashboard(agent.id);
   const startSuite = useStartSuiteRun();
   const del = useDeleteEvalCase(agent.id);
-  const [trackedId, setTrackedId] = React.useState<string | null>(null);
   const [pendingRuns, setPendingRuns] = React.useState<Record<string, string>>({});
   const [editing, setEditing] = React.useState<Editing | undefined>(undefined);
   const [compare, setCompare] = React.useState<{ base: string; head: string } | null>(null);
@@ -44,19 +43,7 @@ export function EvalsTab({ agent }: { agent: Agent }) {
   const dash = dashboard.data;
   const latest = dash?.latest ?? null;
   // `latest` is the latest completed run; a suite still running (e.g. after a reload) is in `history`.
-  const resumed = dash?.history.find((r) => r.status === "running") ?? null;
-  const suite = useSuiteRun(trackedId);
-  // The tracked id is sticky: a dashboard refetch that stops listing the suite must not drop it.
-  // It only yields to a running suite from the history once the tracked one has settled.
-  const settled = !trackedId || (suite.data !== undefined && suite.data.status !== "running");
-  if (resumed && resumed.id !== trackedId && settled) setTrackedId(resumed.id);
-  const progress = runningProgress({
-    trackedId,
-    suite: suite.data,
-    resumed,
-    casesTotal: dash?.cases_total ?? 0,
-  });
-  const running = progress !== null;
+  const { progress, running, track } = useTrackedSuite(agent.id, dash?.history, dash?.cases_total ?? 0);
 
   const list = cases.data ?? [];
   const active: Editing = editing === undefined ? paramCase : editing;
@@ -64,7 +51,7 @@ export function EvalsTab({ agent }: { agent: Agent }) {
   const { passed, total } = passingCount(list);
 
   const runAll = () =>
-    startSuite.mutate(agent.id, { onSuccess: (a) => setTrackedId(a.suite_run_id) });
+    startSuite.mutate(agent.id, { onSuccess: (a) => track(a.suite_run_id) });
 
   const closeEditor = (pending?: { caseId: string; caseRunId: string }) => {
     // A Run-on-save run still going: its row keeps polling it so the list refreshes when it ends.
