@@ -37,6 +37,17 @@ describe('findingMatches full-file findings', () => {
     expect(findingMatches({ ...g('a.ts', 0, 12), kind: 'finding' }, { type: 'must_find', file: 'a.ts', start_line: 400, end_line: 400 })).toBe(false);
     expect(findingMatches(g('a.ts', 0, 12), { type: 'must_find', file: 'a.ts', start_line: 400, end_line: 400 })).toBe(false);
   });
+  // Mutation survivors (Stryker, 2026-10-11): isWholeFileFinding needs a full-file kind AND 0..0.
+  it('a 0..0 finding without a full-file kind is not whole-file', () => {
+    const far = { type: 'must_find', file: 'a.ts', start_line: 400, end_line: 400 } as const;
+    expect(findingMatches({ ...g('a.ts', 0, 0), kind: 'finding' }, far)).toBe(false);
+    expect(findingMatches(g('a.ts', 0, 0), far)).toBe(false);
+  });
+  it('a full-file-kind finding with only one end at 0 is not whole-file', () => {
+    const far = { type: 'must_find', file: 'a.ts', start_line: 400, end_line: 400 } as const;
+    expect(findingMatches(whole('a.ts', 0, 7), far)).toBe(false);
+    expect(findingMatches(whole('a.ts', 7, 0), far)).toBe(false);
+  });
 });
 
 describe('scoreCase whole-file findings', () => {
@@ -91,6 +102,13 @@ describe('findingMatches', () => {
 });
 
 describe('scoreCase', () => {
+  // Mutation survivor (Stryker, 2026-10-11): only a whole-file finding is capped at one expectation.
+  it('a line-range finding spanning two must_find matches both', () => {
+    const s = scoreCase([must('a.ts', 10), must('a.ts', 12)], [g('a.ts', 10, 12)], 0);
+    expect(s.matchedMustFind).toBe(2);
+    expect(s.matchedFindings).toBe(1);
+    expect(s.passed).toBe(true);
+  });
   it('AC-17 counts matched must_find per expectation', () => {
     const s = scoreCase([must('a.ts', 1), must('b.ts', 5), must('c.ts', 9)], [g('a.ts', 1), g('b.ts', 5)], 0);
     expect(s.matchedMustFind).toBe(2);
@@ -185,6 +203,8 @@ describe('suiteCost', () => {
 });
 
 describe('regressionDrops', () => {
+  // Equivalent mutant (Stryker, 2026-10-11): dropping `prev === null` from the skip changes nothing.
+  // A null prev rounds to 0, so points = -round(last * 100) <= 0 for any metric in [0, 1].
   const m = (recall: number | null, precision: number | null, citation_accuracy: number | null) => ({
     recall,
     precision,

@@ -30,3 +30,7 @@ __pycache__/
 
 # legacy local skill-eval results (cases now live in the evals/ package)
 .skill-evals/
+
+# StrykerJS mutation runs (server/stryker.config.json)
+server/reports/mutation/
+server/.stryker-tmp/
