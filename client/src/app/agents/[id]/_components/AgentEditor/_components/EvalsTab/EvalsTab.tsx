@@ -45,8 +45,9 @@ export function EvalsTab({ agent }: { agent: Agent }) {
   // `latest` is the latest completed run; a suite still running (e.g. after a reload) is in `history`.
   const { trackedId, progress, running, error: suiteError, reconnecting, track } = useTrackedSuite(agent.id, dash?.history, dash?.cases_total ?? 0);
 
-  // The tracked suite's poll state wins over a start error.
-  const notice = suiteError ?? (reconnecting ? null : startSuite.error);
+  // Tracking another suite resets the start error (below), so a start error still set is newer
+  // than the tracked suite's state and wins; while it is set the poll state stays hidden.
+  const notice = startSuite.error ?? suiteError;
 
   const list = cases.data ?? [];
   const active: Editing = editing === undefined ? paramCase : editing;

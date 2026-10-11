@@ -317,6 +317,26 @@ describe("EvalsTab", () => {
     expect(screen.getByRole("button", { name: "Run all evals" })).toBeEnabled();
   });
 
+  it("CR-40 a new start error shows over the 404 notice of a gone suite", async () => {
+    mockApi({
+      cases: [kase("c1", "one", null)],
+      dash: () => dashboard(null, 1),
+      suite: () => {
+        throw new ApiError("gone", 404);
+      },
+    });
+    post.mockResolvedValueOnce({ suite_run_id: "s1" });
+    renderTab();
+    const btn = await screen.findByRole("button", { name: "Run all evals" });
+    await waitFor(() => expect(btn).toBeEnabled());
+    fireEvent.click(btn);
+    expect(await screen.findByRole("alert")).toHaveTextContent("gone");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Run all evals" })).toBeEnabled());
+    post.mockRejectedValueOnce(new ApiError("Cannot reach the engine", 500));
+    fireEvent.click(screen.getByRole("button", { name: "Run all evals" }));
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Cannot reach the engine"));
+  });
+
   it("CR-37 a resumed suite whose polls fail five times in a row stays tracked: notice shown, Run all disabled, progress updates after recovery", async () => {
     vi.useFakeTimers();
     try {
