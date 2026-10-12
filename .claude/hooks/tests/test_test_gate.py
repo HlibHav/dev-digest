@@ -174,6 +174,28 @@ class Gate(unittest.TestCase):
         self.assertEqual(self.hook("git commit -m x"), "")  # nothing staged
         self.assertIn("deny", self.hook("git commit -am x"))
 
+    def test_git_add_in_the_same_command_is_checked(self) -> None:
+        # PreToolUse runs before the command, so `git add X && git commit` reaches the gate with
+        # nothing staged yet; the gate must check what the add is about to stage.
+        self.stub_pnpm(fail_on="typecheck")
+        self.stage("server/src/a.ts")
+        subprocess.run(["git", "-C", str(self.repo), "commit", "-qm", "base"], check=True)
+        (self.repo / "server/src/a.ts").write_text("export const a = 2;\n")
+        self.assertIn("deny", self.hook("git add server/src/a.ts && git commit -m x"))
+
+    def test_git_add_all_picks_up_untracked_files(self) -> None:
+        self.stub_pnpm(fail_on="typecheck")
+        (self.repo / "server/src/new.ts").write_text("export const b = 1;\n")
+        self.assertIn("deny", self.hook("git add -A && git commit -m x"))
+        self.assertIn("deny", self.hook("cd server && git add . && git commit -m x"))
+
+    def test_git_add_of_other_paths_does_not_widen_the_check(self) -> None:
+        self.stub_pnpm(fail_on="typecheck")
+        (self.repo / "server/src/new.ts").write_text("export const b = 1;\n")
+        (self.repo / "docs").mkdir()
+        (self.repo / "docs/a.md").write_text("# a\n")
+        self.assertEqual(self.hook("git add docs/a.md && git commit -m x"), "")
+
     def test_cd_into_the_repo_from_elsewhere(self) -> None:
         self.stub_pnpm(fail_on="typecheck")
         self.stage("server/src/a.ts")

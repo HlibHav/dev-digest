@@ -11,6 +11,10 @@ Decision table:
   no `git commit` in command position .. exit 0, no output, no git   (the 99% case)
   TEST_GATE_OVERRIDE=1 in the command .. allow, logged as an override (the user's call only)
   nothing staged (and no -a) ........... allow  (git itself refuses, or it is a message-only amend)
+  `git add …` earlier in the command .... its files count as staged: PreToolUse runs before the
+                                          command, so `git add X && git commit` would otherwise
+                                          reach the gate with an empty index and pass unchecked
+  `git commit <paths>` (pathspec mode) .. NOT covered: only the index, -a and earlier adds are read
   only docs / specs / non-code files ... allow
   every check of every touched package passes ... allow, logged
   any check fails ...................... DENY with the failing command and the tail of its output
@@ -194,6 +198,47 @@ def resolve_cwd(base: str, before: list[str], seg: str) -> tuple[str, bool]:
     return cwd, all_flag
 
 
+def pending_adds(base: str, before: list[str]) -> list[tuple[str, list[str], bool]]:
+    """`git add` segments that run before the commit in the same command: (cwd, pathspecs, untracked).
+
+    PreToolUse fires before the command, so their files are not staged yet when the gate looks.
+    `-A`/`--all` adds the whole tree, `-u`/`--update` only tracked files; pathspecs are relative
+    to the segment's cwd, which follows earlier `cd` segments and `git -C`.
+    """
+    cwd, adds = base, []
+    for seg in before:
+        try:
+            tokens = shlex.split(seg)
+        except ValueError:
+            continue
+        while tokens and re.fullmatch(r"\w+=.*", tokens[0]):
+            tokens = tokens[1:]
+        if len(tokens) >= 2 and tokens[0] == "cd":
+            cwd = str((Path(cwd) / os.path.expanduser(tokens[1])).resolve())
+            continue
+        if tokens[:1] != ["git"] or "add" not in tokens:
+            continue
+        at, i = cwd, 1
+        while i < len(tokens) and tokens[i] != "add":
+            if tokens[i] == "-C" and i + 1 < len(tokens):
+                at = str((Path(at) / os.path.expanduser(tokens[i + 1])).resolve())
+                i += 1
+            i += 1
+        specs, untracked, whole = [], True, False
+        for t in tokens[i + 1 :]:
+            if t in ("-A", "--all"):
+                whole = True
+            elif t in ("-u", "--update"):
+                whole, untracked = True, False
+            elif t != "--" and not t.startswith("-"):
+                specs.append(t)
+        if whole and not specs:
+            specs = [":/"]
+        if specs:
+            adds.append((at, specs, untracked))
+    return adds
+
+
 def is_code(path: str) -> bool:
     if any(d in path for d in NO_CODE_DIRS):
         return False
@@ -293,6 +338,12 @@ def main() -> int:
     if all_flag:
         _, unstaged = git(root, "diff", "--name-only", "--diff-filter=ACMR")
         files |= set(filter(None, unstaged.splitlines()))
+    for at, specs, untracked in pending_adds(base, before):
+        _, changed = git(at, "diff", "--name-only", "--diff-filter=ACMR", "--", *specs)
+        files |= set(filter(None, changed.splitlines()))
+        if untracked:
+            _, new = git(at, "ls-files", "--others", "--exclude-standard", "--full-name", "--", *specs)
+            files |= set(filter(None, new.splitlines()))
     if not files:
         return 0
 
