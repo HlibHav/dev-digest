@@ -93,13 +93,11 @@
     {
       "cmd": [
         "find",
-        "role",
-        "link",
-        "click",
-        "--name",
-        "Security Reviewer"
+        "text",
+        "Security Reviewer",
+        "click"
       ],
-      "label": "open the Security Reviewer row"
+      "label": "open the Security Reviewer row (first match is the agent row, above the runs table)"
     },
     {
       "cmd": [
