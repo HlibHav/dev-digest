@@ -10,6 +10,8 @@ fixed — add to the one that fits.
 
 ## What Doesn't Work
 
+- **2026-10-12** — `find role link click --name "<text>"` passed locally but failed in CI e2e-web on every run (3/3) with `Element not found`. The CI a11y snapshot taken at failure still showed the link (`link "Security Reviewer deepseek/… 1/2 pass"`), and `--name` is a case-insensitive substring by default. Locally it passed on both the dev and the production build, with agent-browser 0.38.1 and 0.39.0 (CI installs the latest). The cause was not found. Open rows the way every other flow does, with `find text "<text>" click`, where the first DOM match is the row. That made CI green 12/12 (2daa905). Green local e2e does not predict a `role link` step in CI. Evidence: `e2e/specs/10-eval-dashboard.flow.json:97`, `.github/workflows/e2e-web.yml:113`
+
 ## Codebase Patterns
 
 ## Tool & Library Notes
