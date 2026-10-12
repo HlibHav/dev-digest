@@ -15,6 +15,8 @@ fixed — add to the one that fits.
 
 ## What Doesn't Work
 
+- **2026-10-12** — An eval case made from an accepted finding copies the reviewer's own line range, so a wrong citation becomes the expectation. On the Security Reviewer set, `constants.ts` cited the comment on line 21 while the token sat on 22, and `helpers.ts` was labelled 32..32 while `new Function` is on 35 (function 31–37). Correct the range in the Case Editor before trusting recall. The same set cannot test citation rules: every PR #6 diff is a new file (`@@ -0,0 +1,N`), where line number equals position, and a prompt with its Citations section removed still scored citation 1.0 (n=2). To measure citation, add cases from modified files with several hunks. Evidence: `server/src/modules/eval/service.ts:217`, `docs/plans/2026-10-10-eval-pipeline.assets/prompt-experiment/results.json:40`
+
 - **2026-10-10** — A judge practice that says "a `path:line` and the quoted line" without the expected number passes a wrong number. The fs case's old wording passed a `run.ts:139` control for an import on line 18 (2/2), and 17 saved gemini-era outputs citing `:15`–`:17` or `:138` had been scored green; it also failed correct haiku-5.5 citations of the `readFileSync` call on `:143`, because it asked for the import only. Name every acceptable line with its number and quote, and add a wrong-number control to the re-judge. Evidence: `evals/agents/architecture-reviewer/architecture-reviewer.cases.ts:73`, `evals/agents/architecture-reviewer/fixtures/reviewer-core-fs-read.diff:9`
 
 - **2026-10-10** — A workflow `activation` negative for `engineering-insights` cannot be a question about this repo. The root "Before answering" rule starts every package task with that skill, to read the package's `INSIGHTS.md`, and the activation check counts any Skill call or `SKILL.md` read as engaged, so it cannot tell a read from a record. "Explain how pgvector dimensions work and why a mismatch returns zero rows" is a server question: haiku-5.5 read `server/INSIGHTS.md` and recorded nothing, and the case failed 0/3 for following the rule. The same question marked general and not about this repo passes 3/3. A negative for this skill must carry no repo task. Evidence: `AGENTS.md:10`, `evals/src/dsl/case.ts:77`, `evals/workflow/review-workflow.cases.ts:131`
@@ -64,6 +66,8 @@ fixed — add to the one that fits.
 
 ## Tool & Library Notes
 
+- **2026-10-12** — vitest's `mergeConfig(base, { test: { include: [...] } })` appends to `include` instead of replacing it. A Stryker run meant for two pure eval test files silently ran the whole unit glob plus Docker suites for every mutant (2m53s instead of 3s, no warning). A narrowed vitest config must spread the base (`{ ...base, test: { ...base.test, include } }`). Run `pnpm mutation` under Node ≥ 22 (`PATH=/opt/homebrew/bin:$PATH` on this machine), since Stryker 10 refuses Node 20. Evidence: `server/vitest.stryker.config.ts:5`, `server/stryker.config.json:1`
+
 - **2026-10-09** — A local workflow eval run from a `.claude/worktrees/<name>` worktree does not test the worktree: haiku drops that segment from the absolute paths it builds and Reads the main checkout, so an edit in the worktree is invisible to it. Measure in a `git clone` of the branch outside any `.claude/` path, with `evals/node_modules` symlinked from the worktree. Also, `settingSources: ["project"]` still loads `~/.claude/CLAUDE.md`, an ancestor `CLAUDE.md` and the auto-memory index; `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1` drops the memory. CI has none of these. Evidence: `evals/workflow/review-workflow.cases.ts:68`
 
 - **2026-10-08** — In the Claude Agent SDK (0.3.198) `allowedTools` only auto-approves; under `permissionMode: "bypassPermissions"` every built-in tool stays in the session (the init message listed 31, Write/Edit/Bash among them). Eval sessions with a "read-only" allow-list wrote a made-up pgvector insight into the main checkout's `server/INSIGHTS.md` (Edit) and a new `.claude/skills/engineering-insights/INSIGHTS.md` (Write). The option that restricts is `tools`. Trap: a `tools` set that holds `Skill` without `ToolSearch` dies right after a skill launch with "Prompt is too long" at ~19k tokens, so Skill brings ToolSearch along. Evidence: `evals/src/runtime/run-claude.ts:71`, `evals/src/runtime/run-claude.test.ts:14`
@@ -88,6 +92,8 @@ fixed — add to the one that fits.
 - **2026-09-26** — A JSDoc block that spells out a glob such as `**/*.md` closes the comment at the `*/` inside it; `tsc` then reports a cascade of syntax errors from the middle of the doc text (first hit: `classify.ts(17,53)`) with nothing pointing at the comment. Describe glob patterns in words inside `/** … */` comments (or use `//` lines), never a literal `*/`. Evidence: `server/src/modules/smart-diff/classify.ts:15`
 
 ## Session Notes
+
+- **2026-10-12** — L06 Eval Pipeline close-out (mutation testing of `scoring.ts`, old/new/broken prompt experiment, AC-46 check, test-gate fix) → Tool & Library Notes ×1, What Doesn't Work ×1, e2e Recurring Errors (comment). Evidence: `server/src/modules/eval/scoring.ts:16`
 
 - **2026-10-10** — L06 self-check: eval CI folded into `evals.yml` (baseline delta, budget, fork guard), n=3 baselines on haiku-5.5, near-miss insights negative rewritten → What Doesn't Work ×1. Evidence: `evals/workflow/review-workflow.cases.ts:131`
 

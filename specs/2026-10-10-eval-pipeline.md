@@ -372,64 +372,64 @@ None open. All were closed on 2026-10-10:
 
 | AC | proof | verify | step | test | commit |
 |---|---|---|---|---|---|
-| AC-1 | red-first unit | both expectation types and an empty list accepted; malformed items rejected | — | — | — |
-| AC-2 | red-first integration | cross-workspace reads of case, runs, agent eval routes → 404 | — | — | — |
-| AC-3 | red-first integration | accepted finding → case in the producing agent's set with one must_find | — | — | — |
-| AC-4 | red-first integration | dismissed finding → one must_not_flag with the finding's range | — | — | — |
-| AC-5 | red-first integration | case diff = that file's full patch only; PR meta = PR title and body | — | — | — |
-| AC-6 | red-first unit | name "src/config.ts:12 — <title>" | — | — | — |
-| AC-7 | red-first integration | empty stored patch → 422 with reason, no case | — | — | — |
-| AC-8 | red-first integration | 65 KB patch and 65 KB pasted diff → 422, no case | — | — | — |
-| AC-9 | e2e | undecided finding → button disabled with hint; route 422 | — | — | — |
-| AC-10 | red-first integration | review with null agent → 422 | — | — | — |
-| AC-11 | red-first integration | create twice → same id, one case | — | — | — |
-| AC-12 | red-first integration + red-first unit | route returns case with agent or 422 reason; card shows confirmation with link, or the reason | — | — | — |
-| AC-13 | red-first integration | flip decision → expectation unchanged | — | — | — |
-| AC-14 | red-first integration | captured prompt has diff and PR meta, no doc, intent or callers | — | — | — |
-| AC-15 | red-first integration | one kept, one dropped finding stored in the case result | — | — | — |
-| AC-16 | red-first unit | intersection matching table (4 findings) | — | — | — |
-| AC-17 | red-first unit | pooled recall 2/3; no must_find → null | — | — | — |
-| AC-18 | red-first unit | must_not_flag hit and clean-case finding are noise; neutral is not; overlap → noise, not match | — | — | — |
-| AC-19 | red-first unit | 3 matched + 1 noise (outside-range finding neutral) → 0.75; none → null | — | — | — |
-| AC-20 | red-first unit | 9 kept / 1 dropped → 0.9; none → null | — | — | — |
-| AC-21 | red-first unit | pass/fail matrix incl. zero-finding must_not_flag pass | — | — | — |
-| AC-22 | red-first integration | case 2 errors → excluded, suite partial | — | — | — |
-| AC-23 | red-first unit | null precision renders "—" in cards and rows | — | — | — |
-| AC-24 | red-first unit | [0.01, null, 0.02] → 0.03 partial; all null → null | — | — | — |
-| AC-25 | red-first integration | 202 with id, running, run_number, cases_total | — | — | — |
-| AC-26 | red-first integration | 0 and 51 cases → 422, no suite | — | — | — |
-| AC-27 | red-first integration | second suite same agent → 409; other agent → 202 | — | — | — |
-| AC-28 | red-first integration | 11th request in a minute rate-limited | — | — | — |
-| AC-29 | red-first integration + red-first unit | gated double: cases_done rises, then metrics; UI with mocked fetch shows "Running k/N", then metrics | — | — | — |
-| AC-30 | red-first integration | mid-run error → failed with reason; running row at boot → failed "interrupted" | — | — | — |
-| AC-31 | red-first integration | snapshot keeps the old prompt and skill body after edits | — | — | — |
-| AC-32 | red-first integration | run numbers 1, 2, 3 with agent v1, v1, v2 | — | — | — |
-| AC-33 | red-first integration | one started, three skipped: no cases, already running, disabled | — | — | — |
-| AC-34 | red-first integration | 202 + poll; single-case run sets last result, no suite or history row; a later suite updates last result | — | — | — |
-| AC-35 | red-first unit | Case Editor with mocked fetch: Run on save → last-run panel shows result, duration, cost | — | — | — |
-| AC-36 | e2e | four case states and "passing 1 / 4" | — | — | — |
-| AC-37 | e2e | empty state, run disabled | — | — | — |
-| AC-38 | red-first unit | invalid JSON and shape errors block save; valid list enables it | — | — | — |
-| AC-39 | red-first unit | skeleton appends a must_find template | — | — | — |
-| AC-40 | red-first unit | Case Editor with mocked fetch: entered diff previews with new-side line numbers | — | — | — |
-| AC-41 | red-first unit | out-of-hunk expectation warns; in-hunk does not | — | — | — |
-| AC-42 | red-first integration | deleted case: metrics unchanged, still in scored-case list, no detailed result | — | — | — |
-| AC-43 | red-first integration + red-first unit | route returns source; row renders "Created from PR #N" link | — | — | — |
-| AC-44 | red-first unit | `sk_live_` masked until reveal | — | — | — |
-| AC-45 | red-first integration | history newest first with fields; failed row has reason | — | — | — |
-| AC-46 | browser (main session) | four points, precision gap, tooltip label and cost | — | — | — |
-| AC-47 | red-first integration | deltas, one-line prompt diff, skill change listed | — | — | — |
-| AC-48 | red-first integration | case set +2 / −1, full-set deltas | — | — | — |
-| AC-49 | red-first unit | Compare enabled only for two non-failed runs | — | — | — |
-| AC-50 | red-first unit | negative delta shows sign and arrow text | — | — | — |
-| AC-51 | e2e | sidebar item opens the Eval Dashboard | — | — | — |
-| AC-52 | e2e | agent rows with latest values and mixed recent runs | — | — | — |
-| AC-53 | red-first unit | empty dashboard response → empty state | — | — | — |
-| AC-54 | red-first unit | cases but no runs → "never run" and "—" | — | — | — |
-| AC-55 | e2e | per-agent dashboard; switcher changes agent in place | — | — | — |
-| AC-56 | red-first unit | 0.93 → 0.91 banner; 0.01 drop no banner | — | — | — |
-| AC-57 | red-first integration | deleting the agent removes cases, runs, results | — | — | — |
-| AC-58 | red-first integration | 50 suite runs seeded → dashboard and history p95 < 500 ms | — | — | — |
+| AC-1 | red-first unit | both expectation types and an empty list accepted; malformed items rejected | 1 | server/test/eval-contract.test.ts::AC-1 (describe) | 49c1c4f |
+| AC-2 | red-first integration | cross-workspace reads of case, runs, agent eval routes → 404 | 11 | server/test/eval-cases.it.test.ts::AC-2 | 868666a |
+| AC-3 | red-first integration | accepted finding → case in the producing agent's set with one must_find | 8, 11 | server/test/eval-cases.it.test.ts::AC-3 | 868666a |
+| AC-4 | red-first integration | dismissed finding → one must_not_flag with the finding's range | 8, 11 | server/test/eval-cases.it.test.ts::AC-4 | 868666a |
+| AC-5 | red-first integration | case diff = that file's full patch only; PR meta = PR title and body | 3, 8, 11 | server/test/eval-cases.it.test.ts::AC-5 | 868666a |
+| AC-6 | red-first unit | name "src/config.ts:12 — <title>" | 3 | server/test/eval-helpers.test.ts::AC-6 | 2c6bd5f |
+| AC-7 | red-first integration | empty stored patch → 422 with reason, no case | 8, 11 | server/test/eval-cases.it.test.ts::AC-7 | 868666a |
+| AC-8 | red-first integration | 65 KB patch and 65 KB pasted diff → 422, no case | 8, 11 | server/test/eval-cases.it.test.ts::AC-8 | 868666a |
+| AC-9 | e2e | undecided finding → button disabled with hint; route 422 | 8, 11, 16, 22 | e2e/specs/12-finding-eval-button.flow.json; route half server/test/eval-cases.it.test.ts::AC-9 (route half) | 61327e3, 868666a |
+| AC-10 | red-first integration | review with null agent → 422 | 8, 11, 16 | server/test/eval-cases.it.test.ts::AC-10 | 868666a |
+| AC-11 | red-first integration | create twice → same id, one case | 6, 8, 11 | server/test/eval-cases.it.test.ts::AC-11 | 868666a |
+| AC-12 | red-first integration + red-first unit | route returns case with agent or 422 reason; card shows confirmation with link, or the reason | 8, 11, 16 | server/test/eval-cases.it.test.ts::AC-12 (integration); TurnIntoEvalButton.test.tsx::AC-12 | 868666a, 9b7820a |
+| AC-13 | red-first integration | flip decision → expectation unchanged | 8, 11 | server/test/eval-cases.it.test.ts::AC-13 | 868666a |
+| AC-14 | red-first integration | captured prompt has diff and PR meta, no doc, intent or callers | 7, 11 | server/test/eval-runs.it.test.ts::AC-14 | 868666a |
+| AC-15 | red-first integration | one kept, one dropped finding stored in the case result | 7, 11 | server/test/eval-runs.it.test.ts::AC-15 | 868666a |
+| AC-16 | red-first unit | intersection matching table (4 findings) | 4 | server/test/eval-scoring.test.ts::AC-16 | 2c6bd5f |
+| AC-17 | red-first unit | pooled recall 2/3; no must_find → null | 4 | server/test/eval-scoring.test.ts::AC-17 | 2c6bd5f |
+| AC-18 | red-first unit | must_not_flag hit and clean-case finding are noise; neutral is not; overlap → noise, not match | 4 | server/test/eval-scoring.test.ts::AC-18 | 2c6bd5f |
+| AC-19 | red-first unit | 3 matched + 1 noise (outside-range finding neutral) → 0.75; none → null | 4 | server/test/eval-scoring.test.ts::AC-19 | 2c6bd5f |
+| AC-20 | red-first unit | 9 kept / 1 dropped → 0.9; none → null | 4 | server/test/eval-scoring.test.ts::AC-20 | 2c6bd5f |
+| AC-21 | red-first unit | pass/fail matrix incl. zero-finding must_not_flag pass | 4 | server/test/eval-scoring.test.ts::AC-21 | 2c6bd5f |
+| AC-22 | red-first integration | case 2 errors → excluded, suite partial | 9, 11 | server/test/eval-runs.it.test.ts::AC-22 | 868666a |
+| AC-23 | red-first unit | null precision renders "—" in cards and rows | 13, 14 | MetricStat.test.tsx::AC-23; RunHistoryTable.test.tsx::AC-23 | 2c6bd5f |
+| AC-24 | red-first unit | [0.01, null, 0.02] → 0.03 partial; all null → null | 4 | server/test/eval-scoring.test.ts::AC-24 | 2c6bd5f |
+| AC-25 | red-first integration | 202 with id, running, run_number, cases_total | 9, 11 | server/test/eval-runs.it.test.ts::AC-25 | 868666a |
+| AC-26 | red-first integration | 0 and 51 cases → 422, no suite | 9, 11, 19 | server/test/eval-runs.it.test.ts::AC-26 | 868666a |
+| AC-27 | red-first integration | second suite same agent → 409; other agent → 202 | 2, 6, 9, 11 | server/test/eval-runs.it.test.ts::AC-27 | 868666a |
+| AC-28 | red-first integration | 11th request in a minute rate-limited | 11 | server/test/eval-rate-limit.it.test.ts::AC-28 | 61327e3 |
+| AC-29 | red-first integration + red-first unit | gated double: cases_done rises, then metrics; UI with mocked fetch shows "Running k/N", then metrics | 9, 11, 19, 21 | server/test/eval-runs.it.test.ts::AC-29; EvalsTab.test.tsx::AC-29; AgentEvalDashboardView.test.tsx::AC-29 | 868666a, 9b7820a |
+| AC-30 | red-first integration | mid-run error → failed with reason; running row at boot → failed "interrupted" | 9, 11 | server/test/eval-runs.it.test.ts::AC-30 | 868666a |
+| AC-31 | red-first integration | snapshot keeps the old prompt and skill body after edits | 9, 11 | server/test/eval-runs.it.test.ts::AC-31 | 868666a |
+| AC-32 | red-first integration | run numbers 1, 2, 3 with agent v1, v1, v2 | 6, 9, 11 | server/test/eval-runs.it.test.ts::AC-32 | 868666a |
+| AC-33 | red-first integration | one started, three skipped: no cases, already running, disabled | 9, 11, 20 | server/test/eval-runs.it.test.ts::AC-33 | 868666a |
+| AC-34 | red-first integration | 202 + poll; single-case run sets last result, no suite or history row; a later suite updates last result | 9, 11, 18, 19 | server/test/eval-runs.it.test.ts::AC-34 | 868666a |
+| AC-35 | red-first unit | Case Editor with mocked fetch: Run on save → last-run panel shows result, duration, cost | 18 | CaseEditor.test.tsx::AC-35 | 9b7820a |
+| AC-36 | e2e | four case states and "passing 1 / 4" | 19, 22 | e2e/specs/11-agent-evals-tab.flow.json | 61327e3 |
+| AC-37 | e2e | empty state, run disabled | 19, 22 | e2e/specs/11-agent-evals-tab.flow.json | 61327e3 |
+| AC-38 | red-first unit | invalid JSON and shape errors block save; valid list enables it | 17, 18 | CaseEditor.test.tsx::AC-38 | 9b7820a |
+| AC-39 | red-first unit | skeleton appends a must_find template | 17, 18 | CaseEditor.test.tsx::AC-39 | 9b7820a |
+| AC-40 | red-first unit | Case Editor with mocked fetch: entered diff previews with new-side line numbers | 18 | CaseEditor.test.tsx::AC-40 | 9b7820a |
+| AC-41 | red-first unit | out-of-hunk expectation warns; in-hunk does not | 17, 18 | CaseEditor.test.tsx::AC-41 | 9b7820a |
+| AC-42 | red-first integration | deleted case: metrics unchanged, still in scored-case list, no detailed result | 8, 9, 11 | server/test/eval-cases.it.test.ts::AC-42 | 868666a |
+| AC-43 | red-first integration + red-first unit | route returns source; row renders "Created from PR #N" link | 8, 11, 19 | server/test/eval-cases.it.test.ts::AC-43 (integration); CaseRow.test.tsx::AC-43 | 868666a, 9b7820a |
+| AC-44 | red-first unit | `sk_live_` masked until reveal | 17, 19 | CaseRow.test.tsx::AC-44 | 9b7820a |
+| AC-45 | red-first integration | history newest first with fields; failed row has reason | 10, 11, 14 | server/test/eval-history.it.test.ts::AC-45 | 61327e3 |
+| AC-46 | browser (main session) | four points, precision gap, tooltip label and cost | 14, 19, 21 | browser (main session) 2026-10-12, met on Evals tab and per-agent dashboard: docs/plans/2026-10-10-eval-pipeline.assets/ac46/ | 2c6bd5f (TrendChart) |
+| AC-47 | red-first integration | deltas, one-line prompt diff, skill change listed | 5, 10, 11, 14 | server/test/eval-history.it.test.ts::AC-47 | 61327e3 |
+| AC-48 | red-first integration | case set +2 / −1, full-set deltas | 5, 10, 11, 14 | server/test/eval-history.it.test.ts::AC-48 | 61327e3 |
+| AC-49 | red-first unit | Compare enabled only for two non-failed runs | 13 | client/src/components/eval/helpers.test.ts::AC-49 | 2c6bd5f |
+| AC-50 | red-first unit | negative delta shows sign and arrow text | 13 | DeltaBadge.test.tsx::AC-50 | 2c6bd5f |
+| AC-51 | e2e | sidebar item opens the Eval Dashboard | 15, 22 | e2e/specs/10-eval-dashboard.flow.json | 61327e3 |
+| AC-52 | e2e | agent rows with latest values and mixed recent runs | 10, 20, 22 | e2e/specs/10-eval-dashboard.flow.json | 61327e3 |
+| AC-53 | red-first unit | empty dashboard response → empty state | 20 | EvalDashboardView.test.tsx::AC-53 | 9b7820a |
+| AC-54 | red-first unit | cases but no runs → "never run" and "—" | 13, 20 | EvalDashboardView.test.tsx::AC-54 | 9b7820a |
+| AC-55 | e2e | per-agent dashboard; switcher changes agent in place | 21, 22 | e2e/specs/10-eval-dashboard.flow.json | 61327e3 |
+| AC-56 | red-first unit | 0.93 → 0.91 banner; 0.01 drop no banner | 4, 21 | server/test/eval-scoring.test.ts::AC-56; RegressionBanner.test.tsx::AC-56 | 2c6bd5f, 9b7820a |
+| AC-57 | red-first integration | deleting the agent removes cases, runs, results | 2, 11 | server/test/eval-cases.it.test.ts::AC-57 | 868666a |
+| AC-58 | red-first integration | 50 suite runs seeded → dashboard and history p95 < 500 ms | 2, 6, 11 | server/test/eval-history.it.test.ts::AC-58 | 61327e3 |
 
 ## Changelog
 
