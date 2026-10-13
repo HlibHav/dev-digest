@@ -10,7 +10,7 @@ Paths are under `server/src/` unless they start with `reviewer-core/` or `test/`
 | Contracts | `vendor/shared/**`, ports in `adapters.ts` | zod |
 | Application | `modules/<m>/service.ts`, `helpers.ts`, `constants.ts`, `import.ts`, `status.ts`, `reviews/run-executor.ts`, `reviews/diff-loader.ts` | domain, contracts, its own repository's type, `platform/{errors,resilience,prompts,run-logger}.ts` |
 | Infrastructure | `modules/<m>/repository.ts`, `repository/*.repo.ts`, `adapters/**`, `db/**` | anything inward, vendor SDKs |
-| Edge | `modules/<m>/routes.ts`, `app.ts`, `platform/container.ts` (composition root), `platform/{jobs,sse,price-book}.ts` | anything |
+| Edge | `modules/<m>/routes.ts`, `modules/<m>/wiring.ts` (module composition), `app.ts`, `platform/container.ts` (composition root), `platform/{jobs,sse,price-book}.ts` | anything |
 
 `platform/{grounding,prompt,structured}.ts` re-export reviewer-core: import the core directly.
 
@@ -29,6 +29,10 @@ at `polling/routes.ts:28` and `pulls/routes.ts:38,216,314,337`; `settings/routes
   `as never` and a private-field overwrite (`test/repo-intel-facade-degraded.test.ts:23-38`).
 - `repo-intel/service.ts` reads `container.config.repoIntelEnabled` 8 times (`:223` onwards).
   New code decides a flag at the edge or takes it as a value.
+- Modules that build their service, repository or job handlers in `routes.ts` instead of a
+  `wiring.ts`: `agents`, `conventions` (also registers its job there, `:91`), `repo-intel`,
+  `repos`, `reviews`, `skills`, `smart-diff`. `repos/service.ts:46` and
+  `repo-intel/service.ts:181-187` register jobs inside the service.
 - `modules/_shared/context.ts:1` hands `FastifyRequest` to `AuthProvider`, which is
   transport-aware by design. No other port gets the request.
 
@@ -41,8 +45,18 @@ at `polling/routes.ts:28` and `pulls/routes.ts:38,216,314,337`; `settings/routes
 
 ## Fastify
 
-One decorator, `app.decorate('container', …)`. Routes build their module's service
-(`skills/routes.ts:83`). A second DI mechanism (awilix, tsyringe) needs an ADR.
+One decorator, `app.decorate('container', …)`. A module's `wiring.ts` builds its service
+(`brief/wiring.ts:18`) and `routes.ts` calls the builder once (`brief/routes.ts:19`). One module
+reuses another through that module's builder (`brief/wiring.ts:20-22`), never by constructing its
+service or repository. A second DI mechanism (awilix, tsyringe) needs an ADR.
+
+## Cross-module data access
+
+`scripts/cross-module-imports.py` parses every import of a changed module file (multi-line and
+type-only ones too), resolves it, and labels imports of another module's `repository.ts`,
+`repository/*` or `*.repo.ts` as `VIOLATION`. When the rule was added no module did this
+(`--all` over `server/src/modules` found 0), so nothing is grandfathered. Shared entities are
+served by repositories the container builds (`platform/container.ts:79-84`).
 
 ## Ports
 

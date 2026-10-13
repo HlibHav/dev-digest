@@ -17,6 +17,7 @@ import { gitInfo } from "./git.js";
 import { countTests, runVitestOnce } from "./run-vitest.js";
 import { RESULTS_DIR } from "./artifacts/paths.js";
 import { aggregate, loadRecords, recordCount, type NodeAggregate, type Stats } from "./records/stats.js";
+import { relativize } from "./report.js";
 
 /**
  * vitest treats a path pattern as a SUBSTRING filter, so a bare `agents/architecture-reviewer`
@@ -71,8 +72,9 @@ function printTest(agg: NodeAggregate, times: number): void {
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
   // Cap runs at 2 to keep token spend bounded — LLM sessions are expensive, and 2 runs is enough
-  // to catch a blatantly flaky case. Bump MAX_TIMES if you deliberately want a fuller stability run.
-  const MAX_TIMES = 2;
+  // to catch a blatantly flaky case. For a deliberate stability run (an A/B on a prompt change),
+  // raise it with EVAL_REPEAT_MAX=<n>.
+  const MAX_TIMES = Number(process.env.EVAL_REPEAT_MAX ?? "2");
   let times = MAX_TIMES;
   let label: string | undefined;
   const vitestArgs: string[] = [];
@@ -111,7 +113,8 @@ async function main(): Promise<void> {
     console.log(`  run ${i}/${times}  ${mark} ${passed}/${fresh.length} cases`);
   }
 
-  const records = loadRecords(startLine);
+  // Node ids relative to evals/, so a series saved here diffs against a CI run (eval:report).
+  const records = relativize(loadRecords(startLine));
   const tests = aggregate(records);
   const nodeids = Object.keys(tests).sort();
 

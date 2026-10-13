@@ -13,7 +13,10 @@ const JUDGE_RUBRIC =
   "practice independently.\n" +
   "Rules: (1) exactly PASS or FAIL per practice, no scales. (2) PASS only when a direct " +
   "verbatim quote from the OUTPUT is evidence the practice was met — a keyword is not " +
-  "evidence. (3) Reply with ONLY minified JSON:\n" +
+  "evidence. (3) A practice that says the OUTPUT does NOT do something passes when nothing in " +
+  "the OUTPUT does it; as evidence, quote the part of the OUTPUT where it would have appeared " +
+  "(e.g. the findings list). FAIL it only with a verbatim quote that shows the forbidden thing. " +
+  "(4) Reply with ONLY minified JSON:\n" +
   '{"results":[{"practice":"<text>","passed":true,"evidence":"<verbatim quote>"}]}';
 
 export interface Verdict {

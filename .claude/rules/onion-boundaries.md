@@ -15,6 +15,14 @@ checked by `server/test/route-adapter-calls.test.ts`.
 
 - A route handler parses, calls a service and maps the result. It runs no query and calls no
   adapter (`container.github()`, `.git`, `.codeIndex`, `.secrets`, `.llm`, `.embedder`).
+- A new module is composed in `modules/<m>/wiring.ts` (`build<M>Service(container, log)`), which
+  builds the repository, fills the service's ports and registers the module's job handlers;
+  `routes.ts` calls it once and holds only handlers. No check sees this one.
+- No file imports another module's data access (`repository.ts`, `repository/*`, `*.repo.ts`),
+  type-only imports and `routes.ts`/`wiring.ts`/repositories included. Use that module's builder
+  or service, or a container repository (`container.reviewRepo`, `.skillsRepo`, `.agentsRepo`).
+  The lint sees cross-module imports only from application files; the skill's
+  `scripts/cross-module-imports.py` sees all of them.
 - Application code (a service and its helpers) imports no `fastify`, `drizzle-orm`, `src/db/**`
   or adapter, and gets other modules only as ports. Vendor SDKs are imported only under
   `src/adapters/**` (and `src/db/` for `postgres`), and every new adapter gets a double in

@@ -1,0 +1,308 @@
+diff --git a/server/src/modules/index.ts b/server/src/modules/index.ts
+index 5fbe565..5d3f5e5 100644
+--- a/server/src/modules/index.ts
++++ b/server/src/modules/index.ts
+@@ -14,6 +14,7 @@ import blast from './blast/routes.js';
+ import projectContext from './project-context/routes.js';
+ import onboarding from './onboarding/routes.js';
+ import brief from './brief/routes.js';
++import labels from './labels/routes.js';
+ 
+ /**
+  * Module registry. Each feature module is a Fastify plugin in
+@@ -44,4 +45,5 @@ export const modules: Record<string, FastifyPluginAsync> = {
+   projectContext,
+   onboarding,
+   brief,
++  labels,
+ };
+diff --git a/server/src/modules/labels/constants.ts b/server/src/modules/labels/constants.ts
+new file mode 100644
+index 0000000..9f9de24
+--- /dev/null
++++ b/server/src/modules/labels/constants.ts
+@@ -0,0 +1,9 @@
++/** Job kind for "suggest and apply labels" on one PR. */
++export const LABELS_JOB_KIND = 'labels.suggest-apply';
++
++/** At most this many labels are suggested per PR. */
++export const MAX_LABELS = 5;
++
++export const LABELS_SCHEMA_NAME = 'PrLabelSuggestion';
++
++export const GITHUB_API_URL = 'https://api.github.com';
+diff --git a/server/src/modules/labels/helpers.ts b/server/src/modules/labels/helpers.ts
+new file mode 100644
+index 0000000..3ab6a46
+--- /dev/null
++++ b/server/src/modules/labels/helpers.ts
+@@ -0,0 +1,39 @@
++import { z } from 'zod';
++import type { ChatMessage } from '@devdigest/shared';
++import type { PullRow } from '../../db/rows.js';
++import { MAX_LABELS } from './constants.js';
++
++export const LabelSuggestion = z.object({
++  labels: z.array(z.string().min(1).max(50)).max(20),
++});
++export type LabelSuggestion = z.infer<typeof LabelSuggestion>;
++
++const MAX_BODY_CHARS = 4_000;
++
++export function labelPrompt(pr: Pick<PullRow, 'title' | 'body'>, allowed: string[]): ChatMessage[] {
++  const body = (pr.body ?? '').slice(0, MAX_BODY_CHARS);
++  return [
++    {
++      role: 'system',
++      content:
++        `You label pull requests. Pick at most ${MAX_LABELS} labels from the allowed list ` +
++        'that describe the change. Never invent a label. Return JSON {"labels": [...]}.',
++    },
++    {
++      role: 'user',
++      content: `Allowed labels:\n${allowed.join('\n')}\n\nTitle: ${pr.title}\n\nDescription:\n${body}`,
++    },
++  ];
++}
++
++/** Keep only labels the repo has (case-insensitive), in the repo's spelling, deduplicated. */
++export function normalizeLabels(suggested: string[], allowed: string[], max = MAX_LABELS): string[] {
++  const byLower = new Map(allowed.map((l) => [l.toLowerCase(), l]));
++  const out: string[] = [];
++  for (const s of suggested) {
++    const hit = byLower.get(s.trim().toLowerCase());
++    if (hit && !out.includes(hit)) out.push(hit);
++    if (out.length === max) break;
++  }
++  return out;
++}
+diff --git a/server/src/modules/labels/routes.ts b/server/src/modules/labels/routes.ts
+new file mode 100644
+index 0000000..294e7f0
+--- /dev/null
++++ b/server/src/modules/labels/routes.ts
+@@ -0,0 +1,33 @@
++/**
++ * Labels HTTP module.
++ *
++ *   GET  /pulls/:id/labels/suggestions → labels the model picks from the repo's label set
++ *   POST /pulls/:id/labels/auto        → 202 + jobId; suggest and apply in the background
++ */
++import type { FastifyInstance } from 'fastify';
++import type { ZodTypeProvider } from 'fastify-type-provider-zod';
++import { getContext } from '../_shared/context.js';
++import { IdParams } from '../_shared/schemas.js';
++import { LABELS_JOB_KIND } from './constants.js';
++import { buildLabelsService } from './wiring.js';
++
++export default async function labelsRoutes(appBase: FastifyInstance) {
++  const app = appBase.withTypeProvider<ZodTypeProvider>();
++  const { container } = app;
++  const service = buildLabelsService(container, app.log);
++
++  app.get('/pulls/:id/labels/suggestions', { schema: { params: IdParams } }, async (req) => {
++    const { workspaceId } = await getContext(container, req);
++    const token = await container.secrets.get('GITHUB_TOKEN');
++    return { labels: await service.suggest(workspaceId, req.params.id, token) };
++  });
++
++  app.post('/pulls/:id/labels/auto', { schema: { params: IdParams } }, async (req, reply) => {
++    const { workspaceId } = await getContext(container, req);
++    const job = await container.jobs.enqueue(workspaceId, LABELS_JOB_KIND, {
++      workspaceId,
++      prId: req.params.id,
++    });
++    return reply.code(202).send({ job_id: job.id });
++  });
++}
+diff --git a/server/src/modules/labels/service.ts b/server/src/modules/labels/service.ts
+new file mode 100644
+index 0000000..a9d6acb
+--- /dev/null
++++ b/server/src/modules/labels/service.ts
+@@ -0,0 +1,80 @@
++import type { FeatureModelChoice, LLMProvider } from '@devdigest/shared';
++import { ExternalServiceError, NotFoundError } from '../../platform/errors.js';
++import { GITHUB_API_URL, LABELS_SCHEMA_NAME } from './constants.js';
++import { LabelSuggestion, labelPrompt, normalizeLabels } from './helpers.js';
++
++export interface LabelablePr {
++  number: number;
++  title: string;
++  body: string | null;
++  owner: string;
++  repo: string;
++}
++
++export interface LabelsPorts {
++  getPull(workspaceId: string, prId: string): Promise<LabelablePr | undefined>;
++  resolveModel(workspaceId: string): Promise<FeatureModelChoice>;
++  llm(provider: FeatureModelChoice['provider']): Promise<LLMProvider>;
++}
++
++/** Suggests labels for a PR from the repo's own label set, and applies them on GitHub. */
++export class LabelsService {
++  constructor(private ports: LabelsPorts) {}
++
++  async suggest(workspaceId: string, prId: string, token: string | undefined): Promise<string[]> {
++    const pr = await this.requirePull(workspaceId, prId);
++    const allowed = await this.repoLabels(pr, token);
++    if (allowed.length === 0) return [];
++
++    const choice = await this.ports.resolveModel(workspaceId);
++    const llm = await this.ports.llm(choice.provider);
++    const { data } = await llm.completeStructured({
++      model: choice.model,
++      schema: LabelSuggestion,
++      schemaName: LABELS_SCHEMA_NAME,
++      messages: labelPrompt(pr, allowed),
++      temperature: 0,
++    });
++    return normalizeLabels(data.labels, allowed);
++  }
++
++  async apply(
++    workspaceId: string,
++    prId: string,
++    labels: string[],
++    token: string | undefined,
++  ): Promise<void> {
++    if (labels.length === 0) return;
++    const pr = await this.requirePull(workspaceId, prId);
++    await this.github(token, `/repos/${pr.owner}/${pr.repo}/issues/${pr.number}/labels`, {
++      method: 'POST',
++      body: JSON.stringify({ labels }),
++    });
++  }
++
++  private async requirePull(workspaceId: string, prId: string): Promise<LabelablePr> {
++    const pr = await this.ports.getPull(workspaceId, prId);
++    if (!pr) throw new NotFoundError('Pull request not found');
++    return pr;
++  }
++
++  private async repoLabels(pr: LabelablePr, token: string | undefined): Promise<string[]> {
++    const res = await this.github(token, `/repos/${pr.owner}/${pr.repo}/labels?per_page=100`);
++    const rows = (await res.json()) as { name: string }[];
++    return rows.map((r) => r.name);
++  }
++
++  private async github(token: string | undefined, path: string, init: RequestInit = {}): Promise<Response> {
++    const res = await fetch(`${GITHUB_API_URL}${path}`, {
++      ...init,
++      headers: {
++        accept: 'application/vnd.github+json',
++        'content-type': 'application/json',
++        ...(token ? { authorization: `Bearer ${token}` } : {}),
++      },
++      signal: AbortSignal.timeout(15_000),
++    });
++    if (!res.ok) throw new ExternalServiceError(`GitHub ${init.method ?? 'GET'} ${path} returned ${res.status}`);
++    return res;
++  }
++}
+diff --git a/server/src/modules/labels/wiring.ts b/server/src/modules/labels/wiring.ts
+new file mode 100644
+index 0000000..e1fdb7c
+--- /dev/null
++++ b/server/src/modules/labels/wiring.ts
+@@ -0,0 +1,35 @@
++import type { FastifyBaseLogger } from 'fastify';
++import { z } from 'zod';
++import type { Container } from '../../platform/container.js';
++import { resolveFeatureModel } from '../settings/feature-models.js';
++import { LABELS_JOB_KIND } from './constants.js';
++import { LabelsService } from './service.js';
++
++const JobPayload = z.object({ workspaceId: z.string().uuid(), prId: z.string().uuid() });
++
++/** Composition for the labels module: ports from the container, plus its job handler. */
++export function buildLabelsService(container: Container, log: FastifyBaseLogger): LabelsService {
++  const reviewRepo = container.reviewRepo;
++
++  const service = new LabelsService({
++    getPull: async (workspaceId, prId) => {
++      const pr = await reviewRepo.getPull(workspaceId, prId);
++      if (!pr) return undefined;
++      const repo = await reviewRepo.getRepo(pr.repoId);
++      if (!repo) return undefined;
++      return { number: pr.number, title: pr.title, body: pr.body, owner: repo.owner, repo: repo.name };
++    },
++    resolveModel: (workspaceId) => resolveFeatureModel(container, workspaceId, 'review_intent'),
++    llm: (provider) => container.llm(provider),
++  });
++
++  container.jobs.register(LABELS_JOB_KIND, async (payload) => {
++    const { workspaceId, prId } = JobPayload.parse(payload);
++    const token = await container.secrets.get('GITHUB_TOKEN');
++    const labels = await service.suggest(workspaceId, prId, token);
++    await service.apply(workspaceId, prId, labels, token);
++    log.info({ prId, labels }, 'labels applied');
++  });
++
++  return service;
++}
+diff --git a/server/test/labels-service.test.ts b/server/test/labels-service.test.ts
+new file mode 100644
+index 0000000..9702278
+--- /dev/null
++++ b/server/test/labels-service.test.ts
+@@ -0,0 +1,58 @@
++import { afterEach, describe, expect, it, vi } from 'vitest';
++import { MockLLMProvider } from '../src/adapters/mocks.js';
++import { LabelsService, type LabelablePr } from '../src/modules/labels/service.js';
++import { normalizeLabels } from '../src/modules/labels/helpers.js';
++import { NotFoundError } from '../src/platform/errors.js';
++
++const PR: LabelablePr = { number: 7, title: 'Fix flaky retry', body: 'Adds jitter', owner: 'acme', repo: 'api' };
++
++function service(llm = new MockLLMProvider('openai', { structured: { labels: ['BUG', 'made-up', 'ci'] } })) {
++  return new LabelsService({
++    getPull: async (_ws, id) => (id === 'pr-1' ? PR : undefined),
++    resolveModel: async () => ({ provider: 'openai', model: 'gpt-4.1-mini' }),
++    llm: async () => llm,
++  });
++}
++
++function stubGitHub(labels: string[]) {
++  const fetchMock = vi.fn(async (_url: string, init?: RequestInit) =>
++    new Response(init?.method === 'POST' ? '[]' : JSON.stringify(labels.map((name) => ({ name }))), { status: 200 }),
++  );
++  vi.stubGlobal('fetch', fetchMock);
++  return fetchMock;
++}
++
++afterEach(() => vi.unstubAllGlobals());
++
++describe('LabelsService', () => {
++  it('keeps only labels the repo has, in its spelling', async () => {
++    stubGitHub(['bug', 'ci', 'docs']);
++    await expect(service().suggest('ws', 'pr-1', 't')).resolves.toEqual(['bug', 'ci']);
++  });
++
++  it('skips the model when the repo has no labels', async () => {
++    stubGitHub([]);
++    const llm = new MockLLMProvider();
++    await expect(service(llm).suggest('ws', 'pr-1', 't')).resolves.toEqual([]);
++    expect(llm.calls).toHaveLength(0);
++  });
++
++  it('posts the labels to the PR', async () => {
++    const fetchMock = stubGitHub([]);
++    await service().apply('ws', 'pr-1', ['bug'], 't');
++    expect(fetchMock).toHaveBeenCalledWith(
++      'https://api.github.com/repos/acme/api/issues/7/labels',
++      expect.objectContaining({ method: 'POST', body: JSON.stringify({ labels: ['bug'] }) }),
++    );
++  });
++
++  it('throws NotFoundError for an unknown PR', async () => {
++    await expect(service().suggest('ws', 'nope', 't')).rejects.toBeInstanceOf(NotFoundError);
++  });
++});
++
++describe('normalizeLabels', () => {
++  it('dedupes and caps', () => {
++    expect(normalizeLabels(['a', 'A', 'b', 'c'], ['a', 'b', 'c'], 2)).toEqual(['a', 'b']);
++  });
++});

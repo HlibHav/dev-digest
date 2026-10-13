@@ -1,0 +1,341 @@
+diff --git a/server/src/modules/index.ts b/server/src/modules/index.ts
+index 5fbe565..97a8121 100644
+--- a/server/src/modules/index.ts
++++ b/server/src/modules/index.ts
+@@ -14,6 +14,7 @@ import blast from './blast/routes.js';
+ import projectContext from './project-context/routes.js';
+ import onboarding from './onboarding/routes.js';
+ import brief from './brief/routes.js';
++import reindex from './reindex/routes.js';
+ 
+ /**
+  * Module registry. Each feature module is a Fastify plugin in
+@@ -44,4 +45,5 @@ export const modules: Record<string, FastifyPluginAsync> = {
+   projectContext,
+   onboarding,
+   brief,
++  reindex,
+ };
+diff --git a/server/src/modules/reindex/constants.ts b/server/src/modules/reindex/constants.ts
+new file mode 100644
+index 0000000..5c46f35
+--- /dev/null
++++ b/server/src/modules/reindex/constants.ts
+@@ -0,0 +1,10 @@
++const HOUR_MS = 60 * 60 * 1000;
++
++/** How often the scheduler looks for stale repos. */
++export const REINDEX_INTERVAL_MS = 24 * HOUR_MS;
++
++/** An index older than this is rebuilt. */
++export const STALE_AFTER_MS = 7 * 24 * HOUR_MS;
++
++/** Repos rebuilt at the same time; indexing is CPU- and disk-heavy. */
++export const REINDEX_CONCURRENCY = 2;
+diff --git a/server/src/modules/reindex/entity.ts b/server/src/modules/reindex/entity.ts
+new file mode 100644
+index 0000000..21b97cc
+--- /dev/null
++++ b/server/src/modules/reindex/entity.ts
+@@ -0,0 +1,16 @@
++export class StaleRepo {
++  constructor(
++    readonly repoId: string,
++    readonly fullName: string,
++    readonly indexedAt: Date | null,
++    readonly lastStatus: string | null,
++  ) {}
++
++  isNeverIndexed(): boolean {
++    return this.indexedAt === null;
++  }
++
++  ageMs(now: Date): number | null {
++    return this.indexedAt ? now.getTime() - this.indexedAt.getTime() : null;
++  }
++}
+diff --git a/server/src/modules/reindex/mapper.ts b/server/src/modules/reindex/mapper.ts
+new file mode 100644
+index 0000000..81a42f8
+--- /dev/null
++++ b/server/src/modules/reindex/mapper.ts
+@@ -0,0 +1,22 @@
++import { StaleRepo } from './entity.js';
++import type { StaleRepoRow } from './repository.js';
++
++export interface StaleRepoDto {
++  repo_id: string;
++  full_name: string;
++  indexed_at: string | null;
++  last_status: string | null;
++}
++
++export function toStaleRepo(row: StaleRepoRow): StaleRepo {
++  return new StaleRepo(row.repoId, row.fullName, row.indexedAt, row.status);
++}
++
++export function toStaleRepoDto(repo: StaleRepo): StaleRepoDto {
++  return {
++    repo_id: repo.repoId,
++    full_name: repo.fullName,
++    indexed_at: repo.indexedAt ? repo.indexedAt.toISOString() : null,
++    last_status: repo.lastStatus,
++  };
++}
+diff --git a/server/src/modules/reindex/repository.ts b/server/src/modules/reindex/repository.ts
+new file mode 100644
+index 0000000..da6ee6e
+--- /dev/null
++++ b/server/src/modules/reindex/repository.ts
+@@ -0,0 +1,48 @@
++import { and, eq, isNotNull, isNull, lt, or } from 'drizzle-orm';
++import type { Db } from '../../db/client.js';
++import * as t from '../../db/schema.js';
++
++export type ReindexTx = Parameters<Parameters<Db['transaction']>[0]>[0];
++
++export interface StaleRepoRow {
++  repoId: string;
++  fullName: string;
++  indexedAt: Date | null;
++  status: string | null;
++}
++
++export class ReindexRepository {
++  constructor(private db: Db) {}
++
++  transaction<T>(work: (tx: ReindexTx) => Promise<T>): Promise<T> {
++    return this.db.transaction(work);
++  }
++
++  /** Cloned repos whose index is missing or older than `cutoff`, optionally in one workspace. */
++  async listStale(cutoff: Date, workspaceId?: string): Promise<StaleRepoRow[]> {
++    return this.db
++      .select({
++        repoId: t.repos.id,
++        fullName: t.repos.fullName,
++        indexedAt: t.repoIndexState.updatedAt,
++        status: t.repoIndexState.status,
++      })
++      .from(t.repos)
++      .leftJoin(t.repoIndexState, eq(t.repoIndexState.repoId, t.repos.id))
++      .where(
++        and(
++          isNotNull(t.repos.clonePath),
++          workspaceId ? eq(t.repos.workspaceId, workspaceId) : undefined,
++          or(isNull(t.repoIndexState.updatedAt), lt(t.repoIndexState.updatedAt, cutoff)),
++        ),
++      );
++  }
++
++  async deleteSymbols(tx: ReindexTx, repoId: string): Promise<void> {
++    await tx.delete(t.symbols).where(eq(t.symbols.repoId, repoId));
++  }
++
++  async deleteIndexState(tx: ReindexTx, repoId: string): Promise<void> {
++    await tx.delete(t.repoIndexState).where(eq(t.repoIndexState.repoId, repoId));
++  }
++}
+diff --git a/server/src/modules/reindex/routes.ts b/server/src/modules/reindex/routes.ts
+new file mode 100644
+index 0000000..b4efee0
+--- /dev/null
++++ b/server/src/modules/reindex/routes.ts
+@@ -0,0 +1,38 @@
++/**
++ * Reindex HTTP module.
++ *
++ *   GET  /reindex/stale → the workspace's repos whose code index is missing or older than a week
++ *   POST /reindex/run   → 202; sweeps the workspace now instead of waiting for the nightly run
++ */
++import type { FastifyInstance } from 'fastify';
++import type { ZodTypeProvider } from 'fastify-type-provider-zod';
++import { getContext } from '../_shared/context.js';
++import { ReindexRepository } from './repository.js';
++import { ReindexService } from './service.js';
++import { NightlyReindexScheduler } from './scheduler.js';
++import { toStaleRepoDto } from './mapper.js';
++
++export default async function reindexRoutes(appBase: FastifyInstance) {
++  const app = appBase.withTypeProvider<ZodTypeProvider>();
++  const { container } = app;
++
++  const service = new ReindexService({
++    repo: new ReindexRepository(container.db),
++    indexRepo: (repoId) => container.repoIntel.indexRepo(repoId),
++  });
++  const scheduler = new NightlyReindexScheduler(service, (m) => app.log.info(m));
++  scheduler.start();
++  app.addHook('onClose', () => scheduler.stop());
++
++  app.get('/reindex/stale', async (req) => {
++    const { workspaceId } = await getContext(container, req);
++    const stale = await service.listStale(new Date(), workspaceId);
++    return { items: stale.map(toStaleRepoDto) };
++  });
++
++  app.post('/reindex/run', async (req, reply) => {
++    const { workspaceId } = await getContext(container, req);
++    const result = await scheduler.tick(new Date(), workspaceId);
++    return reply.code(202).send(result);
++  });
++}
+diff --git a/server/src/modules/reindex/scheduler.ts b/server/src/modules/reindex/scheduler.ts
+new file mode 100644
+index 0000000..b4658e7
+--- /dev/null
++++ b/server/src/modules/reindex/scheduler.ts
+@@ -0,0 +1,46 @@
++import PQueue from 'p-queue';
++import { REINDEX_CONCURRENCY, REINDEX_INTERVAL_MS } from './constants.js';
++import type { ReindexService } from './service.js';
++
++export interface TickResult {
++  queued: number;
++}
++
++/** Runs the stale-index sweep once a day, a few repos at a time. */
++export class NightlyReindexScheduler {
++  private timer?: NodeJS.Timeout;
++  private readonly queue = new PQueue({ concurrency: REINDEX_CONCURRENCY });
++
++  constructor(
++    private readonly service: ReindexService,
++    private readonly log: (message: string) => void,
++    private readonly intervalMs = REINDEX_INTERVAL_MS,
++  ) {}
++
++  start(): void {
++    if (this.timer) return;
++    this.timer = setInterval(() => void this.tick(), this.intervalMs);
++    this.timer.unref();
++  }
++
++  async tick(now = new Date(), workspaceId?: string): Promise<TickResult> {
++    const stale = await this.service.listStale(now, workspaceId);
++    for (const repo of stale) {
++      void this.queue.add(async () => {
++        try {
++          const result = await this.service.reindex(repo);
++          this.log(`reindex ${repo.fullName}: ${result.status} (${result.filesIndexed} files)`);
++        } catch (err) {
++          this.log(`reindex ${repo.fullName} failed: ${(err as Error).message}`);
++        }
++      });
++    }
++    return { queued: stale.length };
++  }
++
++  async stop(): Promise<void> {
++    if (this.timer) clearInterval(this.timer);
++    this.timer = undefined;
++    await this.queue.onIdle();
++  }
++}
+diff --git a/server/src/modules/reindex/service.ts b/server/src/modules/reindex/service.ts
+new file mode 100644
+index 0000000..580882a
+--- /dev/null
++++ b/server/src/modules/reindex/service.ts
+@@ -0,0 +1,41 @@
++import { STALE_AFTER_MS } from './constants.js';
++import type { StaleRepo } from './entity.js';
++import { toStaleRepo } from './mapper.js';
++import type { ReindexRepository, ReindexTx } from './repository.js';
++
++export interface IndexOutcome {
++  status: string;
++  filesIndexed: number;
++}
++
++export interface ReindexPorts {
++  repo: Pick<ReindexRepository, 'listStale' | 'transaction' | 'deleteSymbols' | 'deleteIndexState'>;
++  indexRepo(repoId: string): Promise<IndexOutcome>;
++}
++
++/**
++ * Rebuilds stale code indexes. A repo that was never indexed gets a plain
++ * index; one that was indexed before is cleared first so no symbol from a
++ * deleted file survives the rebuild.
++ */
++export class ReindexService {
++  constructor(private ports: ReindexPorts) {}
++
++  async listStale(now = new Date(), workspaceId?: string): Promise<StaleRepo[]> {
++    const cutoff = new Date(now.getTime() - STALE_AFTER_MS);
++    const rows = await this.ports.repo.listStale(cutoff, workspaceId);
++    return rows.map(toStaleRepo);
++  }
++
++  async reindex(repo: StaleRepo): Promise<IndexOutcome> {
++    if (!repo.isNeverIndexed()) {
++      await this.ports.repo.transaction((tx) => this.clearIndex(tx, repo.repoId));
++    }
++    return this.ports.indexRepo(repo.repoId);
++  }
++
++  private async clearIndex(tx: ReindexTx, repoId: string): Promise<void> {
++    await this.ports.repo.deleteSymbols(tx, repoId);
++    await this.ports.repo.deleteIndexState(tx, repoId);
++  }
++}
+diff --git a/server/test/reindex-service.test.ts b/server/test/reindex-service.test.ts
+new file mode 100644
+index 0000000..221dba2
+--- /dev/null
++++ b/server/test/reindex-service.test.ts
+@@ -0,0 +1,54 @@
++import { describe, it, expect, vi } from 'vitest';
++import { ReindexService, type IndexOutcome, type ReindexPorts } from '../src/modules/reindex/service.js';
++import type { ReindexTx, StaleRepoRow } from '../src/modules/reindex/repository.js';
++
++const NOW = new Date('2026-10-07T03:00:00Z');
++const OK: IndexOutcome = { status: 'full', filesIndexed: 120 };
++
++function ports(rows: StaleRepoRow[]) {
++  const calls: string[] = [];
++  const p: ReindexPorts = {
++    repo: {
++      listStale: vi.fn(async () => rows),
++      transaction: async (work) => {
++        calls.push('begin');
++        const out = await work({} as ReindexTx);
++        calls.push('commit');
++        return out;
++      },
++      deleteSymbols: async (_tx, id) => void calls.push(`symbols:${id}`),
++      deleteIndexState: async (_tx, id) => void calls.push(`state:${id}`),
++    },
++    indexRepo: vi.fn(async (id: string) => {
++      calls.push(`index:${id}`);
++      return OK;
++    }),
++  };
++  return { p, calls };
++}
++
++describe('ReindexService', () => {
++  it('asks for repos indexed more than a week ago', async () => {
++    const { p } = ports([]);
++    await new ReindexService(p).listStale(NOW);
++    expect(p.repo.listStale).toHaveBeenCalledWith(new Date('2026-09-30T03:00:00Z'), undefined);
++  });
++
++  it('clears an existing index in one transaction before rebuilding', async () => {
++    const { p, calls } = ports([
++      { repoId: 'r1', fullName: 'acme/api', indexedAt: new Date('2026-09-01'), status: 'full' },
++    ]);
++    const svc = new ReindexService(p);
++    const [repo] = await svc.listStale(NOW);
++    await expect(svc.reindex(repo!)).resolves.toEqual(OK);
++    expect(calls).toEqual(['begin', 'symbols:r1', 'state:r1', 'commit', 'index:r1']);
++  });
++
++  it('indexes a never-indexed repo without clearing', async () => {
++    const { p, calls } = ports([{ repoId: 'r2', fullName: 'acme/web', indexedAt: null, status: null }]);
++    const svc = new ReindexService(p);
++    const [repo] = await svc.listStale(NOW);
++    await svc.reindex(repo!);
++    expect(calls).toEqual(['index:r2']);
++  });
++});

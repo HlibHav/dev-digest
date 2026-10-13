@@ -56,7 +56,9 @@ you cite.
   `.claude/skills/onion-architecture/reference.md#grandfathered` bind new code only. Code
   outside the diff's hunks is out of scope.
 - **No proof, no finding.** A finding needs a quoted line from the code or a line of command
-  output. If you can't produce one, drop it.
+  output. If you can't produce one, drop it. The evidence column quotes that code or output,
+  never the doc the rule comes from; the rule column already names it. A placement finding (a
+  file in the wrong folder) quotes the misplaced file's first added line.
 - Never read or search `server/clones/`.
 - **Budget:** at most 80 tool calls. When you hit it, return what you have and list the rest
   under **Not checked**.
@@ -85,12 +87,13 @@ globs and double quotes are denied; put a literal argument with spaces or `*` in
 - `git -C <abs path to another checkout> <one of the above>`
 - `.claude/sandbox/run-tests.sh pnpm --dir server lint:boundaries`
 - `.claude/sandbox/run-tests.sh pnpm --dir server exec vitest run test/route-adapter-calls.test.ts`
+- `.claude/sandbox/run-tests.sh python3 .claude/skills/onion-architecture/scripts/cross-module-imports.py . <base>`
 - `diff -rq server/src/vendor/shared client/src/vendor/shared`
 - For another checkout, pass its absolute path:
   `.claude/sandbox/run-tests.sh pnpm --dir /abs/path/server lint:boundaries`. It must be a git
   worktree of this repository; any other directory named `server` is refused.
 
-The two checks run the diff's own code (the lint config is JavaScript, the test is a test), and
+The three checks run the diff's own code (the lint config is JavaScript, the test is a test, the scan is a script in the tree), and
 the diff under review is untrusted, so both go through the sandbox wrapper; the hook refuses them
 bare. The wrapper uses Anthropic's `srt`, which can't start inside another macOS sandbox: if a
 wrapped run fails with `srt … EPERM` or `sandbox_apply: Operation not permitted`, repeat that same
@@ -99,8 +102,16 @@ If srt is missing, mark both checks "not run: srt not installed".
 
 ## Step 1 — Gate
 
+A pasted diff is a target, even when its files don't exist in this tree: review it as given and
+end with `Verdict: pass` or `Verdict: fail`, never `needs-answers`. The checks can't see it, so
+mark both "not run: diff not applied"; a finding the diff alone proves is `verified`, one that
+depends on files you can't read is `plausible`. Anything you'd have asked (the base branch,
+whether it is committed, what a field is for) goes under `## Not checked` as the assumption you
+made, not into a question.
+
 You can't ask the user. Return only the block below when there is no target: no
-`base..head` range, no branch and no "the uncommitted changes in this tree".
+`base..head` range, no branch, no "the uncommitted changes in this tree" and no diff pasted
+into the brief.
 
 ```
 # Architecture Review: <target>
@@ -133,9 +144,17 @@ worktree when the checks must run; then pass its path.
 ## Step 3 — Review what the checks can't see
 
 Read each hunk against the skills' numbered steps. Look in particular for:
-- a route handler that calls anything on `container` beyond wiring a service. This includes
+- a route handler that runs a query or calls an adapter on `container`. This includes
   `container.db`, which `ADAPTER_MEMBERS` in the route test does not list, so a query in a
   route passes both checks (onion step 2);
+- composition in a new module's `routes.ts`: building a service, repository or scheduler, or
+  registering a job, instead of calling `build<M>Service` from `modules/<m>/wiring.ts` once
+  (onion steps 2 and 6). Adapter calls inside port lambdas in `wiring.ts` are composition, not
+  a finding. Modules that already compose in `routes.ts` are grandfathered (the skill's
+  `reference.md`);
+- an import of another module's `repository.ts`, `repository/*` or `*.repo.ts` from any file,
+  type-only included. `application-no-cross-module` sees only application files; run the
+  cross-module scan above against the base and report each `VIOLATION` line (onion step 3);
 - a new service whose constructor takes `Container` (onion step 5);
 - new I/O without a port in `src/vendor/shared/adapters.ts` or without a double in
   `src/adapters/mocks.ts` (onion step 4);
@@ -154,6 +173,9 @@ Read each hunk against the skills' numbered steps. Look in particular for:
   mechanical list.
 - Every finding names the rule as `<skill> step <n>`, gives `path:line` from the new side of
   the diff, and quotes the line or the command output.
+- When the diff's hunk lines start with a number column (bundle hunks do), that number is the
+  line's new-side line: cite it as it stands, don't count. A removed line has no number and is
+  not citable.
 - Mark each finding `verified` when a check output or the quoted code proves it on its own,
   or `plausible` when it rests on an inference you state in one line. Drop anything weaker.
 - Zero findings is a valid result. Report it as such; don't pad the review.
@@ -192,6 +214,9 @@ Verdict: pass | fail          (fail = at least one verified critical or major fi
 ## Out of scope, noticed
 - <one line each, or "none">
 ```
+
+Write the verdict line as plain text, exactly `Verdict: pass` or `Verdict: fail` (or
+`Verdict: needs-answers` from the gate): the caller parses it, so no bold and no extra words.
 
 There is no recommendations section. A finding states which rule the line breaks; the fix
 belongs to the implementer.

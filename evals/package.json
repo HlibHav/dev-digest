@@ -10,6 +10,8 @@
     "eval:agents": "vitest run agents",
     "eval:workflow": "vitest run workflow",
     "eval:quality": "tsx src/skill-quality.ts",
+    "eval:provider-check": "tsx src/provider-check.ts",
+    "eval:report": "tsx src/report.ts",
     "eval:compare": "tsx src/compare.ts",
     "eval:repeat": "tsx src/repeat.ts",
     "eval:delta": "tsx src/delta.ts",

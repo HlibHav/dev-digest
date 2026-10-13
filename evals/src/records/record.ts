@@ -32,6 +32,27 @@ export interface RecordData {
   grounded?: number;
   threshold?: number;
   extra?: Record<string, unknown>;
+  /** The case's own pass/fail (activation, dispatch, contrast) — what its assertion checks. */
+  passed?: boolean;
+}
+
+/**
+ * outcome: the case's explicit pass/fail first; then a grounding gate failure short-circuits to
+ * false; then the judge threshold; else "did the run itself succeed". Without `passed`, an
+ * activation case recorded the session's error flag, not whether the skill activated.
+ */
+export function computeOutcome(data: {
+  result: Pick<Result, "isError">;
+  verdict?: Pick<Verdict, "score">;
+  grounded?: number;
+  threshold?: number;
+  passed?: boolean;
+}): boolean {
+  const { result, verdict, grounded, threshold, passed } = data;
+  if (passed !== undefined) return passed;
+  if (grounded !== undefined && grounded < 1) return false;
+  if (verdict && threshold !== undefined) return verdict.score >= threshold;
+  return !result.isError;
 }
 
 /**
@@ -44,14 +65,7 @@ export function record(label: string, data: RecordData): void {
   const state = expect.getState();
   const nodeid = `${state.testPath ?? "?"} > ${state.currentTestName ?? label}`;
 
-  // outcome: grounding gate failure short-circuits to false; else the judge threshold; else
-  // "did the run itself succeed" (workflow tests have neither grounding nor a judge verdict).
-  const outcome =
-    grounded !== undefined && grounded < 1
-      ? false
-      : verdict && threshold !== undefined
-        ? verdict.score >= threshold
-        : !result.isError;
+  const outcome = computeOutcome(data);
 
   const outDir = join(OUTPUTS, RUN_ID);
   mkdirSync(outDir, { recursive: true });
