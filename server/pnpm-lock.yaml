@@ -14,9 +14,6 @@ importers:
       '@ast-grep/napi':
         specifier: 0.43.0
         version: 0.43.0
-      '@fastify/autoload':
-        specifier: ^6.0.3
-        version: 6.3.1
       '@fastify/cors':
         specifier: ^10.0.2
         version: 10.1.0
@@ -937,9 +934,6 @@ packages:
 
   '@fastify/ajv-compiler@4.0.5':
     resolution: {integrity: sha512-KoWKW+MhvfTRWL4qrhUwAAZoaChluo0m0vbiJlGMt2GXvL4LVPQEjt8kSpHI3IBq5Rez8fg+XeH3cneztq+C7A==}
-
-  '@fastify/autoload@6.3.1':
-    resolution: {integrity: sha512-0fsG+lO3m5yEZVjXKpltCe+2eHhM6rfAPQhvlGUgLUFTw/N2wA9WqPTObMtrF3oUCUrxbSDv60HlUIoh+aFM1A==}
 
   '@fastify/busboy@2.1.1':
     resolution: {integrity: sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA==}
@@ -3839,8 +3833,6 @@ snapshots:
       ajv: 8.20.0
       ajv-formats: 3.0.1(ajv@8.20.0)
       fast-uri: 3.1.2
-
-  '@fastify/autoload@6.3.1': {}
 
   '@fastify/busboy@2.1.1': {}
 
