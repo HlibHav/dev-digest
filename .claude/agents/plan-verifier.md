@@ -182,6 +182,10 @@ with `path:line-range` and one factual line on what they do. Generated files (lo
 changed through a package manager, drizzle migrations and their `meta/`; the bundle marks them
 `excluded (generated)`) map to the step that caused them without being read.
 
+When the diff's hunk lines start with a number column (bundle hunks do), that number is the
+line's new-side line: cite `path:line` and `path:line-range` from it, don't count. A removed line
+has no number.
+
 ## Output — the Plan Verification
 
 ```

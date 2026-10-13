@@ -14,7 +14,7 @@ import { filterAgents } from "../helpers";
 import { useAgents, useAgent, useUpdateAgent } from "../../../lib/hooks/agents";
 import { ApiError } from "../../../lib/api";
 
-const VALID_TABS = ["config", "skills", "context"];
+const VALID_TABS = ["config", "skills", "context", "evals"];
 
 export default function AgentEditorPage() {
   const params = useParams<{ id: string }>();

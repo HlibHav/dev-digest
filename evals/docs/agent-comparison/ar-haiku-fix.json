@@ -1,0 +1,268 @@
+{
+  "label": "ar-haiku-fix",
+  "git_sha": "4482c07",
+  "dirty": true,
+  "times": 2,
+  "vitestArgs": [
+    "agents/architecture-reviewer/architecture-reviewer.eval.ts"
+  ],
+  "tests": {
+    "/Users/Glebazzz/Claude/PROJECTS/NEO/dev-digest/.claude/worktrees/onion-skill-evals/evals/agents/architecture-reviewer/architecture-reviewer.eval.ts > agent:architecture-reviewer > flags both violations in the checkout diff with severity and a citable rule": {
+      "nodeid": "/Users/Glebazzz/Claude/PROJECTS/NEO/dev-digest/.claude/worktrees/onion-skill-evals/evals/agents/architecture-reviewer/architecture-reviewer.eval.ts > agent:architecture-reviewer > flags both violations in the checkout diff with severity and a citable rule",
+      "label": "flags both violations in the checkout diff with severity and a citable rule",
+      "pass": {
+        "passed": 2,
+        "total": 2,
+        "rate": 1
+      },
+      "practices": {
+        "Flags server/src/modules/checkout/domain/checkout.ts:1 — the domain file imports a type from 'fastify' — as a boundary violation (imports must point inward; application/domain code imports no fastify).": {
+          "passed": 2,
+          "total": 2,
+          "rate": 1
+        },
+        "Flags the `new PgCheckoutRepository()` in server/src/modules/checkout/service.ts — the service builds its own repository instead of receiving it as a port built in wiring.ts / the container.": {
+          "passed": 2,
+          "total": 2,
+          "rate": 1
+        },
+        "Every finding cites the rule it breaks as a skill step (e.g. `onion-architecture step 3`) or the rules file (`.claude/rules/onion-boundaries.md`), not prose alone.": {
+          "passed": 2,
+          "total": 2,
+          "rate": 1
+        },
+        "Every finding has a severity from critical / major / minor, and these boundary leaks are `major` or higher.": {
+          "passed": 2,
+          "total": 2,
+          "rate": 1
+        },
+        "Every finding gives a `path:line` and quotes the offending line verbatim, not a paraphrase.": {
+          "passed": 1,
+          "total": 2,
+          "rate": 0.5
+        },
+        "States that the checks (`pnpm lint:boundaries`, the route-adapter test) did not run on this diff, or ran only on the unchanged tree, rather than presenting their output as a verdict on the diff.": {
+          "passed": 1,
+          "total": 2,
+          "rate": 0.5
+        }
+      },
+      "metrics": {
+        "durationMs": {
+          "mean": 54753.5,
+          "stddev": 22605.496687752737,
+          "min": 38769,
+          "max": 70738,
+          "n": 2
+        },
+        "inputTokens": {
+          "mean": 79,
+          "stddev": 1.4142135623730951,
+          "min": 78,
+          "max": 80,
+          "n": 2
+        },
+        "outputTokens": {
+          "mean": 4162,
+          "stddev": 2111.420848623031,
+          "min": 2669,
+          "max": 5655,
+          "n": 2
+        },
+        "numTurns": {
+          "mean": 13,
+          "stddev": 0,
+          "min": 13,
+          "max": 13,
+          "n": 2
+        },
+        "toolCallCount": {
+          "mean": 12,
+          "stddev": 0,
+          "min": 12,
+          "max": 12,
+          "n": 2
+        }
+      }
+    },
+    "/Users/Glebazzz/Claude/PROJECTS/NEO/dev-digest/.claude/worktrees/onion-skill-evals/evals/agents/architecture-reviewer/architecture-reviewer.eval.ts > agent:architecture-reviewer > does not fabricate an architecture finding for the out-of-scope security-shaped change": {
+      "nodeid": "/Users/Glebazzz/Claude/PROJECTS/NEO/dev-digest/.claude/worktrees/onion-skill-evals/evals/agents/architecture-reviewer/architecture-reviewer.eval.ts > agent:architecture-reviewer > does not fabricate an architecture finding for the out-of-scope security-shaped change",
+      "label": "does not fabricate an architecture finding for the out-of-scope security-shaped change",
+      "pass": {
+        "passed": 1,
+        "total": 2,
+        "rate": 0.5
+      },
+      "practices": {
+        "Does not raise a finding for the optional `reply?: FastifyReply` parameter beyond the fastify import itself (no runtime bug or security finding dressed up as an architecture rule); a one-line note under 'Out of scope, noticed' is not a finding.": {
+          "passed": 1,
+          "total": 2,
+          "rate": 0.5
+        },
+        "Stays scoped to layering, import direction and composition; it does not comment on naming, style or test coverage (a one-line 'Out of scope, noticed' entry is fine).": {
+          "passed": 2,
+          "total": 2,
+          "rate": 1
+        }
+      },
+      "metrics": {
+        "durationMs": {
+          "mean": 35550,
+          "stddev": 18486.5996873411,
+          "min": 22478,
+          "max": 48622,
+          "n": 2
+        },
+        "inputTokens": {
+          "mean": 21,
+          "stddev": 16.97056274847714,
+          "min": 9,
+          "max": 33,
+          "n": 2
+        },
+        "outputTokens": {
+          "mean": 3039.5,
+          "stddev": 1322.9967876000305,
+          "min": 2104,
+          "max": 3975,
+          "n": 2
+        },
+        "numTurns": {
+          "mean": 3,
+          "stddev": 2.8284271247461903,
+          "min": 1,
+          "max": 5,
+          "n": 2
+        },
+        "toolCallCount": {
+          "mean": 2,
+          "stddev": 2.8284271247461903,
+          "min": 0,
+          "max": 4,
+          "n": 2
+        }
+      }
+    },
+    "/Users/Glebazzz/Claude/PROJECTS/NEO/dev-digest/.claude/worktrees/onion-skill-evals/evals/agents/architecture-reviewer/architecture-reviewer.eval.ts > agent:architecture-reviewer > flags filesystem I/O added to reviewer-core against its purity rule": {
+      "nodeid": "/Users/Glebazzz/Claude/PROJECTS/NEO/dev-digest/.claude/worktrees/onion-skill-evals/evals/agents/architecture-reviewer/architecture-reviewer.eval.ts > agent:architecture-reviewer > flags filesystem I/O added to reviewer-core against its purity rule",
+      "label": "flags filesystem I/O added to reviewer-core against its purity rule",
+      "pass": {
+        "passed": 2,
+        "total": 2,
+        "rate": 1
+      },
+      "practices": {
+        "Flags `import { readFileSync } from 'node:fs'` at reviewer-core/src/review/run.ts:18 (and its use in reviewPullRequest) as a violation: reviewer-core is pure — no database, GitHub, filesystem or env access.": {
+          "passed": 2,
+          "total": 2,
+          "rate": 1
+        },
+        "Cites a documented rule by name — reviewer-core/AGENTS.md's purity rule, any `onion-architecture step <n>`, or `.claude/rules/onion-boundaries.md` — rather than describing it only in prose.": {
+          "passed": 2,
+          "total": 2,
+          "rate": 1
+        },
+        "Gives the finding a severity of major or higher, a `path:line` and the quoted import line.": {
+          "passed": 2,
+          "total": 2,
+          "rate": 1
+        }
+      },
+      "metrics": {
+        "durationMs": {
+          "mean": 60072,
+          "stddev": 9461.088732276006,
+          "min": 53382,
+          "max": 66762,
+          "n": 2
+        },
+        "inputTokens": {
+          "mean": 100,
+          "stddev": 8.48528137423857,
+          "min": 94,
+          "max": 106,
+          "n": 2
+        },
+        "outputTokens": {
+          "mean": 4262.5,
+          "stddev": 820.9509729575817,
+          "min": 3682,
+          "max": 4843,
+          "n": 2
+        },
+        "numTurns": {
+          "mean": 17.5,
+          "stddev": 3.5355339059327378,
+          "min": 15,
+          "max": 20,
+          "n": 2
+        },
+        "toolCallCount": {
+          "mean": 16.5,
+          "stddev": 3.5355339059327378,
+          "min": 14,
+          "max": 19,
+          "n": 2
+        }
+      }
+    },
+    "/Users/Glebazzz/Claude/PROJECTS/NEO/dev-digest/.claude/worktrees/onion-skill-evals/evals/agents/architecture-reviewer/architecture-reviewer.eval.ts > agent:architecture-reviewer > a benign rename passes with no findings": {
+      "nodeid": "/Users/Glebazzz/Claude/PROJECTS/NEO/dev-digest/.claude/worktrees/onion-skill-evals/evals/agents/architecture-reviewer/architecture-reviewer.eval.ts > agent:architecture-reviewer > a benign rename passes with no findings",
+      "label": "a benign rename passes with no findings",
+      "pass": {
+        "passed": 2,
+        "total": 2,
+        "rate": 1
+      },
+      "practices": {
+        "Reports zero findings for the local-variable rename in server/src/modules/blast/helpers.ts (an `info`-level note at most); it does not invent a critical, major or minor finding.": {
+          "passed": 2,
+          "total": 2,
+          "rate": 1
+        },
+        "Gives a final verdict of pass, not needs-answers or inconclusive.": {
+          "passed": 2,
+          "total": 2,
+          "rate": 1
+        }
+      },
+      "metrics": {
+        "durationMs": {
+          "mean": 12783.5,
+          "stddev": 5834.338051570204,
+          "min": 8658,
+          "max": 16909,
+          "n": 2
+        },
+        "inputTokens": {
+          "mean": 9,
+          "stddev": 0,
+          "min": 9,
+          "max": 9,
+          "n": 2
+        },
+        "outputTokens": {
+          "mean": 886,
+          "stddev": 308.2985565973347,
+          "min": 668,
+          "max": 1104,
+          "n": 2
+        },
+        "numTurns": {
+          "mean": 1,
+          "stddev": 0,
+          "min": 1,
+          "max": 1,
+          "n": 2
+        },
+        "toolCallCount": {
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0,
+          "n": 2
+        }
+      }
+    }
+  }
+}

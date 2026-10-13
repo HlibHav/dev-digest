@@ -7,6 +7,9 @@ agent reads.
 
 | Version | Date | Change |
 |---|---|---|
+| 2.2.1 | 2026-10-07 | Review evals moved out of the skill into the course `evals/` package (`evals/skills/onion-architecture/`); a `## Steps` heading for the `eval:quality` gate |
+| 2.2.0 | 2026-10-07 | No file imports another module's data access (step 3), checked by the bundled `scripts/cross-module-imports.py`; `pnpm lint:boundaries` only sees cross-module imports from application files. No existing module broke the rule when it was added (Glib, 2026-10-07) |
+| 2.1.0 | 2026-10-07 | Composition lives in `modules/<m>/wiring.ts` (step 2) and job handlers are registered there (step 6); `routes.ts` only holds handlers. Codifies the convention five modules adopted after v2 (Glib, 2026-10-07). Evals added in `evals/` |
 | 2.0.0 | 2026-09-22 | Rewritten from a rule-by-rule audit of v1 against the code; import rules machine-checked by `pnpm lint:boundaries` |
 | 1.0.0 | 2026-09-20 | First release, commit `6a80fd1` |
 
@@ -57,10 +60,14 @@ one in `pulls/routes.ts` failed it with both `file:line`s, and it passed after t
 
 ## Verification status
 
-The evals are deferred to a later course module. Their spec is `docs/onion-architecture-skill-plan.md`
-§6: six coding tasks graded on the diff, 20 trigger queries, and arms for no skill, v1 (commit
-`6a80fd1`) and v2. Until those run, a rule's "general knowledge" class is judgement, not
-measurement.
+Review evals live in the course package, `evals/skills/onion-architecture/`: five diff fixtures with
+planted violations (and decoys where a practice says "does NOT flag") and their practices in
+`onion-architecture.cases.ts`. Fixtures stay out of the skill so the model never reads a planted
+violation as guidance. Run `cd evals && pnpm eval:skills onion-architecture`; measure lift with
+`pnpm eval:benchmark skills/onion-architecture -n 5` and a skill change with `eval:repeat --label`
++ `eval:delta`. ADR `../decisions/2026-10-07-skill-evals-in-course-package.md`. Iterations 1-3
+(2026-10-07, tool-using review agents, Sonnet): recall saturated in every arm; v2.1 added
+composition in `routes.ts`, v2.2 the cross-module data-access scan.
 
 ## Design rules
 

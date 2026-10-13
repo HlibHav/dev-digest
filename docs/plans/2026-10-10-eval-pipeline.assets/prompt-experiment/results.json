@@ -1,0 +1,386 @@
+[
+ {
+  "label": "old",
+  "rep": 1,
+  "id": "ceddd4e7-651d-4c06-9672-36f77d3423ac",
+  "run": 2,
+  "agent_v": 3,
+  "status": "done",
+  "recall": 0.3333333333333333,
+  "precision": 0.5,
+  "citation": 1,
+  "passed": 2,
+  "errored": 0,
+  "cost": 0.01085549132,
+  "cases": {
+   "server/src/modules/share/helpers.ts:32 \u2014": [
+    "passed",
+    3,
+    0,
+    0
+   ],
+   "server/src/modules/share/repository.ts:1": [
+    "failed",
+    1,
+    0,
+    0
+   ],
+   "server/src/modules/share/service.ts:79 \u2014": [
+    "passed",
+    7,
+    0,
+    0
+   ],
+   "server/src/modules/share/routes.ts:57 \u2014 ": [
+    "failed",
+    5,
+    0,
+    0
+   ],
+   "server/src/modules/share/constants.ts:21": [
+    "failed",
+    2,
+    0,
+    0
+   ],
+   "client/src/app/share/[token]/_components": [
+    "failed",
+    1,
+    0,
+    0
+   ],
+   "server/src/modules/pulls/size.ts:12 \u2014 Lo": [
+    "failed",
+    2,
+    0,
+    1
+   ],
+   "server/src/modules/pulls/size.ts:24 \u2014 Un": [
+    "failed",
+    2,
+    0,
+    1
+   ]
+  }
+ },
+ {
+  "label": "old",
+  "rep": 2,
+  "id": "18239149-2130-4f0a-92ba-0b85e46b39ec",
+  "run": 3,
+  "agent_v": 3,
+  "status": "done",
+  "recall": 0.5,
+  "precision": 1,
+  "citation": 0.875,
+  "passed": 5,
+  "errored": 0,
+  "cost": 0.007608030280000001,
+  "cases": {
+   "server/src/modules/share/helpers.ts:32 \u2014": [
+    "passed",
+    3,
+    0,
+    0
+   ],
+   "server/src/modules/share/repository.ts:1": [
+    "failed",
+    1,
+    0,
+    0
+   ],
+   "server/src/modules/share/service.ts:79 \u2014": [
+    "failed",
+    4,
+    0,
+    0
+   ],
+   "server/src/modules/share/routes.ts:57 \u2014 ": [
+    "passed",
+    6,
+    0,
+    0
+   ],
+   "server/src/modules/share/constants.ts:21": [
+    "failed",
+    5,
+    3,
+    0
+   ],
+   "client/src/app/share/[token]/_components": [
+    "passed",
+    2,
+    0,
+    0
+   ],
+   "server/src/modules/pulls/size.ts:12 \u2014 Lo": [
+    "passed",
+    0,
+    0,
+    0
+   ],
+   "server/src/modules/pulls/size.ts:24 \u2014 Un": [
+    "passed",
+    0,
+    0,
+    0
+   ]
+  }
+ },
+ {
+  "label": "new",
+  "rep": 1,
+  "id": "cc967946-96e0-4b32-8e0c-cbec9fe3ecf4",
+  "run": 4,
+  "agent_v": 4,
+  "status": "done",
+  "recall": 0.6666666666666666,
+  "precision": 0.8,
+  "citation": 1,
+  "passed": 5,
+  "errored": 0,
+  "cost": 0.004155116252,
+  "cases": {
+   "server/src/modules/share/helpers.ts:32 \u2014": [
+    "failed",
+    1,
+    0,
+    0
+   ],
+   "server/src/modules/share/repository.ts:1": [
+    "passed",
+    4,
+    0,
+    0
+   ],
+   "server/src/modules/share/service.ts:79 \u2014": [
+    "failed",
+    4,
+    0,
+    0
+   ],
+   "server/src/modules/share/routes.ts:57 \u2014 ": [
+    "passed",
+    4,
+    0,
+    0
+   ],
+   "server/src/modules/share/constants.ts:21": [
+    "passed",
+    3,
+    0,
+    0
+   ],
+   "client/src/app/share/[token]/_components": [
+    "passed",
+    1,
+    0,
+    0
+   ],
+   "server/src/modules/pulls/size.ts:12 \u2014 Lo": [
+    "passed",
+    0,
+    0,
+    0
+   ],
+   "server/src/modules/pulls/size.ts:24 \u2014 Un": [
+    "failed",
+    2,
+    0,
+    1
+   ]
+  }
+ },
+ {
+  "label": "new",
+  "rep": 2,
+  "id": "c3817b15-0572-454b-9e09-e473d90f3d45",
+  "run": 5,
+  "agent_v": 4,
+  "status": "done",
+  "recall": 0.6666666666666666,
+  "precision": 0.8333333333333334,
+  "citation": 0.40789473684210525,
+  "passed": 5,
+  "errored": 0,
+  "cost": 0.00563613204,
+  "cases": {
+   "server/src/modules/share/helpers.ts:32 \u2014": [
+    "failed",
+    5,
+    45,
+    0
+   ],
+   "server/src/modules/share/repository.ts:1": [
+    "passed",
+    4,
+    0,
+    0
+   ],
+   "server/src/modules/share/service.ts:79 \u2014": [
+    "passed",
+    9,
+    0,
+    0
+   ],
+   "server/src/modules/share/routes.ts:57 \u2014 ": [
+    "passed",
+    6,
+    0,
+    0
+   ],
+   "server/src/modules/share/constants.ts:21": [
+    "passed",
+    3,
+    0,
+    0
+   ],
+   "client/src/app/share/[token]/_components": [
+    "failed",
+    1,
+    0,
+    0
+   ],
+   "server/src/modules/pulls/size.ts:12 \u2014 Lo": [
+    "failed",
+    3,
+    0,
+    1
+   ],
+   "server/src/modules/pulls/size.ts:24 \u2014 Un": [
+    "passed",
+    0,
+    0,
+    0
+   ]
+  }
+ },
+ {
+  "label": "broken",
+  "rep": 1,
+  "id": "5affb62c-1c85-4f35-be7c-6ed5281c5cb6",
+  "run": 6,
+  "agent_v": 5,
+  "status": "done",
+  "recall": 0.5,
+  "precision": 1,
+  "citation": 1,
+  "passed": 5,
+  "errored": 0,
+  "cost": 0.004137398888,
+  "cases": {
+   "server/src/modules/share/helpers.ts:32 \u2014": [
+    "failed",
+    4,
+    0,
+    0
+   ],
+   "server/src/modules/share/repository.ts:1": [
+    "passed",
+    4,
+    0,
+    0
+   ],
+   "server/src/modules/share/service.ts:79 \u2014": [
+    "passed",
+    8,
+    0,
+    0
+   ],
+   "server/src/modules/share/routes.ts:57 \u2014 ": [
+    "passed",
+    2,
+    0,
+    0
+   ],
+   "server/src/modules/share/constants.ts:21": [
+    "failed",
+    5,
+    0,
+    0
+   ],
+   "client/src/app/share/[token]/_components": [
+    "failed",
+    1,
+    0,
+    0
+   ],
+   "server/src/modules/pulls/size.ts:12 \u2014 Lo": [
+    "passed",
+    1,
+    0,
+    0
+   ],
+   "server/src/modules/pulls/size.ts:24 \u2014 Un": [
+    "passed",
+    0,
+    0,
+    0
+   ]
+  }
+ },
+ {
+  "label": "broken",
+  "rep": 2,
+  "id": "44126939-db5e-4076-b8ae-5355bf888a77",
+  "run": 7,
+  "agent_v": 5,
+  "status": "done",
+  "recall": 0.6666666666666666,
+  "precision": 0.7142857142857143,
+  "citation": 1,
+  "passed": 4,
+  "errored": 0,
+  "cost": 0.00426606208,
+  "cases": {
+   "server/src/modules/share/helpers.ts:32 \u2014": [
+    "passed",
+    4,
+    0,
+    0
+   ],
+   "server/src/modules/share/repository.ts:1": [
+    "passed",
+    2,
+    0,
+    0
+   ],
+   "server/src/modules/share/service.ts:79 \u2014": [
+    "failed",
+    1,
+    0,
+    0
+   ],
+   "server/src/modules/share/routes.ts:57 \u2014 ": [
+    "passed",
+    6,
+    0,
+    0
+   ],
+   "server/src/modules/share/constants.ts:21": [
+    "passed",
+    2,
+    0,
+    0
+   ],
+   "client/src/app/share/[token]/_components": [
+    "failed",
+    1,
+    0,
+    0
+   ],
+   "server/src/modules/pulls/size.ts:12 \u2014 Lo": [
+    "failed",
+    2,
+    0,
+    1
+   ],
+   "server/src/modules/pulls/size.ts:24 \u2014 Un": [
+    "failed",
+    2,
+    0,
+    1
+   ]
+  }
+ }
+]

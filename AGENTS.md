@@ -8,8 +8,9 @@ Local-first AI PR reviewer. Course starter: Part-0 works end to end; each lesson
 ## Before answering
 
 A task that concerns a package starts with the `engineering-insights` skill: read that
-package's `INSIGHTS.md` before any other work. Don't skip it. Then its `docs/` and `specs/` —
-they are curated and may already answer it. Then read code.
+package's `INSIGHTS.md` before any other work. Don't skip it. Then the guides that package's
+`AGENTS.md` names for this kind of task (its **Read when** list), then its `docs/` and
+`specs/` — they are curated and may already answer it. Then read code.
 
 ## Stack
 
@@ -20,6 +21,9 @@ they are curated and may already answer it. Then read code.
 | `reviewer-core/` | TypeScript source, no build step | openai SDK (OpenRouter), zod, vitest | npm |
 | `e2e/` | TypeScript run by tsx | global `agent-browser` CLI, no test framework | npm |
 | `mcp-server/` | TypeScript ESM · MCP stdio server | `@modelcontextprotocol/server` v2, zod v4, vitest | pnpm |
+| `evals/` | TypeScript run by tsx and vitest | Claude Agent SDK, vitest | pnpm |
+
+`pnpm verify:l06` (repo root) runs the eval scoring and eval-module unit tests in one go.
 
 Database: PostgreSQL 16 with pgvector (`pgvector/pgvector:pg16` in `docker-compose.yml`).
 
@@ -33,6 +37,7 @@ its commands from inside its directory.
 - `reviewer-core/` — the pure review engine (prompt assembly, LLM call, grounding, score), shared by the server and the CI runner.
 - `e2e/` — deterministic browser flows as JSON, run against seeded data.
 - `mcp-server/` — a local stdio MCP server exposing five DevDigest review tools to an MCP client, over the already-running local API.
+- `evals/` — behaviour evals for the project's skills and agents (course lesson 6): cases in `evals/skills/<name>/` and `evals/agents/<name>/`, never inside `.claude/`.
 - `docs/` — cross-package docs (`docs/agent-prompts/`). Package-local docs live in each package's `docs/` and `specs/`.
 - `scripts/` — `dev.sh` (local stack) and `e2e.sh` (hermetic e2e).
 - `.github/workflows/` — CI per package (server split into unit and integration) plus e2e.
@@ -59,10 +64,23 @@ Ports and machine-specific overrides live in `CLAUDE.local.md` when present.
 | `reviewer-core/` | `npm run typecheck` | `npm test` |
 | `e2e/` | `npm run typecheck` | `npm run e2e:hermetic` |
 | `mcp-server/` | `pnpm typecheck` | `pnpm test` |
+| `evals/` | `pnpm typecheck` · `pnpm eval:quality` (static, no LLM) | `pnpm eval:skills` · `pnpm eval:agents` · `pnpm eval:workflow` (run a model through Claude Code) |
 
 No linter or formatter is configured in any package: typecheck + tests are the gate, plus
 `server/`'s import-boundary check (`pnpm lint:boundaries`, dependency-cruiser). A change in
 `reviewer-core/` must also pass `server/`'s checks.
+
+Harness changes run the evals from `evals/`. CI runs them on pull requests and on push to `main`
+(`.github/workflows/evals.yml`, `evals/scripts/ci-detect.mjs` picks the jobs). `eval:quality`
+and the unit tests block; the model runs report a delta against `evals/baselines/` and do not
+block. Actions → evals → Run workflow runs a tier by hand (tier, name, models, budget).
+
+| Change | Minimum check | Local run | CI job |
+|---|---|---|---|
+| `.claude/skills/<name>/**` | `eval:quality` + that skill's eval | `pnpm eval:quality` · `pnpm exec vitest run skills/<name>/` | `quality` · `skills` |
+| `.claude/agents/<name>.md` | the agent's eval + the workflow cases (dispatch) | `pnpm exec vitest run agents/<name>/` · `pnpm eval:workflow` | `agents` · `workflow` |
+| `CLAUDE.md` / `AGENTS.md` (root or a package's), `TESTING.md`, `.claude/rules/**` | `eval:workflow` | `pnpm eval:workflow` | `workflow` |
+| an eval case (`evals/**/*.cases.ts`, fixtures) or the grader (`evals/src/scoring/**`) | recalibrate that suite's baseline (all suites for a grader change) | `EVAL_REPEAT_MAX=3 pnpm eval:repeat <tier>/<name>/ -n 3 --label <tier>-<name>`, then `cp results/repeat-<tier>-<name>.json baselines/<tier>-<name>.json` (workflow: label and file `workflow`) | the suite's own job |
 
 ## Naming conventions
 
@@ -123,5 +141,12 @@ No linter or formatter is configured in any package: typecheck + tests are the g
   `.claude/rules/onion-boundaries.md`.
 - Placing a new file under `client/src` — which folder, when to promote to shared, import
   directions → `frontend-ui-architecture`
+- Adding or changing a skill (`.claude/skills/**`) or an agent (`.claude/agents/**`) → its cases in
+  `evals/skills/<name>/` or `evals/agents/<name>/` (`<name>.eval.ts`, `<name>.cases.ts`, `fixtures/`).
+  Fixtures stay out of `.claude/`, so a planted violation never reads as guidance. Gate with
+  `pnpm eval:quality`, then run the suite the change maps to in the table under **Check**:
+  changed `.claude/skills` → `eval:skills`, changed `.claude/agents` → `eval:agents`, changed
+  `CLAUDE.md` → `eval:workflow`. Measure a change with `eval:repeat --label` (before the edit) +
+  `eval:delta`, and the artifact's lift with `eval:benchmark`. How-to: `evals/README.md`.
 - Finishing a non-trivial task → `engineering-insights` to record what was learned in the touched
   package's `INSIGHTS.md`. Don't skip it; "nothing worth recording" is a valid outcome.

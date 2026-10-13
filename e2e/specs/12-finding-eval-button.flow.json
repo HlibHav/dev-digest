@@ -1,0 +1,97 @@
+{
+  "name": "An undecided finding offers a disabled 'Turn into eval case' with its hint",
+  "description": "PR #482 -> Agent runs tab -> find the undecided seeded finding (FindingsPanel opens the first finding expanded, so no click is needed): the Turn into eval case button shows with the hint 'Accept or dismiss first'. Seeded findings carry no decision. Read-only; nothing is clicked that writes. Covers AC-9 (UI half).",
+  "steps": [
+    {
+      "cmd": [
+        "open",
+        "{BASE}/"
+      ],
+      "label": "load the app root"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--url",
+        "/pulls"
+      ],
+      "label": "land on the PR list"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "Add rate limiting to public API endpoints"
+      ],
+      "label": "seeded PR title row is visible"
+    },
+    {
+      "cmd": [
+        "find",
+        "text",
+        "Add rate limiting to public API endpoints",
+        "click"
+      ],
+      "label": "open the PR row"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--url",
+        "/pulls/482"
+      ],
+      "label": "navigate to the PR detail route"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--load",
+        "networkidle"
+      ],
+      "label": "PR detail data settles"
+    },
+    {
+      "cmd": [
+        "find",
+        "role",
+        "button",
+        "click",
+        "--name",
+        "Agent runs"
+      ],
+      "label": "switch to the Agent runs tab"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--url",
+        "tab=findings"
+      ],
+      "label": "findings tab is active in the URL"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "Hardcoded Stripe secret key in commit"
+      ],
+      "label": "seeded finding is visible"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "Turn into eval case"
+      ],
+      "label": "the eval button shows"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "Accept or dismiss first"
+      ],
+      "label": "undecided finding shows the hint (AC-9)"
+    }
+  ]
+}

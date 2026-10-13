@@ -8,7 +8,10 @@
 #   stat.txt      `git diff --stat` of the whole range, generated files included, so a reverse
 #                 map still sees them
 #   diff.patch    the diff without generated files (drizzle `migrations/meta/`, lockfiles)
-#   hunks/<path>.patch   one file per changed path, same exclusions, `-M` rename detection
+#   hunks/<path>.patch   one file per changed path, same exclusions, `-M` rename detection;
+#                 every hunk line starts with its new-side line number (blank for a removed
+#                 line), so a reviewer cites `path:line` instead of counting from the `@@`
+#                 header (../decisions/2026-10-09-numbered-review-hunks.md). Not `git apply`-able.
 #   index.txt     one line per changed path: added/deleted lines, bytes of its hunk file, and
 #                 the hunk file — or `excluded` for a generated file
 #
@@ -35,6 +38,18 @@ EXCLUDE=(
   ':(exclude)skills-lock.json'
 )
 
+# Prefix each hunk line with its new-side line number: context and added lines get the number
+# they have in the new file, removed lines a blank column; headers pass through.
+number_hunks() {
+  awk '
+    /^diff --git / { in_hunk = 0; print; next }
+    /^@@ / { split($3, side, ","); n = substr(side[1], 2) + 0; in_hunk = 1; print; next }
+    in_hunk && /^[+ ]/ { printf "%5d %s\n", n, $0; n++; next }
+    in_hunk && /^-/ { printf "%5s %s\n", "", $0; next }
+    { print }
+  '
+}
+
 rm -rf "$OUT"
 mkdir -p "$OUT/hunks"
 
@@ -53,7 +68,7 @@ git diff -M "$RANGE" -- . "${EXCLUDE[@]}" > "$OUT/diff.patch"
     if grep -qxF "$path" "$OUT/.kept"; then
       hunk="$OUT/hunks/$path.patch"
       mkdir -p "$(dirname "$hunk")"
-      git diff -M "$RANGE" -- "$path" > "$hunk"
+      git diff -M "$RANGE" -- "$path" | number_hunks > "$hunk"
       read -r added deleted _ < <(git diff --numstat "$RANGE" -- "$path")
       printf '%s +%s -%s %s hunks/%s.patch\n' "$path" "$added" "$deleted" "$(wc -c < "$hunk" | tr -d ' ')" "$path"
     else

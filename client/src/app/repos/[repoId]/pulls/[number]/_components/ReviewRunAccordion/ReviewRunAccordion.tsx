@@ -157,6 +157,7 @@ export function ReviewRunAccordion({
             prId={prId}
             repoFullName={repoFullName}
             headSha={headSha}
+            evalAgent={{ id: review.agent_id, name: review.agent_name ?? null }}
           />
         </div>
       )}

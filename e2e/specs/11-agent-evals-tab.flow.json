@@ -1,0 +1,245 @@
+{
+  "name": "Agent Evals tab lists cases with states, and an agent without cases shows the empty state",
+  "description": "Security Reviewer -> Evals tab shows 'passing 1 / 4', the four case states (passed, failed, errored, never run), the expectation chips (must find, must NOT flag, expect clean) and a 'matched x of y expected' line; 'View full dashboard' opens /eval/<id>. Test Quality Reviewer has no cases: the empty text and 'New eval case' show. Seeded data only, no model call, no writes. Covers AC-36, AC-37, AC-55 (tab link).",
+  "steps": [
+    {
+      "cmd": [
+        "open",
+        "{BASE}/agents"
+      ],
+      "label": "load the agents page"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "Security Reviewer"
+      ],
+      "label": "seeded agent card is visible"
+    },
+    {
+      "cmd": [
+        "find",
+        "text",
+        "Security Reviewer",
+        "click"
+      ],
+      "label": "open the Security Reviewer editor"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--url",
+        "/agents/"
+      ],
+      "label": "agent editor route reached"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "Skills"
+      ],
+      "label": "editor tabs render"
+    },
+    {
+      "cmd": [
+        "find",
+        "role",
+        "button",
+        "click",
+        "--name",
+        "Evals"
+      ],
+      "label": "switch to the Evals tab"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--url",
+        "tab=evals"
+      ],
+      "label": "evals tab is active in the URL"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "passing 1 / 4"
+      ],
+      "label": "passing count above the list (AC-36)"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "Stripe key committed in config"
+      ],
+      "label": "passed case is listed"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "Safe constant is not a secret"
+      ],
+      "label": "failed case is listed"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "Pure rename has no findings"
+      ],
+      "label": "errored case is listed"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "SQL built from request input"
+      ],
+      "label": "never-run case is listed"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "must find"
+      ],
+      "label": "must-find chip"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "must NOT flag"
+      ],
+      "label": "must-not-flag chip"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "expect clean"
+      ],
+      "label": "expect-clean chip"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "matched 1 of 1 expected"
+      ],
+      "label": "matched line of the run case"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "errored"
+      ],
+      "label": "errored last result"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "never run"
+      ],
+      "label": "never-run last result"
+    },
+    {
+      "cmd": [
+        "find",
+        "text",
+        "View full dashboard",
+        "click"
+      ],
+      "label": "open the per-agent dashboard from the tab"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--url",
+        "/eval/"
+      ],
+      "label": "per-agent dashboard route reached (AC-55)"
+    },
+    {
+      "cmd": [
+        "open",
+        "{BASE}/agents"
+      ],
+      "label": "back to the agents page"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "Test Quality Reviewer"
+      ],
+      "label": "agent without cases is listed"
+    },
+    {
+      "cmd": [
+        "find",
+        "text",
+        "Test Quality Reviewer",
+        "click"
+      ],
+      "label": "open the Test Quality Reviewer editor"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--url",
+        "/agents/"
+      ],
+      "label": "agent editor route reached"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "Skills"
+      ],
+      "label": "editor tabs render"
+    },
+    {
+      "cmd": [
+        "find",
+        "role",
+        "button",
+        "click",
+        "--name",
+        "Evals"
+      ],
+      "label": "switch to the Evals tab"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--url",
+        "tab=evals"
+      ],
+      "label": "evals tab is active in the URL"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "No eval cases yet"
+      ],
+      "label": "empty-state text (AC-37)"
+    },
+    {
+      "cmd": [
+        "wait",
+        "--text",
+        "New eval case"
+      ],
+      "label": "New eval case action is offered"
+    }
+  ]
+}

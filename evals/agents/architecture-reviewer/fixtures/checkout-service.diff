@@ -1,0 +1,33 @@
+diff --git a/server/src/modules/checkout/domain/checkout.ts b/server/src/modules/checkout/domain/checkout.ts
+index 1111111..2222222 100644
+--- a/server/src/modules/checkout/domain/checkout.ts
++++ b/server/src/modules/checkout/domain/checkout.ts
+@@ -1,5 +1,6 @@
+    1 +import type { FastifyReply } from "fastify";
+    2  export interface CheckoutOrder {
+    3    id: string;
+    4    total: number;
+    5  }
+
+      -export function priceOrder(order: CheckoutOrder): number {
+    6 +export function priceOrder(order: CheckoutOrder, reply?: FastifyReply): number {
+    7    return order.total;
+    8  }
+
+diff --git a/server/src/modules/checkout/service.ts b/server/src/modules/checkout/service.ts
+index 3333333..4444444 100644
+--- a/server/src/modules/checkout/service.ts
++++ b/server/src/modules/checkout/service.ts
+@@ -1,10 +1,14 @@
+    1  import { priceOrder } from "./domain/checkout.js";
+    2 +import { PgCheckoutRepository } from "./repository.js";
+
+    3  export class CheckoutService {
+    4 +  private repo = new PgCheckoutRepository();
+    5 +
+    6    async checkout(order: { id: string; total: number }) {
+    7      const price = priceOrder(order);
+    8 +    await this.repo.save(order.id, price);
+    9      return { price };
+   10    }
+   11  }

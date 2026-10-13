@@ -1,5 +1,9 @@
 # client — @devdigest/web
 
+Before you plan a change here, open the guides it needs: a new file under `src/` → load the
+`frontend-ui-architecture` skill (which folder, when to promote to shared, import directions);
+a UI primitive to add or change → read `src/vendor/ui/README.md`.
+
 ## Commands
 
 ```sh

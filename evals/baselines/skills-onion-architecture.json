@@ -1,0 +1,372 @@
+{
+  "label": "skills-onion-architecture",
+  "git_sha": "fedc040",
+  "dirty": true,
+  "times": 3,
+  "vitestArgs": [
+    "skills/onion-architecture/onion-architecture.eval.ts",
+    "--no-file-parallelism"
+  ],
+  "tests": {
+    "skills/onion-architecture/onion-architecture.eval.ts > skill:onion-architecture > stale-pr-reminders: finds the planted violations and leaves sanctioned code alone": {
+      "nodeid": "skills/onion-architecture/onion-architecture.eval.ts > skill:onion-architecture > stale-pr-reminders: finds the planted violations and leaves sanctioned code alone",
+      "label": "stale-pr-reminders: finds the planted violations and leaves sanctioned code alone",
+      "pass": {
+        "passed": 3,
+        "total": 3,
+        "rate": 1
+      },
+      "practices": {
+        "Flags server/src/modules/reminders/routes.ts:45 — the POST /reminders/:id/send handler calls container.github() / gh.postReview itself instead of going through the service.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "Flags reminders/service.ts:1-2 — the service imports drizzle-orm and db/schema and runs queries itself; the queries belong in a repository.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "Flags reminders/service.ts:12 — the new RemindersService takes the whole Container instead of the ports it uses.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "Flags that routes.ts builds the service (:27 `new RemindersService(container)`) and registers the job (:29) itself; both belong in a reminders/wiring.ts `buildRemindersService(container, log)`.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        }
+      },
+      "metrics": {
+        "durationMs": {
+          "mean": 13972.666666666666,
+          "stddev": 1779.5708284115397,
+          "min": 11948,
+          "max": 15289,
+          "n": 3
+        },
+        "inputTokens": {
+          "mean": 6702,
+          "stddev": 0,
+          "min": 6702,
+          "max": 6702,
+          "n": 3
+        },
+        "outputTokens": {
+          "mean": 2727,
+          "stddev": 327.7483790959156,
+          "min": 2417,
+          "max": 3070,
+          "n": 3
+        },
+        "numTurns": {
+          "mean": 1,
+          "stddev": 0,
+          "min": 1,
+          "max": 1,
+          "n": 3
+        },
+        "toolCallCount": {
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0,
+          "n": 3
+        }
+      }
+    },
+    "skills/onion-architecture/onion-architecture.eval.ts > skill:onion-architecture > review-slack-notify: finds the planted violations and leaves sanctioned code alone": {
+      "nodeid": "skills/onion-architecture/onion-architecture.eval.ts > skill:onion-architecture > review-slack-notify: finds the planted violations and leaves sanctioned code alone",
+      "label": "review-slack-notify: finds the planted violations and leaves sanctioned code alone",
+      "pass": {
+        "passed": 3,
+        "total": 3,
+        "rate": 1
+      },
+      "practices": {
+        "Flags that the new Slack adapter has no port in vendor/shared/adapters.ts (ReviewNotifier is declared in notify/service.ts:4) and/or no double in adapters/mocks.ts.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "Flags adapters/slack/webhook.ts:13 — the webhook URL is read from process.env instead of container.secrets.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "Flags notify/routes.ts:35 (GET /pulls/:id/notifiable-reviews) — the handler runs a DB query (container.db + drizzle/schema imports) instead of going through the repository and service.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "Flags notify/routes.ts:22-26 — the route file builds NotifyRepository and NotifyService (wiring container.slack into its ports) itself; that belongs in notify/wiring.ts.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        }
+      },
+      "metrics": {
+        "durationMs": {
+          "mean": 12629.333333333334,
+          "stddev": 761.2951683370474,
+          "min": 12089,
+          "max": 13500,
+          "n": 3
+        },
+        "inputTokens": {
+          "mean": 7659,
+          "stddev": 0,
+          "min": 7659,
+          "max": 7659,
+          "n": 3
+        },
+        "outputTokens": {
+          "mean": 2541.6666666666665,
+          "stddev": 134.098222707586,
+          "min": 2388,
+          "max": 2635,
+          "n": 3
+        },
+        "numTurns": {
+          "mean": 1,
+          "stddev": 0,
+          "min": 1,
+          "max": 1,
+          "n": 3
+        },
+        "toolCallCount": {
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0,
+          "n": 3
+        }
+      }
+    },
+    "skills/onion-architecture/onion-architecture.eval.ts > skill:onion-architecture > nightly-reindex: finds the planted violations and leaves sanctioned code alone": {
+      "nodeid": "skills/onion-architecture/onion-architecture.eval.ts > skill:onion-architecture > nightly-reindex: finds the planted violations and leaves sanctioned code alone",
+      "label": "nightly-reindex: finds the planted violations and leaves sanctioned code alone",
+      "pass": {
+        "passed": 3,
+        "total": 3,
+        "rate": 1
+      },
+      "practices": {
+        "Flags reindex/scheduler.ts — the background sweep runs on its own setInterval + p-queue instead of container.jobs.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "Flags reindex/service.ts (clearIndex(tx: ReindexTx, ...)) and the repository tx params — Drizzle's transaction handle leaks into the service; atomicity should be a withTransaction(work) port.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "Flags reindex/entity.ts + mapper.ts as an unneeded layer for a simple read.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "Flags reindex/routes.ts:19-25 — the route file builds the repository, service and scheduler and starts the timer itself; that belongs in reindex/wiring.ts.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        }
+      },
+      "metrics": {
+        "durationMs": {
+          "mean": 21057.333333333332,
+          "stddev": 3168.7496482577058,
+          "min": 18505,
+          "max": 24604,
+          "n": 3
+        },
+        "inputTokens": {
+          "mean": 7631,
+          "stddev": 0,
+          "min": 7631,
+          "max": 7631,
+          "n": 3
+        },
+        "outputTokens": {
+          "mean": 4307.333333333333,
+          "stddev": 766.045255408147,
+          "min": 3672,
+          "max": 5158,
+          "n": 3
+        },
+        "numTurns": {
+          "mean": 1,
+          "stddev": 0,
+          "min": 1,
+          "max": 1,
+          "n": 3
+        },
+        "toolCallCount": {
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0,
+          "n": 3
+        }
+      }
+    },
+    "skills/onion-architecture/onion-architecture.eval.ts > skill:onion-architecture > pr-label-suggestions: finds the planted violations and leaves sanctioned code alone": {
+      "nodeid": "skills/onion-architecture/onion-architecture.eval.ts > skill:onion-architecture > pr-label-suggestions: finds the planted violations and leaves sanctioned code alone",
+      "label": "pr-label-suggestions: finds the planted violations and leaves sanctioned code alone",
+      "pass": {
+        "passed": 3,
+        "total": 3,
+        "rate": 1
+      },
+      "practices": {
+        "Flags labels/routes.ts:21 — the GET /pulls/:id/labels/suggestions handler reads container.secrets itself and passes the token into the service.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "Flags labels/service.ts:67-68 — the service calls the GitHub REST API with global fetch: new I/O outside an adapter, with no port in vendor/shared/adapters.ts and no double (GitHubClient should grow the method instead).": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "Flags labels/helpers.ts:3 — application code imports the PullRow type from src/db/rows.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "Does NOT raise a finding — a listed violation of its own — against any of: labels/wiring.ts:23 `llm: (provider) => container.llm(provider)`, :12 container.reviewRepo, :4 the import of settings/feature-models, or :26-28 the job registered in wiring.ts reading container.secrets. A fix that also moves the job's token behind the new port, or a note that wiring makes the same read, is not a finding.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        }
+      },
+      "metrics": {
+        "durationMs": {
+          "mean": 13299.333333333334,
+          "stddev": 511.64571075435913,
+          "min": 12862,
+          "max": 13862,
+          "n": 3
+        },
+        "inputTokens": {
+          "mean": 7562,
+          "stddev": 0,
+          "min": 7562,
+          "max": 7562,
+          "n": 3
+        },
+        "outputTokens": {
+          "mean": 2756.6666666666665,
+          "stddev": 42.782395133200914,
+          "min": 2717,
+          "max": 2802,
+          "n": 3
+        },
+        "numTurns": {
+          "mean": 1,
+          "stddev": 0,
+          "min": 1,
+          "max": 1,
+          "n": 3
+        },
+        "toolCallCount": {
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0,
+          "n": 3
+        }
+      }
+    },
+    "skills/onion-architecture/onion-architecture.eval.ts > skill:onion-architecture > team-digest: finds the planted violations and leaves sanctioned code alone": {
+      "nodeid": "skills/onion-architecture/onion-architecture.eval.ts > skill:onion-architecture > team-digest: finds the planted violations and leaves sanctioned code alone",
+      "label": "team-digest: finds the planted violations and leaves sanctioned code alone",
+      "pass": {
+        "passed": 3,
+        "total": 3,
+        "rate": 1
+      },
+      "practices": {
+        "Flags digest/wiring.ts:3 — wiring imports BriefRepository from another module (brief/repository.ts) and builds it; another module's data must come through its builder/service or a container repository.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "Flags digest/repository.ts:4 — the repository imports getRepo from reviews/repository/pull.repo.ts, another module's data access (container.reviewRepo.getRepo exists).": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "Flags digest/routes.ts:14 — routes.ts imports the SkillRow type from skills/repository.ts (another module's data access, type-only).": {
+          "passed": 2,
+          "total": 3,
+          "rate": 0.6666666666666666
+        },
+        "Flags digest/routes.ts:57 — the POST /digests handler calls container.github() / currentLogin itself.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "Flags digest/service.ts:4 — the service imports FastifyBaseLogger from fastify (application code imports no fastify).": {
+          "passed": 2,
+          "total": 3,
+          "rate": 0.6666666666666666
+        },
+        "Flags digest/service.ts:1,93-95 — the service writes Markdown files to the home directory with node:fs: new I/O outside an adapter, with no port or double.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "Flags digest/routes.ts:31 — the job handler is registered in routes.ts instead of digest/wiring.ts.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        },
+        "Does NOT flag as a violation any of: wiring.ts:4 importing settings/feature-models, wiring.ts using container.skillsRepo / container.llm in port lambdas, routes.ts:12-13 importing _shared/context and _shared/schemas.": {
+          "passed": 3,
+          "total": 3,
+          "rate": 1
+        }
+      },
+      "metrics": {
+        "durationMs": {
+          "mean": 16003.333333333334,
+          "stddev": 849.7978190918903,
+          "min": 15249,
+          "max": 16924,
+          "n": 3
+        },
+        "inputTokens": {
+          "mean": 11934,
+          "stddev": 0,
+          "min": 11934,
+          "max": 11934,
+          "n": 3
+        },
+        "outputTokens": {
+          "mean": 3236.6666666666665,
+          "stddev": 64.01041581909412,
+          "min": 3172,
+          "max": 3300,
+          "n": 3
+        },
+        "numTurns": {
+          "mean": 1,
+          "stddev": 0,
+          "min": 1,
+          "max": 1,
+          "n": 3
+        },
+        "toolCallCount": {
+          "mean": 0,
+          "stddev": 0,
+          "min": 0,
+          "max": 0,
+          "n": 3
+        }
+      }
+    }
+  }
+}

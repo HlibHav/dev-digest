@@ -47,6 +47,10 @@ describe("AgentEditorPage ?tab=", () => {
     renderPage("context");
     expect(screen.getByTestId("editor-tab")).toHaveTextContent("context");
   });
+  it("?tab=evals renders the Evals tab", () => {
+    renderPage("evals");
+    expect(screen.getByTestId("editor-tab")).toHaveTextContent("evals");
+  });
   it("falls back to config for an unknown tab", () => {
     renderPage("nope");
     expect(screen.getByTestId("editor-tab")).toHaveTextContent("config");

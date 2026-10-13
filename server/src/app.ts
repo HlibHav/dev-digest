@@ -16,6 +16,7 @@ import { createDb, type Db } from './db/client.js';
 import { Container, type ContainerOverrides } from './platform/container.js';
 import { AppError } from './platform/errors.js';
 import { modules } from './modules/index.js';
+import { buildEvalService } from './modules/eval/wiring.js';
 import { ReviewService } from './modules/reviews/service.js';
 
 // Attach the DI container to every request/instance.
@@ -82,6 +83,17 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
     if (reaped > 0) app.log.info({ reaped }, 'reaped stale running agent_runs on boot');
   } catch (err) {
     app.log.warn({ err: (err as Error).message }, 'stale-run reaping failed (non-fatal)');
+  }
+
+  // Eval suite runs and single-case runs still 'running' belong to a dead
+  // process too: mark them failed / errored with the reason "interrupted".
+  try {
+    const reapedEval = await buildEvalService(container, app.log).reapInterrupted();
+    if (reapedEval.suites > 0 || reapedEval.caseRuns > 0) {
+      app.log.info(reapedEval, 'reaped interrupted eval runs on boot');
+    }
+  } catch (err) {
+    app.log.warn({ err: (err as Error).message }, 'eval run reaping failed (non-fatal)');
   }
 
   // Security headers (X-Content-Type-Options, X-Frame-Options, …). The API

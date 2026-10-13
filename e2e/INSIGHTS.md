@@ -10,6 +10,8 @@ fixed — add to the one that fits.
 
 ## What Doesn't Work
 
+- **2026-10-12** — `find role link click --name "<text>"` passed locally but failed in CI e2e-web on every run (3/3) with `Element not found`. The CI a11y snapshot taken at failure still showed the link (`link "Security Reviewer deepseek/… 1/2 pass"`), and `--name` is a case-insensitive substring by default. Locally it passed on both the dev and the production build, with agent-browser 0.38.1 and 0.39.0 (CI installs the latest). The cause was not found. Open rows the way every other flow does, with `find text "<text>" click`, where the first DOM match is the row. That made CI green 12/12 (2daa905). Green local e2e does not predict a `role link` step in CI. Evidence: `e2e/specs/10-eval-dashboard.flow.json:97`, `.github/workflows/e2e-web.yml:113`
+
 ## Codebase Patterns
 
 ## Tool & Library Notes
@@ -17,6 +19,7 @@ fixed — add to the one that fits.
 ## Recurring Errors & Fixes
 
 - **2026-09-20** — Running `e2e:hermetic` while `./scripts/dev.sh` is up **corrupts the dev server's build**: the hermetic script starts its own Next from the same `client/` directory, so both instances write one `.next`, and after teardown the dev server on :3200 serves `Cannot find module './vendor-chunks/@dnd-kit.js'` and a blank page. The stack is isolated in its ports and its database, not on disk. Stop the dev preview first, or after an e2e run do `rm -rf client/.next` and restart it — a plain restart is not enough. Evidence: `scripts/e2e.sh:148`, `client/.next/server/webpack-runtime.js`
+  - **2026-10-12** — Refined: the shared `.next` can also fail quietly. After a green 12/12 run, the dev web on :3200 still rendered, but every page showed `Cannot reach the DevDigest engine at http://localhost:3301`. The hermetic build had inlined its own `NEXT_PUBLIC_API_BASE` (the e2e API port), and the dev server kept serving that build. The same fix worked: `rm -rf client/.next`, then restart with the dev API base. Evidence: `scripts/e2e.sh:42`
 
 - **2026-09-20** — `find text … click` right after `wait --url` **races the fetch**: `wait --url` returns when the route changes, not when the data lands, so the click fails intermittently with `Command failed: agent-browser find text …`. Flows 04 and 05 failed this way on one run and passed on the next with no code change between them; flow 02 does the same journey and never flakes because it has a `wait --text` on the row first. Put a `wait --text` on the exact element before every `find … click` that depends on fetched data. Evidence: `e2e/specs/04-pr-findings.flow.json:6`, `e2e/specs/02-repo-pulls-detail.flow.json:6`
 
