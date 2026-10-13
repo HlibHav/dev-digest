@@ -23,6 +23,8 @@ package's `INSIGHTS.md` before any other work. Don't skip it. Then the guides th
 | `mcp-server/` | TypeScript ESM · MCP stdio server | `@modelcontextprotocol/server` v2, zod v4, vitest | pnpm |
 | `evals/` | TypeScript run by tsx and vitest | Claude Agent SDK, vitest | pnpm |
 
+`pnpm verify:l06` (repo root) runs the eval scoring and eval-module unit tests in one go.
+
 Database: PostgreSQL 16 with pgvector (`pgvector/pgvector:pg16` in `docker-compose.yml`).
 
 ## Repo structure
