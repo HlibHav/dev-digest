@@ -10,6 +10,7 @@ import { Severity } from './findings.js';
  *   - AgentColumn          one agent's column in the multi-agent view
  *   - Conflict / ConflictTake  where agents disagree on the same file:line
  *   - AgentStats           per-agent quality aggregates (GET /agents/:id/stats)
+ *   - AgentPerformance     all-agent dashboard payload (GET /agent-performance)
  *   - CuratorResult        the cross-session memory curator outcome
  *
  * The single-document run trace itself stays in `contracts/trace.ts` (RunTrace).
@@ -93,9 +94,47 @@ export type MultiAgentRun = z.infer<typeof MultiAgentRun>;
 export const StatPoint = z.object({ label: z.string(), value: z.number() });
 export type StatPoint = z.infer<typeof StatPoint>;
 
-export const AgentStats = z.object({
-  agent_id: z.string(),
-  agent_name: z.string(),
+/** Time window a stats payload covers. `start`/`end` are UTC instants (ISO 8601). */
+export const StatsPeriod = z.enum(['1d', '30d', 'custom']);
+export type StatsPeriod = z.infer<typeof StatsPeriod>;
+
+/** Query of GET /agent-performance and GET /agents/:id/stats. `from`/`to` are UTC dates. */
+export const StatsQuery = z.object({
+  period: StatsPeriod.optional(),
+  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+});
+export type StatsQuery = z.infer<typeof StatsQuery>;
+
+export const StatsWindow = z.object({
+  period: StatsPeriod,
+  start: z.string(),
+  end: z.string(),
+});
+export type StatsWindow = z.infer<typeof StatsWindow>;
+
+export const RunsByStatus = z.object({
+  running: z.number().int(),
+  done: z.number().int(),
+  failed: z.number().int(),
+  cancelled: z.number().int(),
+});
+export type RunsByStatus = z.infer<typeof RunsByStatus>;
+
+/** One model's slice of an agent's runs (the run's own model, not the agent's current one). */
+export const AgentModelSplit = z.object({
+  model: z.string().nullable(),
+  runs: z.number().int(),
+  total_cost_usd: z.number().nullable(),
+  accepted: z.number().int(),
+  dismissed: z.number().int(),
+  decisions: z.number().int(),
+  accept_rate: z.number().nullable(),
+});
+export type AgentModelSplit = z.infer<typeof AgentModelSplit>;
+
+/** Every metric of one agent (or of the deleted-agents bucket); carries no identity. */
+export const AgentStatsMetrics = z.object({
   runs: z.number().int(),
   findings_total: z.number().int(),
   /** accept-rate is the headline quality signal. 0..1 over acted findings. */
@@ -115,8 +154,78 @@ export const AgentStats = z.object({
   }),
   /** recent runs for a small trend chart (oldest→newest). */
   trend: z.array(StatPoint),
+  window: StatsWindow,
+  runs_by_status: RunsByStatus,
+  unpriced_runs: z.number().int(),
+  decisions: z.number().int(),
+  small_sample: z.boolean(),
+  last_run_at: z.string().nullable(),
+  by_model: z.array(AgentModelSplit),
+  cost_basis: z.literal('estimate'),
+});
+export type AgentStatsMetrics = z.infer<typeof AgentStatsMetrics>;
+
+export const AgentStats = AgentStatsMetrics.extend({
+  agent_id: z.string(),
+  agent_name: z.string(),
 });
 export type AgentStats = z.infer<typeof AgentStats>;
+
+// ---------------------------------------------------------------------------
+// Agent Performance dashboard (GET /agent-performance)
+// ---------------------------------------------------------------------------
+
+export const PerformanceTotals = z.object({
+  runs: z.number().int(),
+  runs_by_status: RunsByStatus,
+  total_cost_usd: z.number().nullable(),
+  unpriced_runs: z.number().int(),
+  accepted: z.number().int(),
+  dismissed: z.number().int(),
+  pending: z.number().int(),
+  decisions: z.number().int(),
+  accept_rate: z.number().nullable(),
+  small_sample: z.boolean(),
+});
+export type PerformanceTotals = z.infer<typeof PerformanceTotals>;
+
+export const MostActiveAgent = z.object({
+  agent_id: z.string(),
+  agent_name: z.string(),
+  runs: z.number().int(),
+  accept_rate: z.number().nullable(),
+  decisions: z.number().int(),
+});
+export type MostActiveAgent = z.infer<typeof MostActiveAgent>;
+
+export const CostByAgent = z.object({
+  agent_id: z.string().nullable(),
+  agent_name: z.string().nullable(),
+  runs: z.number().int(),
+  total_cost_usd: z.number().nullable(),
+});
+export type CostByAgent = z.infer<typeof CostByAgent>;
+
+export const CostByModel = z.object({
+  model: z.string().nullable(),
+  runs: z.number().int(),
+  total_cost_usd: z.number().nullable(),
+});
+export type CostByModel = z.infer<typeof CostByModel>;
+
+export const AgentPerformance = z.object({
+  window: StatsWindow,
+  small_sample_threshold: z.number().int(),
+  cost_basis: z.literal('estimate'),
+  billing_reconciliation: z.literal('not_connected'),
+  totals: PerformanceTotals,
+  most_active: MostActiveAgent.nullable(),
+  agents: z.array(AgentStats),
+  deleted_agents: AgentStatsMetrics.nullable(),
+  cost_by_agent: z.array(CostByAgent),
+  cost_by_model: z.array(CostByModel),
+});
+export type AgentPerformance = z.infer<typeof AgentPerformance>;
 
 // ---------------------------------------------------------------------------
 // Cross-session memory curator
