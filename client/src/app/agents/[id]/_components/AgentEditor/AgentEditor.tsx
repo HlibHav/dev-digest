@@ -1,5 +1,5 @@
 /* AgentEditor — the agent's config and the skills it carries into its prompt.
-   Context attaches repo docs. Evals holds regression cases. Stats/CI arrive with their own lessons. Tab state lives in ?tab=. */
+   Context attaches repo docs. Evals holds regression cases. Stats shows the agent's performance for a period. CI arrives with its own lesson. Tab state lives in ?tab=. */
 "use client";
 
 import React from "react";
@@ -10,6 +10,7 @@ import { ConfigTab } from "./_components/ConfigTab";
 import { SkillsTab } from "./_components/SkillsTab";
 import { ContextTab } from "./_components/ContextTab";
 import { EvalsTab } from "./_components/EvalsTab";
+import { StatsTab } from "./_components/StatsTab";
 import { TABS } from "./constants";
 import { s } from "./styles";
 
@@ -28,6 +29,8 @@ export function AgentEditor({ agent, tab, onTab }: { agent: Agent; tab: string; 
           <ContextTab agent={agent} />
         ) : tab === "evals" ? (
           <EvalsTab agent={agent} />
+        ) : tab === "stats" ? (
+          <StatsTab agent={agent} />
         ) : (
           <ConfigTab agent={agent} />
         )}
