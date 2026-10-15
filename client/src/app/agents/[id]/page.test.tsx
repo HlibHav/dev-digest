@@ -55,4 +55,13 @@ describe("AgentEditorPage ?tab=", () => {
     renderPage("nope");
     expect(screen.getByTestId("editor-tab")).toHaveTextContent("config");
   });
+  // SPEC-2026-10-15-agent-performance AC-41 (red-first): "stats" joins VALID_TABS.
+  it("AC-41 ?tab=stats renders the Stats tab", () => {
+    renderPage("stats");
+    expect(screen.getByTestId("editor-tab")).toHaveTextContent(/^stats$/);
+  });
+  it("AC-41 ?tab=stats keeps the Stats tab when a period rides along", () => {
+    renderPage("stats&period=1d");
+    expect(screen.getByTestId("editor-tab")).toHaveTextContent(/^stats$/);
+  });
 });
