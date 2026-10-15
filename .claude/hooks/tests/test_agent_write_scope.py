@@ -12,8 +12,10 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -21,9 +23,9 @@ ROOT = Path(__file__).resolve().parents[3]
 HOOK = ROOT / ".claude" / "hooks" / "agent-write-scope.py"
 
 
-def decide(profile: str, path: str, content: str = "it('a', () => { expect(1).toBe(1) })\n") -> str:
-    payload = json.dumps({"tool_name": "Write", "cwd": str(ROOT), "tool_input": {"file_path": path, "content": content}})
-    env = {**os.environ, "CLAUDE_PROJECT_DIR": str(ROOT)}
+def decide(profile: str, path: str, content: str = "it('a', () => { expect(1).toBe(1) })\n", root: Path = ROOT) -> str:
+    payload = json.dumps({"tool_name": "Write", "cwd": str(root), "tool_input": {"file_path": path, "content": content}})
+    env = {**os.environ, "CLAUDE_PROJECT_DIR": str(root)}
     out = subprocess.run([sys.executable, str(HOOK), profile], input=payload, capture_output=True, text=True, env=env)
     assert out.returncode == 0, out.stderr
     return "allow" if not out.stdout.strip() else json.loads(out.stdout)["hookSpecificOutput"]["permissionDecision"]
@@ -108,6 +110,86 @@ class SpecsProfile(unittest.TestCase):
         ]:
             with self.subTest(path=path):
                 self.assertEqual(decide("specs", path, "# x"), "deny")
+
+class WorktreeTargets(unittest.TestCase):
+    """CLAUDE_PROJECT_DIR is the main checkout; agents in a git worktree under
+    .claude/worktrees/<name>/ write there. Such a path is checked relative to the worktree,
+    but only when it is a registered worktree of this repo (2026-10-15: spec-creator was
+    denied a spec path inside a worktree)."""
+
+    def setUp(self) -> None:
+        # resolve(): on macOS the temp dir is /var/..., a symlink to /private/var/...
+        self.tmp = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.root = self.tmp / "repo"
+        git = lambda *a, cwd=None: subprocess.run(["git", *a], cwd=cwd or self.root, check=True, capture_output=True)
+        self.root.mkdir()
+        git("init", "-q", "-b", "main")
+        git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "init")
+        git("worktree", "add", "-q", "-b", "wt", ".claude/worktrees/wt")
+        self.wt = ".claude/worktrees/wt"
+
+    def fake_worktree(self, name: str, gitfile: str | None) -> str:
+        d = self.root / ".claude" / "worktrees" / name
+        d.mkdir(parents=True)
+        if gitfile is not None:
+            (d / ".git").write_text(gitfile)
+        return f".claude/worktrees/{name}"
+
+    def test_allowed_in_real_worktree(self) -> None:
+        for profile, path in [
+            ("specs", f"{self.wt}/specs/2026-10-15-agent-performance.md"),
+            ("specs", f"{self.wt}/server/specs/2026-10-15-x.md"),
+            ("tests", f"{self.wt}/server/test/x.test.ts"),
+            ("tests", f"{self.wt}/client/src/app/x/_components/Foo/Foo.test.tsx"),
+            ("docs", f"{self.wt}/server/docs/x.md"),
+        ]:
+            with self.subTest(profile=profile, path=path):
+                self.assertEqual(decide(profile, path, "# x", root=self.root), "allow")
+                self.assertEqual(decide(profile, str(self.root / path), "# x", root=self.root), "allow")
+
+    def test_allow_lists_still_apply_in_worktree(self) -> None:
+        for profile, path in [
+            ("specs", f"{self.wt}/server/src/app.ts"),
+            ("specs", f"{self.wt}/docs/sdd-cascade.md"),
+            ("specs", f"{self.wt}/.claude/agents/spec-creator.md"),
+            ("tests", f"{self.wt}/server/src/app.ts"),
+            ("tests", f"{self.wt}/server/test/route-adapter-calls.test.ts"),
+            ("tests", f"{self.wt}/server/test/helpers/pg.ts"),
+            ("docs", f"{self.wt}/server/INSIGHTS.md"),
+            ("docs", f"{self.wt}/README.md"),
+            ("specs", f"{self.wt}/.git"),
+            ("specs", f"{self.wt}/.claude/worktrees/wt/specs/x.md"),
+        ]:
+            with self.subTest(profile=profile, path=path):
+                self.assertEqual(decide(profile, path, "# x", root=self.root), "deny")
+
+    def test_not_a_registered_worktree(self) -> None:
+        admin = self.root / ".git" / "worktrees" / "wt"
+        cases = {
+            "no-git": None,
+            "gitdir-elsewhere": f"gitdir: {self.tmp / 'other' / '.git' / 'worktrees' / 'x'}\n",
+            # points at wt's admin dir, whose back-pointer names .claude/worktrees/wt, not this dir
+            "stolen-admin": f"gitdir: {admin}\n",
+            "junk": "not a gitdir line\n",
+        }
+        for name, gitfile in cases.items():
+            wt = self.fake_worktree(name, gitfile)
+            with self.subTest(name=name):
+                self.assertEqual(decide("specs", f"{wt}/specs/x.md", "# x", root=self.root), "deny")
+        nested = self.root / ".claude" / "worktrees" / "clone"
+        subprocess.run(["git", "init", "-q", str(nested)], check=True, capture_output=True)
+        self.assertEqual(decide("specs", ".claude/worktrees/clone/specs/x.md", "# x", root=self.root), "deny")
+        self.assertEqual(decide("specs", ".claude/worktrees/specs/x.md", "# x", root=self.root), "deny")
+
+    def test_symlink_escapes_denied(self) -> None:
+        outside = self.tmp / "outside"
+        (outside / "specs").mkdir(parents=True)
+        (self.root / self.wt / "specs").mkdir()
+        (self.root / self.wt / "specs" / "evil.md").symlink_to(outside / "specs" / "evil.md")
+        self.assertEqual(decide("specs", f"{self.wt}/specs/evil.md", "# x", root=self.root), "deny")
+        (self.root / ".claude" / "worktrees" / "link").symlink_to(outside)
+        self.assertEqual(decide("specs", ".claude/worktrees/link/specs/x.md", "# x", root=self.root), "deny")
 
 
 if __name__ == "__main__":
