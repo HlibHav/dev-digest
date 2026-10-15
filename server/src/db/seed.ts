@@ -11,6 +11,7 @@ import {
 } from './seed-prompts.js';
 import { SEED_SKILLS, SEED_AGENT_SKILLS } from './seed-skills.js';
 import { ruleHash } from '../modules/conventions/helpers.js';
+import { seedAgentPerformanceDemo } from './seed-agent-performance.js';
 
 /** Default provider/model for the built-in reviewer agents. */
 const DEFAULT_PROVIDER = 'openrouter' as const;
@@ -31,7 +32,8 @@ const DEFAULT_MODEL = 'deepseek/deepseek-v4-flash';
  * a finished scan (a real scan calls a model, which e2e flows may not).
  *
  * Plus an eval demo block (cases, finished suite runs) for the Evals tab and
- * the Eval Dashboard. Course lessons populate the remaining tables (memory, …)
+ * the Eval Dashboard, and an Agent Performance demo block (finished runs on a
+ * PR of their own, placed relative to the seed time). Course lessons populate the remaining tables (memory, …)
  * once their features are built — they start empty here.
  */
 
@@ -350,6 +352,7 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
   }
 
   await seedEvalDemo(db, workspaceId);
+  await seedAgentPerformanceDemo(db, workspaceId, repoId);
 
   return { workspaceId, userId };
 }
