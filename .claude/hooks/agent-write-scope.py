@@ -23,8 +23,11 @@ Profiles:
            (`server`, `client`, `reviewer-core`, `mcp-server`) or the root `specs/`. Never
            `e2e/specs/` (flow JSON), design inputs or anything else.
 
-The file path is resolved (symlinks included) against `$CLAUDE_PROJECT_DIR`, the worktree
-root; anything outside it is denied. The script fails closed: unreadable input denies.
+The file path is resolved (symlinks included) against `$CLAUDE_PROJECT_DIR`; anything outside it
+is denied. A target under `.claude/worktrees/<name>/` is checked relative to that directory
+instead, but only when it is a registered git worktree of this repo (see `worktree_root`);
+`$CLAUDE_PROJECT_DIR` stays the main checkout when an agent works in a worktree. The script
+fails closed: unreadable input denies.
 
 Stdin: the PreToolUse hook JSON. Stdout: nothing (allow) or the deny JSON. Exit code: always 0.
 """
@@ -158,6 +161,37 @@ def check_specs(rel: str) -> str | None:
 CHECKS = {"docs": check_docs, "specs": check_specs}
 
 
+def worktree_root(root: Path, target: Path) -> Path | None:
+    """The registered git worktree `root/.claude/worktrees/<name>` that holds `target`, else None.
+
+    `target` is already resolved, so a symlink out of the worktree never reaches here. The
+    worktree must be a real directory whose `.git` is a file naming an admin dir under
+    `root/.git/worktrees/`, and that admin dir's `gitdir` must point back to it — the same
+    two-way link git keeps, so a hand-planted `.git` file or a nested clone does not count.
+    """
+    base = root / ".claude" / "worktrees"
+    try:
+        name = target.relative_to(base).parts[0]
+    except (ValueError, IndexError):
+        return None
+    wt = base / name
+    dotgit = wt / ".git"
+    if wt == target or wt.is_symlink() or not wt.is_dir() or not (root / ".git").is_dir():
+        return None
+    if dotgit.is_symlink() or not dotgit.is_file():
+        return None
+    line = dotgit.read_text(encoding="utf-8").strip()
+    if not line.startswith("gitdir:"):
+        return None
+    admin = (wt / line.removeprefix("gitdir:").strip()).resolve()
+    if admin.parent != (root / ".git" / "worktrees").resolve():
+        return None
+    back = (admin / "gitdir").read_text(encoding="utf-8").strip()
+    if (admin / back).resolve() != dotgit.resolve():
+        return None
+    return wt
+
+
 def main() -> int:
     profile = sys.argv[1] if len(sys.argv) > 1 else ""
     if profile != "tests" and profile not in CHECKS:
@@ -174,6 +208,12 @@ def main() -> int:
         root = Path(os.environ.get("CLAUDE_PROJECT_DIR") or payload["cwd"]).resolve()
         target = Path(raw if os.path.isabs(raw) else root / raw).resolve()
         rel = target.relative_to(root).as_posix()
+        if rel.startswith(".claude/worktrees/"):
+            wt = worktree_root(root, target)
+            if wt is None:
+                deny(f"{rel} is not inside a registered git worktree of this repo")
+                return 0
+            rel = target.relative_to(wt).as_posix()
     except ValueError:
         deny("the file is outside the project directory")
         return 0
