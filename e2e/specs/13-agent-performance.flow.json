@@ -1,0 +1,28 @@
+{
+  "name": "Agent Performance dashboard shows seeded totals, switches to 1 day, and opens the per-agent Stats tab",
+  "description": "Sidebar 'Agent Performance' opens /agent-performance on the seeded demo runs (PR #476, relative to seed time, no model call): 30 days shows 8 runs ('7 done', $0.07), switching to 1 day shows 4 runs ('4 done', $0.04) with the Security Reviewer first (11 decisions, 82% accept rate). The Models control on that row expands the model split, and View opens the agent's Stats tab on the same 1-day period with 'Split by model'. Covers AC-44. Every click is preceded by a wait --text on fetched data; no `role link --name` (it fails in CI, see e2e/INSIGHTS.md).",
+  "steps": [
+    { "cmd": ["open", "{BASE}/"], "label": "load the app (redirects to the first repo)" },
+    { "cmd": ["set", "viewport", "1280", "800"], "label": "taller viewport: the default 1280x577 hides the GLOBAL sidebar group under the sidebar footer (the nav scrolls, but a click does not scroll it into view)" },
+    { "cmd": ["wait", "--url", "/pulls"], "label": "the PR list route is reached" },
+    { "cmd": ["wait", "--text", "Agent Performance"], "label": "the sidebar entry renders" },
+    { "cmd": ["find", "text", "Agent Performance", "click"], "label": "open Agent Performance from the sidebar" },
+    { "cmd": ["wait", "--url", "/agent-performance"], "label": "dashboard route reached" },
+    { "cmd": ["wait", "--text", "Security Reviewer"], "label": "seeded agent row renders" },
+    { "cmd": ["wait", "--text", "7 done"], "label": "30-day total runs card: 8 runs, 7 done" },
+    { "cmd": ["wait", "--text", "$0.07"], "label": "30-day total cost" },
+    { "cmd": ["find", "text", "1 day", "click"], "label": "switch the period to 1 day" },
+    { "cmd": ["wait", "--url", "period=1d"], "label": "period is in the URL" },
+    { "cmd": ["wait", "--text", "4 done"], "label": "1-day total runs card differs from 30 days" },
+    { "cmd": ["wait", "--text", "$0.04"], "label": "1-day total cost differs from 30 days" },
+    { "cmd": ["wait", "--text", "Security Reviewer"], "label": "Security Reviewer is still the first row" },
+    { "cmd": ["find", "role", "button", "click", "--name", "Models", "--exact"], "label": "expand the first row (Security Reviewer)" },
+    { "cmd": ["wait", "--text", "deepseek/deepseek-v4-flash"], "label": "the expanded row shows its model" },
+    { "cmd": ["find", "role", "button", "click", "--name", "View", "--exact"], "label": "open the Security Reviewer Stats tab" },
+    { "cmd": ["wait", "--url", "tab=stats"], "label": "Stats tab is in the URL" },
+    { "cmd": ["wait", "--url", "period=1d"], "label": "the 1-day period carries over" },
+    { "cmd": ["wait", "--text", "Split by model"], "label": "the per-agent model split renders" },
+    { "cmd": ["wait", "--text", "11 decisions"], "label": "same decisions as the dashboard row" },
+    { "cmd": ["wait", "--text", "82%"], "label": "same accept rate as the dashboard row" }
+  ]
+}

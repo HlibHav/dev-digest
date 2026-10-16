@@ -39,6 +39,11 @@ export const NAV: NavGroup[] = [
       { key: "eval", label: "Eval Dashboard", icon: "Gauge", href: "/eval" },
     ],
   },
+  {
+    // Workspace-wide views that are not tied to one repo.
+    section: "GLOBAL",
+    items: [{ key: "agent-performance", label: "Agent Performance", icon: "Activity", href: "/agent-performance" }],
+  },
 ];
 
 export const SETTINGS_ITEM: NavItemDef = {

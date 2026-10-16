@@ -18,6 +18,8 @@ fixed — add to the one that fits.
 
 ## Recurring Errors & Fixes
 
+- **2026-10-15** — `find text "<label>" click` fails with `covered by <div>` / `covered by <aside>` in two layouts. (1) agent-browser's default viewport is 1280×577, so a nav item low in the sidebar (the GLOBAL group, y≈550) sits under the sidebar footer: the nav scrolls, but the click does not scroll it into view. Add `["set", "viewport", "1280", "800"]` right after `open`. (2) A short word such as "Models" or "View" first matches a Next.js RSC `<script>` at (0,0), which the sidebar covers. Click buttons with `find role button click --name "<label>" --exact`; `role link` is still the one to avoid (see below). Repro outside the runner: `agent-browser --session x open …` then `eval "innerHeight"` printed 577. Evidence: `e2e/specs/13-agent-performance.flow.json:6`, `e2e/specs/13-agent-performance.flow.json:19`
+
 - **2026-09-20** — Running `e2e:hermetic` while `./scripts/dev.sh` is up **corrupts the dev server's build**: the hermetic script starts its own Next from the same `client/` directory, so both instances write one `.next`, and after teardown the dev server on :3200 serves `Cannot find module './vendor-chunks/@dnd-kit.js'` and a blank page. The stack is isolated in its ports and its database, not on disk. Stop the dev preview first, or after an e2e run do `rm -rf client/.next` and restart it — a plain restart is not enough. Evidence: `scripts/e2e.sh:148`, `client/.next/server/webpack-runtime.js`
   - **2026-10-12** — Refined: the shared `.next` can also fail quietly. After a green 12/12 run, the dev web on :3200 still rendered, but every page showed `Cannot reach the DevDigest engine at http://localhost:3301`. The hermetic build had inlined its own `NEXT_PUBLIC_API_BASE` (the e2e API port), and the dev server kept serving that build. The same fix worked: `rm -rf client/.next`, then restart with the dev API base. Evidence: `scripts/e2e.sh:42`
 
@@ -27,6 +29,8 @@ fixed — add to the one that fits.
   - **2026-10-03** — Refined: run as `npm run e2e:hermetic`, the same failure exits **0**. The process printed `sh: tsx: command not found`, tore the stack down and returned 0 with no flow run. The exit code proves nothing here. Look for the runner's `N/N flows passed` line, which was `9/9 flows passed` after `npm ci`. Evidence: `scripts/e2e.sh:163`, `e2e/package.json:9`
 
 ## Session Notes
+
+- **2026-10-15** — Added flow 13 (Agent Performance) and fixed its sidebar/short-label clicks → Recurring Errors & Fixes; also recorded the red-first 404 trap (server) and the React Query retry test (client). Evidence: `e2e/specs/13-agent-performance.flow.json:1`
 
 - **2026-09-20** — Added the Skills library flow and fixed the racing click in 04/05 → Recurring Errors & Fixes. Evidence: `e2e/specs/08-skills.flow.json:1`
 
